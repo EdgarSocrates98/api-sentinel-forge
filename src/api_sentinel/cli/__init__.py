@@ -13,8 +13,16 @@ from api_sentinel import __version__
 from api_sentinel.application.use_cases import ListServices, RegisterService, RegisterSource
 from api_sentinel.capabilities import list_capabilities, status_report
 from api_sentinel.cli.install import install_command
-from api_sentinel.domain import SentinelError, SystemClock, UlidIdFactory
+from api_sentinel.domain import (
+    NotFoundError,
+    SentinelError,
+    SystemClock,
+    UlidIdFactory,
+    ValidationError,
+)
+from api_sentinel.infrastructure.security import redact
 from api_sentinel.infrastructure.storage import SqliteUnitOfWork
+from api_sentinel.ingestion import IngestionPipeline
 from api_sentinel.workspace import Workspace, ensure_workspace, resolve_workspace
 
 app = typer.Typer(
@@ -194,6 +202,48 @@ def workspace(
             "initialized": ws.root.exists(),
             "db": str(ws.db_path),
             "db_present": ws.db_path.exists(),
+        },
+        as_json,
+    )
+
+
+@app.command()
+def ingest(
+    source_id: Annotated[
+        str, typer.Option("--source-id", help="Registered telemetry source id")
+    ],
+    file: Annotated[
+        Path, typer.Option("--file", help="Batch payload path (JSONL or OTLP JSON)")
+    ],
+    kind: Annotated[
+        str | None, typer.Option("--kind", help="jsonl | otlp-json (auto-detected if omitted)")
+    ] = None,
+    as_json: _JSON = False,
+    workspace: _WS = None,
+    user_scope: _USER_SCOPE = False,
+) -> None:
+    """Ingest a telemetry batch end-to-end; idempotent re-runs never duplicate."""
+    ws = _ws(workspace, user_scope)
+    uow = _uow(ws)
+    with uow:
+        source = uow.sources.get(source_id)
+        if source is None:
+            raise NotFoundError(f"telemetry source not found: {source_id}")
+        if not source.enabled:
+            raise ValidationError(f"telemetry source is disabled: {source_id}")
+    try:
+        content = file.read_bytes()
+    except OSError as exc:
+        raise ValidationError(f"cannot read batch file: {file}") from exc
+    result = IngestionPipeline(
+        uow, SystemClock(), UlidIdFactory(), lambda t: redact(t).text
+    ).ingest(source=source, kind=kind, content=content)
+    _emit(
+        {
+            "batch_id": result.batch_id,
+            "accepted": result.accepted,
+            "quarantined": result.quarantined,
+            "skipped_duplicates": result.skipped_duplicates,
         },
         as_json,
     )

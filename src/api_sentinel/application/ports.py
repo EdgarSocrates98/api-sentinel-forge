@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Protocol, runtime_checkable
+from datetime import datetime
+from typing import Any, Protocol, runtime_checkable
 
 from api_sentinel.domain import (
     ApiService,
@@ -14,6 +15,8 @@ from api_sentinel.domain import (
     ServiceRelease,
     TelemetrySource,
 )
+from api_sentinel.ingestion.models import NormalizedObservation
+from api_sentinel.ingestion.quarantine import QuarantineEntry
 
 
 @runtime_checkable
@@ -67,6 +70,32 @@ class CheckpointRepository(Protocol):
 
 
 @runtime_checkable
+class ObservationRepository(Protocol):
+    """Append-only: identical content is a no-op, conflicting ids never rewrite."""
+
+    def get(self, observation_id: str) -> NormalizedObservation | None: ...
+    def put(self, observation: NormalizedObservation) -> None: ...
+    def list_by_batch(self, batch_id: str) -> list[NormalizedObservation]: ...
+    def count(self) -> int: ...
+    def aggregates(self) -> dict[str, Any]: ...
+    def overlapping_sources(
+        self,
+        service_id: str,
+        window_start: datetime,
+        window_end: datetime,
+        exclude_source_id: str,
+    ) -> set[str]: ...
+    def raw_attributes(self, observation_id: str) -> str: ...
+
+
+@runtime_checkable
+class QuarantineRepository(Protocol):
+    def put(self, entry: QuarantineEntry) -> None: ...
+    def list(self, batch_id: str | None = None) -> list[QuarantineEntry]: ...
+    def count(self) -> int: ...
+
+
+@runtime_checkable
 class UnitOfWork(Protocol):
     services: ServiceRepository
     environments: EnvironmentRepository
@@ -76,6 +105,8 @@ class UnitOfWork(Protocol):
     evidence: EvidenceRepository
     audit: AuditRepository
     checkpoints: CheckpointRepository
+    observations: ObservationRepository
+    quarantine: QuarantineRepository
 
     def __enter__(self) -> UnitOfWork: ...
     def __exit__(self, exc_type: object, exc_val: object, exc_tb: object) -> None: ...

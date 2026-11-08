@@ -25,39 +25,39 @@ this inbox): repositories, migrations, telemetry-source contract, workspace._
 
 # Acceptance Criteria
 
-- [ ] `api-sentinel ingest <file>.jsonl` imports a normalized JSONL batch
+- [x] `api-sentinel ingest <file>.jsonl` imports a normalized JSONL batch
   end-to-end into SQLite with recorded provenance (`source_id`,
   `adapter_version`, `batch_id`).
-- [ ] A documented OTLP JSON subset is accepted; unsupported shapes and unknown
+- [x] A documented OTLP JSON subset is accepted; unsupported shapes and unknown
   schema versions are rejected explicitly (never silently defaulted) and routed
   to quarantine.
-- [ ] Unit normalization is lossless: ms/seconds and cumulative/delta
+- [x] Unit normalization is lossless: ms/seconds and cumulative/delta
   temporality are converted with explicit units carried on the observation;
   the normalization fixture corpus shows zero unit distortion.
-- [ ] Counter, gauge and histogram produce distinct typed
+- [x] Counter, gauge and histogram produce distinct typed
   `RuntimeObservation`s; an HTTP histogram is never reduced to a synthetic
   request counter.
-- [ ] `event_time`, `ingest_time` and `processing_time` are stored as three
+- [x] `event_time`, `ingest_time` and `processing_time` are stored as three
   distinct clocks; aggregation windows are configurable (default 1 min) with
   tolerated lateness (default 2 min); corrections after window closure are
   recorded as traceable revisions, not silent rewrites.
-- [ ] Deduplication: `ObservationBatch` carries an idempotency key;
+- [x] Deduplication: `ObservationBatch` carries an idempotency key;
   reprocessing the same batch produces zero duplicate points (LAB-009 oracle).
-- [ ] Every observation carries a quality state
+- [x] Every observation carries a quality state
   (`COMPLETE | PARTIAL | SAMPLED | STALE | INVALID | UNKNOWN`); sampled data is
   labeled sampled and never the inverse.
-- [ ] Quarantine: payloads failing schema/size/version/origin validation are
+- [x] Quarantine: payloads failing schema/size/version/origin validation are
   held apart, queryable, and cannot contaminate aggregates.
-- [ ] Ingestion checkpoints are recorded per source; an interrupted import
+- [x] Ingestion checkpoints are recorded per source; an interrupted import
   resumes without duplicating already-committed points.
-- [ ] Configurable limits for batch size (initial default ~10 MB), memory and
+- [x] Configurable limits for batch size (initial default ~10 MB), memory and
   execution time; exceeded limits produce a bounded refusal or truncation —
   and truncated evidence records its loss.
-- [ ] Everything persisted passes through redaction first; the LAB-010
+- [x] Everything persisted passes through redaction first; the LAB-010
   credential fixture proves no known secret is persisted.
-- [ ] An unmapped route keeps its identity `UNKNOWN` (LAB-006): no fabricated
+- [x] An unmapped route keeps its identity `UNKNOWN` (LAB-006): no fabricated
   service/operation identity is synthesized during normalization.
-- [ ] Overlapping sources (e.g., OTel instrumentation + gateway metrics
+- [x] Overlapping sources (e.g., OTel instrumentation + gateway metrics
   measuring the same flow) are identified as partial overlap, never summed
   indiscriminately.
 

@@ -25,7 +25,7 @@ _CAPABILITIES: list[Capability] = [
     Capability("api.telemetry-source-registration", CapabilityStatus.AVAILABLE, "0.1.0"),
     Capability("api.evidence-storage", CapabilityStatus.AVAILABLE, "0.1.0"),
     Capability("api.persistence-recovery", CapabilityStatus.AVAILABLE, "0.1.0"),
-    Capability("api.runtime-observation", CapabilityStatus.DECLARED, notes="Cycle 2"),
+    Capability("api.runtime-observation", CapabilityStatus.AVAILABLE, "0.1.0"),
     Capability("api.slo-assessment", CapabilityStatus.DECLARED, notes="Cycle 3"),
     Capability("api.anomaly-detection", CapabilityStatus.DECLARED, notes="Cycle 4"),
     Capability("api.incident-investigation", CapabilityStatus.DECLARED, notes="Cycle 4"),

@@ -14,6 +14,8 @@ from api_sentinel.application.ports import (
     CheckpointRepository,
     EnvironmentRepository,
     EvidenceRepository,
+    ObservationRepository,
+    QuarantineRepository,
     ReleaseRepository,
     ServiceRepository,
     SourceRepository,
@@ -35,6 +37,8 @@ from api_sentinel.domain import (
 )
 from api_sentinel.infrastructure.storage.db import connect
 from api_sentinel.infrastructure.storage.migrations import migrate
+from api_sentinel.ingestion.models import NormalizedMeasurement, NormalizedObservation
+from api_sentinel.ingestion.quarantine import QuarantineEntry
 
 
 def _dt(value: str | None) -> datetime | None:
@@ -288,6 +292,151 @@ class _CheckpointRepo:
         )
 
 
+class _ObservationRepo:
+    """Append-only observation store — INSERT OR IGNORE, never UPDATE."""
+
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._c = conn
+
+    def _row(self, r: sqlite3.Row) -> NormalizedObservation:
+        return NormalizedObservation(
+            observation_id=r["observation_id"],
+            service_id=r["service_id"],
+            operation_id=r["operation_id"],
+            release_id=r["release_id"],
+            window_start=datetime.fromisoformat(r["window_start"]),
+            window_end=datetime.fromisoformat(r["window_end"]),
+            ingest_time=datetime.fromisoformat(r["ingest_time"]),
+            processing_time=datetime.fromisoformat(r["processing_time"]),
+            source_id=r["source_id"],
+            batch_id=r["batch_id"],
+            quality=QualityState(r["quality"]),
+            measurement=NormalizedMeasurement.model_validate(json.loads(r["measurement"])),
+            attributes=json.loads(r["attributes"]),
+            idempotency_key=r["idempotency_key"],
+        )
+
+    def get(self, observation_id: str) -> NormalizedObservation | None:
+        r = self._c.execute(
+            "SELECT * FROM runtime_observations WHERE observation_id=?", (observation_id,)
+        ).fetchone()
+        return self._row(r) if r else None
+
+    def put(self, o: NormalizedObservation) -> None:
+        self._c.execute(
+            "INSERT OR IGNORE INTO runtime_observations"
+            " (observation_id, service_id, operation_id, release_id, window_start,"
+            "  window_end, ingest_time, processing_time, source_id, batch_id, quality,"
+            "  measurement, attributes, idempotency_key) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (
+                o.observation_id, o.service_id, o.operation_id, o.release_id,
+                o.window_start.isoformat(), o.window_end.isoformat(),
+                o.ingest_time.isoformat(), o.processing_time.isoformat(),
+                o.source_id, o.batch_id, o.quality.value,
+                o.measurement.model_dump_json(), json.dumps(o.attributes, default=str),
+                o.idempotency_key,
+            ),
+        )
+
+    def list_by_batch(self, batch_id: str) -> list[NormalizedObservation]:
+        rows = self._c.execute(
+            "SELECT * FROM runtime_observations WHERE batch_id=? ORDER BY observation_id",
+            (batch_id,),
+        )
+        return [self._row(r) for r in rows]
+
+    def count(self) -> int:
+        return int(self._c.execute("SELECT COUNT(*) FROM runtime_observations").fetchone()[0])
+
+    def aggregates(self) -> dict[str, Any]:
+        """Per-(service, source, quality, kind) counts — sources never summed."""
+        rows = self._c.execute(
+            "SELECT service_id, source_id, quality,"
+            "       json_extract(measurement, '$.kind') AS kind, COUNT(*) AS n"
+            " FROM runtime_observations"
+            " GROUP BY service_id, source_id, quality, kind"
+            " ORDER BY service_id, source_id, quality, kind"
+        ).fetchall()
+        return {
+            "total": self.count(),
+            "by": [
+                {
+                    "service_id": r["service_id"],
+                    "source_id": r["source_id"],
+                    "quality": r["quality"],
+                    "kind": r["kind"],
+                    "observations": r["n"],
+                }
+                for r in rows
+            ],
+        }
+
+    def overlapping_sources(
+        self,
+        service_id: str,
+        window_start: datetime,
+        window_end: datetime,
+        exclude_source_id: str,
+    ) -> set[str]:
+        rows = self._c.execute(
+            "SELECT DISTINCT source_id FROM runtime_observations"
+            " WHERE service_id=? AND source_id!=?"
+            "   AND window_start < ? AND window_end > ?",
+            (
+                service_id,
+                exclude_source_id,
+                window_end.isoformat(),
+                window_start.isoformat(),
+            ),
+        ).fetchall()
+        return {r["source_id"] for r in rows}
+
+    def raw_attributes(self, observation_id: str) -> str:
+        r = self._c.execute(
+            "SELECT attributes FROM runtime_observations WHERE observation_id=?",
+            (observation_id,),
+        ).fetchone()
+        return str(r["attributes"]) if r else ""
+
+
+class _QuarantineRepo:
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._c = conn
+
+    def _row(self, r: sqlite3.Row) -> QuarantineEntry:
+        return QuarantineEntry(
+            item_id=r["item_id"],
+            batch_id=r["batch_id"],
+            reason=r["reason"],
+            payload=r["payload"] or "",
+            payload_truncated=bool(r["payload_truncated"]),
+            created_at=datetime.fromisoformat(r["created_at"]),
+        )
+
+    def put(self, e: QuarantineEntry) -> None:
+        self._c.execute(
+            "INSERT OR IGNORE INTO ingestion_quarantine"
+            " (item_id, batch_id, reason, payload, payload_truncated, created_at)"
+            " VALUES (?,?,?,?,?,?)",
+            (
+                e.item_id, e.batch_id, e.reason, e.payload,
+                int(e.payload_truncated), e.created_at.isoformat(),
+            ),
+        )
+
+    def list(self, batch_id: str | None = None) -> list[QuarantineEntry]:
+        sql = "SELECT * FROM ingestion_quarantine"
+        args: tuple[Any, ...] = ()
+        if batch_id:
+            sql += " WHERE batch_id=?"
+            args = (batch_id,)
+        rows = self._c.execute(sql + " ORDER BY created_at, item_id", args)
+        return [self._row(r) for r in rows]
+
+    def count(self) -> int:
+        return int(self._c.execute("SELECT COUNT(*) FROM ingestion_quarantine").fetchone()[0])
+
+
 class SqliteUnitOfWork:
     """One connection, explicit commit/rollback; repos share the transaction."""
 
@@ -299,6 +448,8 @@ class SqliteUnitOfWork:
     evidence: EvidenceRepository
     audit: AuditRepository
     checkpoints: CheckpointRepository
+    observations: ObservationRepository
+    quarantine: QuarantineRepository
 
     def __init__(self, db_path: Path | str) -> None:
         self._db_path = db_path
@@ -320,6 +471,8 @@ class SqliteUnitOfWork:
         self.evidence = _EvidenceRepo(conn)
         self.audit = _AuditRepo(conn)
         self.checkpoints = _CheckpointRepo(conn)
+        self.observations = _ObservationRepo(conn)
+        self.quarantine = _QuarantineRepo(conn)
         conn.execute("BEGIN")
         return self
 

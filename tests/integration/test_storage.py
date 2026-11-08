@@ -55,9 +55,9 @@ def test_migrations_apply_once_and_checksum(tmp_path: Path) -> None:
     conn = connect(tmp_path / "s.db")
     first = migrate(conn)
     second = migrate(conn)
-    assert first == [1] and second == []
+    assert first == [1, 2] and second == []
     rows = conn.execute("SELECT version, checksum FROM schema_migrations").fetchall()
-    assert len(rows) == 1 and len(rows[0]["checksum"]) == 64
+    assert len(rows) == 2 and all(len(r["checksum"]) == 64 for r in rows)
     conn.close()
 
 
