@@ -4,13 +4,22 @@ from __future__ import annotations
 
 import json
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Any
 
 import typer
 
 from api_sentinel import __version__
-from api_sentinel.application.use_cases import ListServices, RegisterService, RegisterSource
+from api_sentinel.application.use_cases import (
+    DefineSlo,
+    EvaluateSlo,
+    GetServiceHealth,
+    ListServices,
+    ListSloDefinitions,
+    RegisterService,
+    RegisterSource,
+)
 from api_sentinel.capabilities import list_capabilities, status_report
 from api_sentinel.cli.install import install_command
 from api_sentinel.domain import (
@@ -23,6 +32,8 @@ from api_sentinel.domain import (
 from api_sentinel.infrastructure.security import redact
 from api_sentinel.infrastructure.storage import SqliteUnitOfWork
 from api_sentinel.ingestion import IngestionPipeline
+from api_sentinel.metrics import ErrorClassification, parse_duration_seconds
+from api_sentinel.reliability import SliKind
 from api_sentinel.workspace import Workspace, ensure_workspace, resolve_workspace
 
 app = typer.Typer(
@@ -31,6 +42,12 @@ app = typer.Typer(
     no_args_is_help=True,
     add_completion=False,
 )
+slo_app = typer.Typer(
+    name="slo",
+    help="SLO definitions and windowed assessments.",
+    no_args_is_help=True,
+)
+app.add_typer(slo_app, name="slo")
 
 _JSON = Annotated[bool, typer.Option("--json", help="Emit machine-readable JSON")]
 _WS = Annotated[str | None, typer.Option("--workspace", help="Explicit workspace root")]
@@ -250,6 +267,140 @@ def ingest(
 
 
 app.command("install")(install_command)
+
+
+def _parse_error_status(raw: str | None) -> ErrorClassification | None:
+    """'5xx,503,429' → ErrorClassification (classes stay classes, codes codes)."""
+    if raw is None:
+        return None
+    classes: list[str] = []
+    codes: list[int] = []
+    for token in raw.split(","):
+        token = token.strip()
+        if not token:
+            continue
+        if len(token) == 3 and token[0].isdigit() and token[1:] == "xx":
+            classes.append(token)
+        else:
+            try:
+                codes.append(int(token))
+            except ValueError as exc:
+                raise ValidationError(
+                    f"invalid --error-status token: {token!r}",
+                    details={"expected": "CSV of status codes or classes, e.g. '5xx,429'"},
+                ) from exc
+    try:
+        return ErrorClassification(
+            error_status_classes=classes or ["5xx"], error_status_codes=codes
+        )
+    except ValueError as exc:
+        raise ValidationError(str(exc)) from exc
+
+
+def _parse_dt(raw: str, flag: str) -> datetime:
+    try:
+        return datetime.fromisoformat(raw)
+    except ValueError as exc:
+        raise ValidationError(
+            f"invalid {flag} datetime: {raw!r} (expected ISO-8601)"
+        ) from exc
+
+
+@slo_app.command("define")
+def slo_define(
+    service_id: Annotated[str, typer.Option("--service-id")],
+    target: Annotated[float, typer.Option("--target", help="Objective S, e.g. 0.99")],
+    window: Annotated[str, typer.Option("--window", help="e.g. 60s, 15m, 1h, 24h")],
+    revision: Annotated[int | None, typer.Option("--revision")] = None,
+    slo_id: Annotated[str | None, typer.Option("--slo-id")] = None,
+    sli: Annotated[str, typer.Option("--sli", help="availability | latency")] = "availability",
+    latency_threshold_ms: Annotated[
+        float | None, typer.Option("--latency-threshold-ms")
+    ] = None,
+    operation_id: Annotated[str | None, typer.Option("--operation-id")] = None,
+    error_status: Annotated[
+        str | None,
+        typer.Option("--error-status", help="CSV codes/classes, e.g. '5xx,429'"),
+    ] = None,
+    as_json: _JSON = False,
+    workspace: _WS = None,
+    user_scope: _USER_SCOPE = False,
+) -> None:
+    """Define a versioned SLO; same revision+same definition is idempotent."""
+    try:
+        window_seconds = parse_duration_seconds(window)
+        sli_kind = SliKind(sli)
+    except ValueError as exc:
+        raise ValidationError(str(exc)) from exc
+    ws = _ws(workspace, user_scope)
+    uow = _uow(ws)
+    definition = DefineSlo(uow, SystemClock(), UlidIdFactory()).execute(
+        service_id=service_id,
+        target=target,
+        window_seconds=window_seconds,
+        revision=revision,
+        sli_kind=sli_kind,
+        operation_id=operation_id,
+        latency_ms=latency_threshold_ms,
+        error_classification=_parse_error_status(error_status),
+        slo_id=slo_id,
+    )
+    _emit(definition.model_dump(mode="json"), as_json)
+
+
+@slo_app.command("evaluate")
+def slo_evaluate(
+    slo_id: Annotated[str, typer.Option("--slo-id")],
+    window_start: Annotated[str, typer.Option("--window-start", help="ISO-8601")],
+    window_end: Annotated[str, typer.Option("--window-end", help="ISO-8601")],
+    revision: Annotated[int | None, typer.Option("--revision")] = None,
+    as_json: _JSON = False,
+    workspace: _WS = None,
+    user_scope: _USER_SCOPE = False,
+) -> None:
+    """Evaluate an SLO over a window; persisted idempotently per slot."""
+    ws = _ws(workspace, user_scope)
+    uow = _uow(ws)
+    assessment = EvaluateSlo(uow, SystemClock(), UlidIdFactory()).execute(
+        slo_id=slo_id,
+        revision=revision,
+        window_start=_parse_dt(window_start, "--window-start"),
+        window_end=_parse_dt(window_end, "--window-end"),
+    )
+    _emit(assessment.model_dump(mode="json"), as_json)
+
+
+@slo_app.command("list")
+def slo_list(
+    service_id: Annotated[str | None, typer.Option("--service-id")] = None,
+    as_json: _JSON = False,
+    workspace: _WS = None,
+    user_scope: _USER_SCOPE = False,
+) -> None:
+    """List SLO definitions (all revisions)."""
+    ws = _ws(workspace, user_scope)
+    uow = _uow(ws)
+    defs = ListSloDefinitions(uow).execute(service_id=service_id)
+    _emit([d.model_dump(mode="json") for d in defs], as_json)
+
+
+@app.command()
+def health(
+    service_id: Annotated[str, typer.Option("--service-id")],
+    stale_after_seconds: Annotated[
+        int, typer.Option("--stale-after-seconds")
+    ] = 300,
+    as_json: _JSON = False,
+    workspace: _WS = None,
+    user_scope: _USER_SCOPE = False,
+) -> None:
+    """Per-service health: state, latest indicators, unknowns (LAB-007)."""
+    ws = _ws(workspace, user_scope)
+    uow = _uow(ws)
+    report = GetServiceHealth(uow, SystemClock()).execute(
+        service_id=service_id, stale_after_seconds=stale_after_seconds
+    )
+    _emit(report.model_dump(mode="json"), as_json)
 
 
 def _dispatch() -> int:

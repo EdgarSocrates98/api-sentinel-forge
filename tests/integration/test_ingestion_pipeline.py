@@ -256,12 +256,18 @@ def test_cli_ingest_end_to_end(tmp_path: Path) -> None:
     assert json.loads(r2.stdout)["skipped_duplicates"] == 8
 
 
-def test_migration_0002_applies_once(tmp_path: Path) -> None:
+def test_migrations_apply_once(tmp_path: Path) -> None:
     conn = connect(tmp_path / "s.db")
     from api_sentinel.infrastructure.storage.migrations import migrate
 
-    assert migrate(conn) == [1, 2]
+    assert migrate(conn) == [1, 2, 3]
     assert migrate(conn) == []
     tables = {r["name"] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-    assert {"runtime_observations", "ingestion_quarantine"} <= tables
+    expected = {
+        "runtime_observations",
+        "ingestion_quarantine",
+        "slo_definitions",
+        "slo_assessments",
+    }
+    assert expected <= tables
     conn.close()

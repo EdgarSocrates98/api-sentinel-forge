@@ -17,6 +17,7 @@ from api_sentinel.domain import (
 )
 from api_sentinel.ingestion.models import NormalizedObservation
 from api_sentinel.ingestion.quarantine import QuarantineEntry
+from api_sentinel.reliability.slo import SloAssessment, SloDefinition
 
 
 @runtime_checkable
@@ -86,6 +87,12 @@ class ObservationRepository(Protocol):
         exclude_source_id: str,
     ) -> set[str]: ...
     def raw_attributes(self, observation_id: str) -> str: ...
+    def list_for_service(
+        self,
+        service_id: str,
+        window_start: datetime | None = None,
+        window_end: datetime | None = None,
+    ) -> list[NormalizedObservation]: ...
 
 
 @runtime_checkable
@@ -93,6 +100,26 @@ class QuarantineRepository(Protocol):
     def put(self, entry: QuarantineEntry) -> None: ...
     def list(self, batch_id: str | None = None) -> list[QuarantineEntry]: ...
     def count(self) -> int: ...
+
+
+@runtime_checkable
+class SloDefinitionRepository(Protocol):
+    """Versioned SLO definitions — immutable per (slo_id, revision)."""
+
+    def get(self, slo_id: str, revision: int | None = None) -> SloDefinition | None: ...
+    def list(self, service_id: str | None = None) -> list[SloDefinition]: ...
+    def put(self, definition: SloDefinition) -> None: ...
+
+
+@runtime_checkable
+class SloAssessmentRepository(Protocol):
+    """Windowed assessments — re-evaluation replaces, never duplicates."""
+
+    def put(self, assessment: SloAssessment) -> None: ...
+    def get(self, assessment_id: str) -> SloAssessment | None: ...
+    def list(
+        self, slo_id: str, revision: int | None = None
+    ) -> list[SloAssessment]: ...
 
 
 @runtime_checkable
@@ -107,6 +134,8 @@ class UnitOfWork(Protocol):
     checkpoints: CheckpointRepository
     observations: ObservationRepository
     quarantine: QuarantineRepository
+    slo_definitions: SloDefinitionRepository
+    slo_assessments: SloAssessmentRepository
 
     def __enter__(self) -> UnitOfWork: ...
     def __exit__(self, exc_type: object, exc_val: object, exc_tb: object) -> None: ...

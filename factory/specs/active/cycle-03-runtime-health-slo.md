@@ -23,33 +23,33 @@ states)._
 
 # Acceptance Criteria
 
-- [ ] Request aggregations computed per service/operation per window: request
+- [x] Request aggregations computed per service/operation per window: request
   rate, error ratio and timeout ratio over eligible requests.
-- [ ] Latency quantiles (p50/p95/p99) computed only over compatible
+- [x] Latency quantiles (p50/p95/p99) computed only over compatible
   distributions/buckets — percentiles are never averaged.
-- [ ] Availability SLI (`good / eligible`) and latency SLI
+- [x] Availability SLI (`good / eligible`) and latency SLI
   (`within threshold / eligible`) implemented per docs/08; good/bad
   classification varies per SLO and service.
-- [ ] Error classification is configurable per service/operation: not all 4xx
+- [x] Error classification is configurable per service/operation: not all 4xx
   count as unavailability; 401/403/429 get dedicated indicators.
-- [ ] `SloDefinition` is versioned (`slo_id` + revision) with objective `S`
+- [x] `SloDefinition` is versioned (`slo_id` + revision) with objective `S`
   and window; changing an SLO creates a new revision — LAB-015 proves the
   prior revision is preserved and the calculation reproducible.
-- [ ] Error budget implemented exactly as `B = N(1−S)` and
+- [x] Error budget implemented exactly as `B = N(1−S)` and
   `budget consumed = bad_requests / N(1−S)`; results are only emitted when
   counters share population definition, window and coverage — otherwise the
   assessment reports the mismatch.
-- [ ] Windowed history: `SloAssessment`s persisted per window with quality
+- [x] Windowed history: `SloAssessment`s persisted per window with quality
   state and coverage attached.
-- [ ] Missing traffic, missing collection and service unavailability are
+- [x] Missing traffic, missing collection and service unavailability are
   reported as three distinct conditions (LAB-007: an incomplete source never
   yields fabricated health).
-- [ ] Reproducible evaluation: same input + same SLO revision → identical
+- [x] Reproducible evaluation: same input + same SLO revision → identical
   assessment under an injected clock.
-- [ ] Fixtures with mathematically known results cover counter resets (rates
+- [x] Fixtures with mathematically known results cover counter resets (rates
   never go negative), sampled data (no global rates inferred from sampled
   traces — LAB-008) and low-traffic edge cases.
-- [ ] Indicators a source cannot supply are reported as absent — never
+- [x] Indicators a source cannot supply are reported as absent — never
   interpolated.
 
 # Constraints

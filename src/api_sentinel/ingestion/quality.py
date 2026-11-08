@@ -3,22 +3,18 @@
 Invariants: sampled data is labeled SAMPLED and never the inverse; PARTIAL,
 STALE or SAMPLED never surface as COMPLETE; a declared non-COMPLETE state is
 never upgraded on our word alone.
+
+The severity order and `worst_of` combinator live in `domain.quality` so the
+metrics context can reuse them without importing the ingestion context.
 """
 
 from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-from api_sentinel.domain.quality import QualityState
+from api_sentinel.domain.quality import QualityState, worst_of, worst_quality
 
-_SEVERITY = {
-    QualityState.COMPLETE: 0,
-    QualityState.UNKNOWN: 1,
-    QualityState.PARTIAL: 2,
-    QualityState.STALE: 3,
-    QualityState.SAMPLED: 4,
-    QualityState.INVALID: 5,
-}
+__all__ = ["assess_quality", "worst_of"]
 
 # measurement issue tags that make the datum itself unusable
 _INVALID_ISSUES = {"missing_unit", "unknown_unit", "bad_bucket", "invalid_kind"}
@@ -48,11 +44,11 @@ def assess_quality(
         detected = QualityState.INVALID
         notes.append(f"invalid_measurement:{','.join(sorted(measurement_issues))}")
     elif measurement_issues:
-        detected = _max(detected, QualityState.PARTIAL)
+        detected = worst_quality(detected, QualityState.PARTIAL)
         notes.append(f"measurement_issues:{','.join(sorted(measurement_issues))}")
 
     if (sampling_rate is not None and sampling_rate < 1.0) or dropped:
-        detected = _max(detected, QualityState.SAMPLED)
+        detected = worst_quality(detected, QualityState.SAMPLED)
         if sampling_rate is not None:
             notes.append(f"sampling:rate={sampling_rate}")
         if dropped:
@@ -60,23 +56,9 @@ def assess_quality(
 
     age = ingest_time - window_end
     if age > timedelta(seconds=policy_stale_after_seconds):
-        detected = _max(detected, QualityState.STALE)
+        detected = worst_quality(detected, QualityState.STALE)
         notes.append(f"stale:window_end {int(age.total_seconds())}s behind ingest")
     elif age > timedelta(seconds=policy_lateness_seconds):
         notes.append(f"late:window_end within tolerated lateness ({policy_lateness_seconds}s)")
 
-    return _max(declared, detected), notes
-
-
-def _max(a: QualityState, b: QualityState) -> QualityState:
-    return a if _SEVERITY[a] >= _SEVERITY[b] else b
-
-
-def worst_of(states: list[QualityState]) -> QualityState:
-    """Batch-level quality = the worst item state (UNKNOWN when empty)."""
-    if not states:
-        return QualityState.UNKNOWN
-    worst = states[0]
-    for s in states[1:]:
-        worst = _max(worst, s)
-    return worst
+    return worst_quality(declared, detected), notes

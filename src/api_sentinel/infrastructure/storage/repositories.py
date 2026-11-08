@@ -18,6 +18,8 @@ from api_sentinel.application.ports import (
     QuarantineRepository,
     ReleaseRepository,
     ServiceRepository,
+    SloAssessmentRepository,
+    SloDefinitionRepository,
     SourceRepository,
 )
 from api_sentinel.domain import (
@@ -39,6 +41,7 @@ from api_sentinel.infrastructure.storage.db import connect
 from api_sentinel.infrastructure.storage.migrations import migrate
 from api_sentinel.ingestion.models import NormalizedMeasurement, NormalizedObservation
 from api_sentinel.ingestion.quarantine import QuarantineEntry
+from api_sentinel.reliability.slo import SloAssessment, SloDefinition
 
 
 def _dt(value: str | None) -> datetime | None:
@@ -398,6 +401,24 @@ class _ObservationRepo:
         ).fetchone()
         return str(r["attributes"]) if r else ""
 
+    def list_for_service(
+        self,
+        service_id: str,
+        window_start: datetime | None = None,
+        window_end: datetime | None = None,
+    ) -> list[NormalizedObservation]:
+        sql = "SELECT * FROM runtime_observations WHERE service_id=?"
+        args: list[Any] = [service_id]
+        if window_start is not None:
+            sql += " AND window_end > ?"
+            args.append(window_start.isoformat())
+        if window_end is not None:
+            sql += " AND window_start < ?"
+            args.append(window_end.isoformat())
+        sql += " ORDER BY window_start, observation_id"
+        rows = self._c.execute(sql, args).fetchall()
+        return [self._row(r) for r in rows]
+
 
 class _QuarantineRepo:
     def __init__(self, conn: sqlite3.Connection) -> None:
@@ -437,6 +458,101 @@ class _QuarantineRepo:
         return int(self._c.execute("SELECT COUNT(*) FROM ingestion_quarantine").fetchone()[0])
 
 
+class _SloDefinitionRepo:
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._c = conn
+
+    def _row(self, r: sqlite3.Row) -> SloDefinition:
+        return SloDefinition.model_validate(json.loads(r["definition"]))
+
+    def get(self, slo_id: str, revision: int | None = None) -> SloDefinition | None:
+        if revision is None:
+            r = self._c.execute(
+                "SELECT * FROM slo_definitions WHERE slo_id=?"
+                " ORDER BY revision DESC LIMIT 1",
+                (slo_id,),
+            ).fetchone()
+        else:
+            r = self._c.execute(
+                "SELECT * FROM slo_definitions WHERE slo_id=? AND revision=?",
+                (slo_id, revision),
+            ).fetchone()
+        return self._row(r) if r else None
+
+    def list(self, service_id: str | None = None) -> list[SloDefinition]:
+        if service_id:
+            rows = self._c.execute(
+                "SELECT * FROM slo_definitions WHERE service_id=?"
+                " ORDER BY slo_id, revision",
+                (service_id,),
+            )
+        else:
+            rows = self._c.execute(
+                "SELECT * FROM slo_definitions ORDER BY slo_id, revision"
+            )
+        return [self._row(r) for r in rows]
+
+    def put(self, definition: SloDefinition) -> None:
+        # INSERT only: a revision is immutable; conflicts are handled by the
+        # use case (identical → idempotent return, different → ConflictError).
+        self._c.execute(
+            "INSERT INTO slo_definitions (slo_id, revision, service_id, definition,"
+            " created_at) VALUES (?,?,?,?,?)",
+            (
+                definition.slo_id,
+                definition.revision,
+                definition.service_id,
+                definition.model_dump_json(),
+                definition.created_at.isoformat(),
+            ),
+        )
+
+
+class _SloAssessmentRepo:
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._c = conn
+
+    def _row(self, r: sqlite3.Row) -> SloAssessment:
+        return SloAssessment.model_validate(json.loads(r["assessment"]))
+
+    def put(self, a: SloAssessment) -> None:
+        # Re-evaluation of the same (slo_id, revision, window) slot replaces
+        # the row — idempotent re-runs, never duplicates.
+        self._c.execute(
+            "INSERT INTO slo_assessments"
+            " (assessment_id, slo_id, revision, window_start, window_end, sli,"
+            "  eligible, good, budget_consumed, state, assessment, created_at)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?)"
+            " ON CONFLICT(slo_id, revision, window_start, window_end)"
+            " DO UPDATE SET assessment_id=excluded.assessment_id,"
+            "   sli=excluded.sli, eligible=excluded.eligible, good=excluded.good,"
+            "   budget_consumed=excluded.budget_consumed, state=excluded.state,"
+            "   assessment=excluded.assessment, created_at=excluded.created_at",
+            (
+                a.assessment_id, a.slo_id, a.revision,
+                a.window_start.isoformat(), a.window_end.isoformat(),
+                a.sli, a.eligible, a.good, a.budget_consumed, a.state.value,
+                a.model_dump_json(), a.evaluated_at.isoformat(),
+            ),
+        )
+
+    def get(self, assessment_id: str) -> SloAssessment | None:
+        r = self._c.execute(
+            "SELECT * FROM slo_assessments WHERE assessment_id=?", (assessment_id,)
+        ).fetchone()
+        return self._row(r) if r else None
+
+    def list(self, slo_id: str, revision: int | None = None) -> list[SloAssessment]:
+        sql = "SELECT * FROM slo_assessments WHERE slo_id=?"
+        args: list[Any] = [slo_id]
+        if revision is not None:
+            sql += " AND revision=?"
+            args.append(revision)
+        sql += " ORDER BY window_start, assessment_id"
+        rows = self._c.execute(sql, args).fetchall()
+        return [self._row(r) for r in rows]
+
+
 class SqliteUnitOfWork:
     """One connection, explicit commit/rollback; repos share the transaction."""
 
@@ -450,6 +566,8 @@ class SqliteUnitOfWork:
     checkpoints: CheckpointRepository
     observations: ObservationRepository
     quarantine: QuarantineRepository
+    slo_definitions: SloDefinitionRepository
+    slo_assessments: SloAssessmentRepository
 
     def __init__(self, db_path: Path | str) -> None:
         self._db_path = db_path
@@ -473,6 +591,8 @@ class SqliteUnitOfWork:
         self.checkpoints = _CheckpointRepo(conn)
         self.observations = _ObservationRepo(conn)
         self.quarantine = _QuarantineRepo(conn)
+        self.slo_definitions = _SloDefinitionRepo(conn)
+        self.slo_assessments = _SloAssessmentRepo(conn)
         conn.execute("BEGIN")
         return self
 
