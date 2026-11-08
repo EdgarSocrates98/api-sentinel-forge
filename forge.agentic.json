@@ -1,0 +1,66 @@
+{
+  "schema": "forge/SpecialistAgenticManifest/v1",
+  "provider": "api-sentinel-forge",
+  "version": "0.1.0",
+  "cli": "api-sentinel",
+  "cli_entry": "api_sentinel.cli:app",
+  "workflows": [
+    {
+      "id": "status",
+      "mode": "DIAGNOSTIC_ONLY",
+      "command": [
+        "{cli}",
+        "status",
+        "--json"
+      ],
+      "description": "Workspace state: services, sources, storage health and storage paths",
+      "read_only": true
+    },
+    {
+      "id": "capabilities",
+      "mode": "DIAGNOSTIC_ONLY",
+      "command": [
+        "{cli}",
+        "capabilities",
+        "--json"
+      ],
+      "description": "Declared capability surface and availability of each capability",
+      "read_only": true
+    },
+    {
+      "id": "doctor",
+      "mode": "DIAGNOSTIC_ONLY",
+      "command": [
+        "{cli}",
+        "doctor",
+        "--json"
+      ],
+      "description": "Environment and installation health check",
+      "read_only": true
+    }
+  ],
+  "skills": [],
+  "agents": [
+    "sentinel-investigator",
+    "sentinel-reviewer"
+  ],
+  "coordinators": [],
+  "agent_roster_paths": [],
+  "mcp_command": [
+    "{cli}",
+    "mcp",
+    "serve"
+  ],
+  "host_adapters": [
+    "claude",
+    "devin",
+    "codex",
+    "copilot"
+  ],
+  "host_partial": {
+    "cursor": "marker + .mcp.json only — no skill/agent catalog adapter"
+  },
+  "read_only_default": true,
+  "requires_aws_credentials": false,
+  "requires_llm": false
+}

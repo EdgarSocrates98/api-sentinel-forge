@@ -1,0 +1,28 @@
+{
+  "forge_id": "api-sentinel-forge",
+  "package": "api_sentinel",
+  "distribution": "api-sentinel-forge",
+  "cli": "api-sentinel",
+  "python": ">=3.11",
+  "version": "0.1.0",
+  "mcp_server_name": "api-sentinel",
+  "mcp_command": [
+    "api-sentinel",
+    "mcp",
+    "serve"
+  ],
+  "extras": [
+    "mcp",
+    "api",
+    "aws"
+  ],
+  "install_command": [
+    "api-sentinel",
+    "install",
+    "--yes"
+  ],
+  "smoke_command": [
+    "api-sentinel",
+    "doctor"
+  ]
+}

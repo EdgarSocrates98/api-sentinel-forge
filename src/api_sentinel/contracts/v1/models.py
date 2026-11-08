@@ -1,0 +1,176 @@
+"""Typed envelopes mirroring contracts/v1/*.schema.json — reject unknown versions."""
+
+from __future__ import annotations
+
+from datetime import datetime
+from typing import Any, ClassVar
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from api_sentinel.domain import ContractError, QualityState
+
+
+class Envelope(BaseModel):
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
+
+    schema_: str = Field(alias="schema")
+    expected_schema: ClassVar[str] = ""
+
+    @model_validator(mode="after")
+    def _check_schema(self) -> Envelope:
+        if self.expected_schema and self.schema_ != self.expected_schema:
+            raise ContractError(
+                f"unsupported schema '{self.schema_}', expected '{self.expected_schema}'",
+                details={"received": self.schema_, "expected": self.expected_schema},
+            )
+        return self
+
+
+class OperationRef(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    protocol: str = "http"
+    method: str | None = None
+    route: str | None = None
+
+
+class ServiceIdentityV1(Envelope):
+    expected_schema: ClassVar[str] = "api-sentinel/ServiceIdentity/v1"
+    service_id: str
+    environment: str
+    service_name: str
+    namespace: str | None = None
+    display_name: str | None = None
+    operation: OperationRef | None = None
+    external_refs: dict[str, str | None] = Field(default_factory=dict)
+
+
+class Window(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    start: datetime
+    end: datetime
+
+
+class Measurement(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    kind: str
+    unit: str | None = None
+    value: float | None = None
+    buckets: list[dict[str, Any]] | None = None
+    sum: float | None = None
+    count: int | None = None
+
+
+class Sampling(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    rate: float | None = Field(default=None, ge=0.0, le=1.0)
+    method: str | None = None
+
+
+class RuntimeObservationV1(Envelope):
+    expected_schema: ClassVar[str] = "api-sentinel/RuntimeObservation/v1"
+    observation_id: str
+    service_id: str
+    operation_id: str | None = None
+    release_id: str | None = None
+    window: Window
+    source_id: str
+    quality: QualityState = QualityState.UNKNOWN
+    sampling: Sampling | None = None
+    measurement: Measurement
+    attributes: dict[str, Any] = Field(default_factory=dict)
+
+
+class RuleRef(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    rule_id: str
+    rule_version: str
+
+
+class Explanation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    summary: str
+    math: str | None = None
+
+
+class AnomalyV1(Envelope):
+    expected_schema: ClassVar[str] = "api-sentinel/Anomaly/v1"
+    anomaly_id: str
+    service_id: str
+    operation_id: str | None = None
+    detected_at: datetime
+    rule: RuleRef
+    severity: str
+    explanation: Explanation
+    evidence_refs: list[str] = Field(default_factory=list)
+    unknowns: list[str] = Field(default_factory=list)
+
+
+class HandoffConstraints(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    budget_seconds: float | None = None
+    evidence_refs: list[str] = Field(default_factory=list)
+    scopes: list[str] = Field(default_factory=list)
+
+
+class InvestigationHandoffV1(Envelope):
+    expected_schema: ClassVar[str] = "api-sentinel/InvestigationHandoff/v1"
+    handoff_id: str
+    from_forge: str = "api-sentinel-forge"
+    to_forge: str
+    kind: str
+    payload: dict[str, Any] = Field(default_factory=dict)
+    constraints: HandoffConstraints = Field(default_factory=HandoffConstraints)
+
+
+class TelemetrySourceV1(Envelope):
+    expected_schema: ClassVar[str] = "api-sentinel/TelemetrySource/v1"
+    source_id: str
+    kind: str
+    service_id: str
+    enabled: bool = True
+    config: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime | None = None
+
+
+class EvidenceProvenance(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    source_id: str
+    retrieved_at: datetime | None = None
+    tool_version: str | None = None
+
+
+class EvidenceArtifactV1(Envelope):
+    expected_schema: ClassVar[str] = "api-sentinel/EvidenceArtifact/v1"
+    evidence_id: str
+    kind: str
+    created_at: datetime
+    hash: str
+    size_bytes: int = 0
+    truncated: bool = False
+    loss_notes: str | None = None
+    provenance: EvidenceProvenance
+    blob_ref: str | None = None
+
+
+ENVELOPES: dict[str, type[Envelope]] = {
+    cls.expected_schema: cls
+    for cls in (
+        ServiceIdentityV1,
+        RuntimeObservationV1,
+        AnomalyV1,
+        InvestigationHandoffV1,
+        TelemetrySourceV1,
+        EvidenceArtifactV1,
+    )
+}
+
+
+def parse_envelope(data: dict[str, Any]) -> Envelope:
+    schema = data.get("schema")
+    cls = ENVELOPES.get(schema) if isinstance(schema, str) else None
+    if cls is None:
+        raise ContractError(
+            f"unknown contract version: {schema!r}",
+            details={"supported": sorted(ENVELOPES)},
+        )
+    return cls.model_validate(data)

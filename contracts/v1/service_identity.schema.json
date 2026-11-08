@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://api-sentinel-forge.local/schemas/api-sentinel/ServiceIdentity/v1",
+  "title": "api-sentinel/ServiceIdentity/v1",
+  "type": "object",
+  "required": ["schema", "service_id", "environment", "service_name", "external_refs"],
+  "properties": {
+    "schema": { "const": "api-sentinel/ServiceIdentity/v1" },
+    "service_id": { "type": "string", "minLength": 1 },
+    "environment": { "type": "string", "minLength": 1 },
+    "namespace": { "type": "string" },
+    "service_name": { "type": "string", "minLength": 1 },
+    "display_name": { "type": "string" },
+    "operation": {
+      "type": "object",
+      "properties": {
+        "protocol": { "type": "string", "enum": ["http", "grpc", "graphql", "ws", "queue", "other"] },
+        "method": { "type": "string" },
+        "route": { "type": "string", "description": "normalized route template, e.g. /payments/{payment_id}" }
+      },
+      "required": ["protocol"]
+    },
+    "external_refs": {
+      "type": "object",
+      "description": "optional links to Code Atlas identity, cloud resource, openapi operation id, etc.",
+      "additionalProperties": { "type": ["string", "null"] }
+    }
+  },
+  "additionalProperties": false
+}

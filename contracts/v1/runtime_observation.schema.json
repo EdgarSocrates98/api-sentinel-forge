@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://api-sentinel-forge.local/schemas/api-sentinel/RuntimeObservation/v1",
+  "title": "api-sentinel/RuntimeObservation/v1",
+  "type": "object",
+  "required": ["schema", "observation_id", "service_id", "window", "source_id", "quality", "measurement"],
+  "properties": {
+    "schema": { "const": "api-sentinel/RuntimeObservation/v1" },
+    "observation_id": { "type": "string" },
+    "service_id": { "type": "string" },
+    "operation_id": { "type": ["string", "null"] },
+    "release_id": { "type": ["string", "null"] },
+    "window": {
+      "type": "object",
+      "required": ["start", "end"],
+      "properties": {
+        "start": { "type": "string", "format": "date-time" },
+        "end": { "type": "string", "format": "date-time" }
+      }
+    },
+    "source_id": { "type": "string" },
+    "quality": { "type": "string", "enum": ["COMPLETE", "PARTIAL", "SAMPLED", "STALE", "INVALID", "UNKNOWN"] },
+    "sampling": {
+      "type": "object",
+      "properties": {
+        "rate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "method": { "type": "string" }
+      }
+    },
+    "measurement": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": { "type": "string", "enum": ["counter", "gauge", "histogram", "summary", "event"] },
+        "unit": { "type": "string", "description": "explicit unit: requests, ms, s, ratio, count" },
+        "value": { "type": "number" },
+        "buckets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["le", "count"],
+            "properties": { "le": { "type": ["number", "string"] }, "count": { "type": "integer" } }
+          }
+        },
+        "sum": { "type": "number" },
+        "count": { "type": "integer" }
+      }
+    },
+    "attributes": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "normalized dimensions; schema/convention version required for transforms"
+    }
+  },
+  "additionalProperties": false
+}

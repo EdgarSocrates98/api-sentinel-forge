@@ -1,0 +1,346 @@
+"""SQLite repository implementations + UnitOfWork."""
+
+from __future__ import annotations
+
+import json
+import sqlite3
+from datetime import datetime
+from pathlib import Path
+from typing import Any
+
+from api_sentinel.application.ports import (
+    AuditRepository,
+    BatchRepository,
+    CheckpointRepository,
+    EnvironmentRepository,
+    EvidenceRepository,
+    ReleaseRepository,
+    ServiceRepository,
+    SourceRepository,
+)
+from api_sentinel.domain import (
+    ApiService,
+    AuditEvent,
+    EvidenceArtifact,
+    ExternalRef,
+    IngestionCheckpoint,
+    ObservationBatch,
+    Provenance,
+    QualityState,
+    ServiceEnvironment,
+    ServiceRelease,
+    SignalType,
+    StorageError,
+    TelemetrySource,
+)
+from api_sentinel.infrastructure.storage.db import connect
+from api_sentinel.infrastructure.storage.migrations import migrate
+
+
+def _dt(value: str | None) -> datetime | None:
+    return datetime.fromisoformat(value) if value else None
+
+
+class _ServiceRepo:
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._c = conn
+
+    def _row(self, r: sqlite3.Row) -> ApiService:
+        return ApiService(
+            service_id=r["service_id"],
+            service_name=r["service_name"],
+            environment_id=r["environment_id"],
+            namespace=r["namespace"],
+            display_name=r["display_name"],
+            external_refs=[ExternalRef.model_validate(x) for x in json.loads(r["external_refs"])],
+            created_at=datetime.fromisoformat(r["created_at"]),
+            updated_at=datetime.fromisoformat(r["updated_at"]),
+        )
+
+    def get(self, service_id: str) -> ApiService | None:
+        r = self._c.execute(
+            "SELECT * FROM api_services WHERE service_id=?", (service_id,)
+        ).fetchone()
+        return self._row(r) if r else None
+
+    def get_by_name(self, environment_id: str, service_name: str) -> ApiService | None:
+        r = self._c.execute(
+            "SELECT * FROM api_services WHERE environment_id=? AND service_name=?",
+            (environment_id, service_name),
+        ).fetchone()
+        return self._row(r) if r else None
+
+    def list(self) -> list[ApiService]:
+        rows = self._c.execute("SELECT * FROM api_services ORDER BY service_name")
+        return [self._row(r) for r in rows]
+
+    def put(self, s: ApiService) -> ApiService:
+        self._c.execute(
+            "INSERT OR REPLACE INTO api_services"
+            " (service_id, service_name, environment_id, namespace, display_name, external_refs,"
+            "  created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)",
+            (
+                s.service_id, s.service_name, s.environment_id, s.namespace, s.display_name,
+                json.dumps([x.model_dump() for x in s.external_refs]),
+                s.created_at.isoformat(), s.updated_at.isoformat(),
+            ),
+        )
+        return s
+
+
+class _EnvironmentRepo:
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._c = conn
+
+    def get_by_name(self, name: str) -> ServiceEnvironment | None:
+        r = self._c.execute(
+            "SELECT * FROM service_environments WHERE name=?", (name,)
+        ).fetchone()
+        if not r:
+            return None
+        return ServiceEnvironment(
+            environment_id=r["environment_id"], name=r["name"], scope=r["scope"],
+            created_at=datetime.fromisoformat(r["created_at"]),
+        )
+
+    def put(self, e: ServiceEnvironment) -> ServiceEnvironment:
+        self._c.execute(
+            "INSERT OR IGNORE INTO service_environments (environment_id, name, scope, created_at)"
+            " VALUES (?,?,?,?)",
+            (e.environment_id, e.name, e.scope, e.created_at.isoformat()),
+        )
+        return e
+
+
+class _SourceRepo:
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._c = conn
+
+    def _row(self, r: sqlite3.Row) -> TelemetrySource:
+        return TelemetrySource(
+            source_id=r["source_id"], kind=r["kind"], service_id=r["service_id"],
+            enabled=bool(r["enabled"]), config=json.loads(r["config"]),
+            created_at=datetime.fromisoformat(r["created_at"]),
+        )
+
+    def get(self, source_id: str) -> TelemetrySource | None:
+        r = self._c.execute(
+            "SELECT * FROM telemetry_sources WHERE source_id=?", (source_id,)
+        ).fetchone()
+        return self._row(r) if r else None
+
+    def list(self, service_id: str | None = None) -> list[TelemetrySource]:
+        if service_id:
+            rows = self._c.execute(
+                "SELECT * FROM telemetry_sources WHERE service_id=? ORDER BY source_id",
+                (service_id,),
+            )
+        else:
+            rows = self._c.execute("SELECT * FROM telemetry_sources ORDER BY source_id")
+        return [self._row(r) for r in rows]
+
+    def put(self, s: TelemetrySource) -> TelemetrySource:
+        self._c.execute(
+            "INSERT OR REPLACE INTO telemetry_sources"
+            " (source_id, kind, service_id, enabled, config, created_at) VALUES (?,?,?,?,?,?)",
+            (s.source_id, s.kind, s.service_id, int(s.enabled), json.dumps(s.config),
+             s.created_at.isoformat()),
+        )
+        return s
+
+
+class _ReleaseRepo:
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._c = conn
+
+    def put(self, r: ServiceRelease) -> ServiceRelease:
+        self._c.execute(
+            "INSERT OR REPLACE INTO service_releases"
+            " (release_id, service_id, version, deployed_at, source, created_at)"
+            " VALUES (?,?,?,?,?,?)",
+            (r.release_id, r.service_id, r.version,
+             r.deployed_at.isoformat() if r.deployed_at else None, r.source,
+             r.created_at.isoformat()),
+        )
+        return r
+
+
+class _BatchRepo:
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._c = conn
+
+    def get_by_idempotency_key(self, key: str) -> ObservationBatch | None:
+        r = self._c.execute(
+            "SELECT * FROM observation_batches WHERE idempotency_key=?", (key,)
+        ).fetchone()
+        return self._row(r) if r else None
+
+    def _row(self, r: sqlite3.Row) -> ObservationBatch:
+        return ObservationBatch(
+            batch_id=r["batch_id"],
+            provenance=Provenance(
+                source_id=r["source_id"],
+                observed_at=datetime.fromisoformat(r["observed_at"]),
+                received_at=datetime.fromisoformat(r["received_at"]),
+                adapter_version=r["adapter_version"],
+                transform_notes=r["transform_notes"],
+            ),
+            signal_types=[SignalType(x) for x in json.loads(r["signal_types"])],
+            quality=QualityState(r["quality"]),
+            item_count=r["item_count"],
+            idempotency_key=r["idempotency_key"],
+        )
+
+    def put(self, b: ObservationBatch) -> ObservationBatch:
+        self._c.execute(
+            "INSERT OR IGNORE INTO observation_batches"
+            " (batch_id, source_id, observed_at, received_at, signal_types, quality, item_count,"
+            "  idempotency_key, adapter_version, transform_notes) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            (b.batch_id, b.provenance.source_id, b.provenance.observed_at.isoformat(),
+             b.provenance.received_at.isoformat(),
+             json.dumps([s.value for s in b.signal_types]), b.quality.value, b.item_count,
+             b.idempotency_key, b.provenance.adapter_version, b.provenance.transform_notes),
+        )
+        return b
+
+
+class _EvidenceRepo:
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._c = conn
+
+    def get(self, evidence_id: str) -> EvidenceArtifact | None:
+        r = self._c.execute(
+            "SELECT * FROM evidence_artifacts WHERE evidence_id=?", (evidence_id,)
+        ).fetchone()
+        if not r:
+            return None
+        return EvidenceArtifact(
+            evidence_id=r["evidence_id"], kind=r["kind"],
+            created_at=datetime.fromisoformat(r["created_at"]), hash=r["hash"],
+            size_bytes=r["size_bytes"], truncated=bool(r["truncated"]),
+            loss_notes=r["loss_notes"], source_id=r["source_id"], blob_ref=r["blob_ref"],
+        )
+
+    def put(self, a: EvidenceArtifact) -> EvidenceArtifact:
+        self._c.execute(
+            "INSERT OR REPLACE INTO evidence_artifacts"
+            " (evidence_id, kind, created_at, hash, size_bytes, truncated, loss_notes, source_id,"
+            "  blob_ref) VALUES (?,?,?,?,?,?,?,?,?)",
+            (a.evidence_id, a.kind, a.created_at.isoformat(), a.hash, a.size_bytes,
+             int(a.truncated), a.loss_notes, a.source_id, a.blob_ref),
+        )
+        return a
+
+
+class _AuditRepo:
+    """Append-only by design: exposes no update/delete paths."""
+
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._c = conn
+
+    def append(self, e: AuditEvent) -> None:
+        self._c.execute(
+            "INSERT INTO audit_events"
+            " (audit_id, at, actor, action, target_type, target_id, details)"
+            " VALUES (?,?,?,?,?,?,?)",
+            (e.audit_id, e.at.isoformat(), e.actor, e.action, e.target_type, e.target_id,
+             json.dumps(e.details)),
+        )
+
+    def list(self, target_id: str | None = None) -> list[AuditEvent]:
+        sql = "SELECT * FROM audit_events"
+        args: tuple[Any, ...] = ()
+        if target_id:
+            sql += " WHERE target_id=?"
+            args = (target_id,)
+        rows = self._c.execute(sql + " ORDER BY at, audit_id", args).fetchall()
+        return [
+            AuditEvent(
+                audit_id=r["audit_id"], at=datetime.fromisoformat(r["at"]), actor=r["actor"],
+                action=r["action"], target_type=r["target_type"], target_id=r["target_id"],
+                details=json.loads(r["details"]),
+            )
+            for r in rows
+        ]
+
+
+class _CheckpointRepo:
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._c = conn
+
+    def get(self, source_id: str) -> IngestionCheckpoint | None:
+        r = self._c.execute(
+            "SELECT * FROM ingestion_checkpoints WHERE source_id=?", (source_id,)
+        ).fetchone()
+        if not r:
+            return None
+        return IngestionCheckpoint(
+            source_id=r["source_id"], checkpoint=r["checkpoint"],
+            updated_at=datetime.fromisoformat(r["updated_at"]),
+        )
+
+    def put(self, cp: IngestionCheckpoint) -> None:
+        self._c.execute(
+            "INSERT INTO ingestion_checkpoints (source_id, checkpoint, updated_at) VALUES (?,?,?)"
+            " ON CONFLICT(source_id) DO UPDATE SET checkpoint=excluded.checkpoint,"
+            " updated_at=excluded.updated_at",
+            (cp.source_id, cp.checkpoint, cp.updated_at.isoformat()),
+        )
+
+
+class SqliteUnitOfWork:
+    """One connection, explicit commit/rollback; repos share the transaction."""
+
+    services: ServiceRepository
+    environments: EnvironmentRepository
+    sources: SourceRepository
+    releases: ReleaseRepository
+    batches: BatchRepository
+    evidence: EvidenceRepository
+    audit: AuditRepository
+    checkpoints: CheckpointRepository
+
+    def __init__(self, db_path: Path | str) -> None:
+        self._db_path = db_path
+        self._conn: sqlite3.Connection | None = None
+
+    def _open(self) -> sqlite3.Connection:
+        if self._conn is None:
+            self._conn = connect(self._db_path)
+            migrate(self._conn)
+        return self._conn
+
+    def __enter__(self) -> SqliteUnitOfWork:
+        conn = self._open()
+        self.services = _ServiceRepo(conn)
+        self.environments = _EnvironmentRepo(conn)
+        self.sources = _SourceRepo(conn)
+        self.releases = _ReleaseRepo(conn)
+        self.batches = _BatchRepo(conn)
+        self.evidence = _EvidenceRepo(conn)
+        self.audit = _AuditRepo(conn)
+        self.checkpoints = _CheckpointRepo(conn)
+        conn.execute("BEGIN")
+        return self
+
+    def commit(self) -> None:
+        if self._conn is None:
+            raise StorageError("unit of work not open")
+        if self._conn.in_transaction:
+            self._conn.execute("COMMIT")
+
+    def rollback(self) -> None:
+        if self._conn is None:
+            raise StorageError("unit of work not open")
+        if self._conn.in_transaction:
+            self._conn.execute("ROLLBACK")
+
+    def __exit__(self, exc_type: object, _exc_val: object, _exc_tb: object) -> None:
+        if self._conn is None:
+            return
+        try:
+            if exc_type is not None:
+                self.rollback()
+        finally:
+            self._conn.close()
+            self._conn = None

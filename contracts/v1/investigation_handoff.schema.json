@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://api-sentinel-forge.local/schemas/api-sentinel/InvestigationHandoff/v1",
+  "title": "api-sentinel/InvestigationHandoff/v1",
+  "type": "object",
+  "required": ["schema", "handoff_id", "from_forge", "to_forge", "kind", "payload", "constraints"],
+  "properties": {
+    "schema": { "const": "api-sentinel/InvestigationHandoff/v1" },
+    "handoff_id": { "type": "string" },
+    "from_forge": { "const": "api-sentinel-forge" },
+    "to_forge": { "type": "string" },
+    "kind": { "type": "string", "description": "e.g. contract-analysis, structural-context, investigation" },
+    "payload": { "type": "object", "additionalProperties": true },
+    "constraints": {
+      "type": "object",
+      "properties": {
+        "budget_seconds": { "type": "number" },
+        "evidence_refs": { "type": "array", "items": { "type": "string" } },
+        "scopes": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  },
+  "additionalProperties": false
+}

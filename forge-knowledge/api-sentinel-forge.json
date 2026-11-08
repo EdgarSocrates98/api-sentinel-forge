@@ -1,0 +1,81 @@
+{
+  "schema": "theforge/KnowledgePackage/v1",
+  "forge_id": "api-sentinel-forge",
+  "display_name": "API Sentinel Forge",
+  "version": "0.1.0",
+  "status": "bootstrap",
+  "summary": "Local-first API reliability, runtime intelligence and incident investigation specialist. Observes running APIs over time, detects deterministic degradation, manages the operational investigation process and delegates bounded handoffs to Doctor API / Code Atlas via The Forge.",
+  "domain": {
+    "primary": "api-runtime-observation",
+    "adjacent": ["reliability-slo", "anomaly-detection", "incident-investigation", "change-correlation"]
+  },
+  "capabilities_source": "runtime_discovery",
+  "intended_capabilities": [
+    "api.runtime-observation",
+    "api.slo-assessment",
+    "api.anomaly-detection",
+    "api.incident-investigation",
+    "api.deployment-correlation"
+  ],
+  "entry_points": {
+    "cli": "api-sentinel",
+    "python_module": "api_sentinel",
+    "boundary_module": "api_sentinel.integrations.the_forge.boundary"
+  },
+  "contracts": {
+    "publishes": [
+      "api-sentinel/ServiceIdentity/v1",
+      "api-sentinel/RuntimeObservation/v1",
+      "api-sentinel/Anomaly/v1",
+      "api-sentinel/InvestigationHandoff/v1",
+      "api-sentinel/TelemetrySource/v1",
+      "api-sentinel/EvidenceArtifact/v1"
+    ],
+    "consumes": [
+      "forge-doctor-api/HandoffBundle (adapter-translated)",
+      "theforge/ForgeRequest (adapter-translated)",
+      "theforge/ExecutionResult (adapter-translated)"
+    ]
+  },
+  "dependencies": {
+    "python": ">=3.11",
+    "forge_doctor_api": ">=0.2.0,<0.3.0 (optional; requires post-PR-13 main for ApiHandoffBundle DeltaContext)",
+    "optional_extras": ["api (fastapi surface, Cycle 6)", "aws (read-only connectors, Cycle 7)"]
+  },
+  "operational_facts": {
+    "execution_model": "local-first; subprocess via Forge Protocol adapter (Cycle 5)",
+    "storage": "SQLite WAL + content-addressed evidence blobs under workspace root",
+    "deterministic_core": true,
+    "llm_in_core": false,
+    "network_in_domain": false,
+    "credentials_handling": "never persisted; connectors are read-only; redaction before persistence"
+  },
+  "boundaries": {
+    "owns": [
+      "temporal observation of running APIs",
+      "SLI/SLO evaluation and error budgets",
+      "deterministic anomaly detection",
+      "incident lifecycle and investigation journal",
+      "evidence artifacts and provenance",
+      "operational dependency edges (observed calls)"
+    ],
+    "never_owns": [
+      "contract/config/static API analysis (forge-doctor-api)",
+      "structural code graph (code-atlas-forge)",
+      "agent session runtime (forge-agent-bridge)",
+      "agent tracing APM (forge-lens)",
+      "routing/governance (the-forge)",
+      "data pipeline diagnosis (data-sentinel-forge)",
+      "portal frontend (forge-portal)",
+      "API implementation/evolution (api-forge)"
+    ]
+  },
+  "degradation_contract": "Every integration is optional. Absence produces a named refusal state (UNAVAILABLE/UNVERIFIED), never simulated execution or fabricated health.",
+  "registration_status": {
+    "forge_json": true,
+    "forge_agentic_json": true,
+    "knowledge_package": true,
+    "the_forge_adapter": false,
+    "adapter_target_cycle": 5
+  }
+}

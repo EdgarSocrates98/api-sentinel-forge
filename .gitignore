@@ -22,6 +22,9 @@ htmlcov/
 .api-sentinel/
 api/sentinel.db
 
+# Kiro local spec workflow (working memory, not committed)
+.kiro/
+
 # Editors / OS
 .idea/
 .vscode/

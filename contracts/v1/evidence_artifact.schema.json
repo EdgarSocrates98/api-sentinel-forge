@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://api-sentinel-forge.local/schemas/api-sentinel/EvidenceArtifact/v1",
+  "title": "api-sentinel/EvidenceArtifact/v1",
+  "type": "object",
+  "required": ["schema", "evidence_id", "kind", "created_at", "hash", "provenance"],
+  "properties": {
+    "schema": { "const": "api-sentinel/EvidenceArtifact/v1" },
+    "evidence_id": { "type": "string" },
+    "kind": { "type": "string", "enum": ["metric-export", "trace-extract", "log-extract", "document", "receipt", "other"] },
+    "created_at": { "type": "string", "format": "date-time" },
+    "hash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "size_bytes": { "type": "integer", "minimum": 0 },
+    "truncated": { "type": "boolean", "default": false },
+    "loss_notes": { "type": "string" },
+    "provenance": {
+      "type": "object",
+      "required": ["source_id"],
+      "properties": {
+        "source_id": { "type": "string" },
+        "retrieved_at": { "type": "string", "format": "date-time" },
+        "tool_version": { "type": "string" }
+      }
+    },
+    "blob_ref": { "type": "string", "description": "content-addressed reference under workspace blobs/" }
+  },
+  "additionalProperties": false
+}

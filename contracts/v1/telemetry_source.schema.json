@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://api-sentinel-forge.local/schemas/api-sentinel/TelemetrySource/v1",
+  "title": "api-sentinel/TelemetrySource/v1",
+  "type": "object",
+  "required": ["schema", "source_id", "kind", "service_id", "enabled", "config"],
+  "properties": {
+    "schema": { "const": "api-sentinel/TelemetrySource/v1" },
+    "source_id": { "type": "string" },
+    "kind": { "type": "string", "enum": ["jsonl-file", "otlp-json", "otel-collector", "prometheus", "cloudwatch", "api-gateway", "azure-monitor", "other"] },
+    "service_id": { "type": "string" },
+    "enabled": { "type": "boolean" },
+    "config": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "kind-specific options: root paths, endpoint, region, query spec"
+    },
+    "created_at": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}
