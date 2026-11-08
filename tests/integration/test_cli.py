@@ -23,7 +23,8 @@ def test_capabilities_honest_states() -> None:
     assert result.exit_code == 0
     caps = {c["capability_id"]: c["status"] for c in json.loads(result.stdout)}
     assert caps["api.service-inventory"] == "available"
-    assert caps["api.anomaly-detection"] == "declared"
+    assert caps["api.anomaly-detection"] == "available"
+    assert caps["api.incident-investigation"] == "available"
 
 
 def test_workspace_and_doctor(tmp_path: Path) -> None:

@@ -25,38 +25,38 @@ cycle-02-telemetry-ingestion (observations, source liveness)._
 
 # Acceptance Criteria
 
-- [ ] Detector registry holds versioned detectors implementing the protocol
+- [x] Detector registry holds versioned detectors implementing the protocol
   (`detector_id`, `detector_version`,
   `evaluate(request, context) → DetectionResult`) with typed results carrying
   explicit evidence and limitations.
-- [ ] Level-1 threshold rules implemented: error rate over limit, p95 over
+- [x] Level-1 threshold rules implemented: error rate over limit, p95 over
   latency objective, source stopped sending observations, accelerated
   error-budget consumption, timeout growth after a deploy, unexpected status
   on an operation.
-- [ ] Simple baselines (median/MAD or EWMA, window comparison) available as
+- [x] Simple baselines (median/MAD or EWMA, window comparison) available as
   detector inputs; each is evaluated on a known corpus and never claims to
   identify root cause.
-- [ ] Per-rule cooldown plus hysteresis against flapping; alert frequency is
+- [x] Per-rule cooldown plus hysteresis against flapping; alert frequency is
   limited and planned suppression supported.
-- [ ] Deduplication groups anomalies into one incident on service+operation,
+- [x] Deduplication groups anomalies into one incident on service+operation,
   time window, detector signature, possibly-shared dependency, environment
   and release version; original anomalies are preserved with a recorded
   justification for the grouping.
-- [ ] Incident lifecycle states implemented with operational status kept
+- [x] Incident lifecycle states implemented with operational status kept
   independent from confidence classification (e.g., `INVESTIGATING` +
   hypothesis `PROBABLE` does not imply proven cause).
-- [ ] Severity model `SEV1..SEV4 + INFORMATIONAL` configured from business
+- [x] Severity model `SEV1..SEV4 + INFORMATIONAL` configured from business
   impact per service — never derived from HTTP status codes alone.
-- [ ] Timeline: every state change appends an `incident_event` journal entry;
+- [x] Timeline: every state change appends an `incident_event` journal entry;
   first_observed/detected/acknowledged/resolved timestamps tracked.
-- [ ] Reopen: a resolved incident can be reopened only via a journaled event;
+- [x] Reopen: a resolved incident can be reopened only via a journaled event;
   a closed incident is never edited without history.
-- [ ] Escalation is defined by versioned rules, recorded with the rule
+- [x] Escalation is defined by versioned rules, recorded with the rule
   revision that fired it.
-- [ ] Incident persistence + audit: current-state tables plus journal
+- [x] Incident persistence + audit: current-state tables plus journal
   (ADR-008); `revision` field enforces concurrency control; audit events are
   append-only.
-- [ ] LAB-001: elevated latency is detected per operation. LAB-002:
+- [x] LAB-001: elevated latency is detected per operation. LAB-002:
   persistent HTTP 503 produces an error-ratio breach, an incident and a
   detected recovery — with zero duplicate incidents under event replay.
 

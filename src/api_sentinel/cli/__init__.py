@@ -15,10 +15,14 @@ from api_sentinel.application.use_cases import (
     DefineSlo,
     EvaluateSlo,
     GetServiceHealth,
+    ListIncidents,
     ListServices,
     ListSloDefinitions,
     RegisterService,
     RegisterSource,
+    RunDetection,
+    ShowIncident,
+    TransitionIncident,
 )
 from api_sentinel.capabilities import list_capabilities, status_report
 from api_sentinel.cli.install import install_command
@@ -29,6 +33,7 @@ from api_sentinel.domain import (
     UlidIdFactory,
     ValidationError,
 )
+from api_sentinel.incidents import IncidentStatus
 from api_sentinel.infrastructure.security import redact
 from api_sentinel.infrastructure.storage import SqliteUnitOfWork
 from api_sentinel.ingestion import IngestionPipeline
@@ -48,6 +53,12 @@ slo_app = typer.Typer(
     no_args_is_help=True,
 )
 app.add_typer(slo_app, name="slo")
+incident_app = typer.Typer(
+    name="incident",
+    help="Incident lifecycle: show/ack/resolve/reopen (journal-appended).",
+    no_args_is_help=True,
+)
+app.add_typer(incident_app, name="incident")
 
 _JSON = Annotated[bool, typer.Option("--json", help="Emit machine-readable JSON")]
 _WS = Annotated[str | None, typer.Option("--workspace", help="Explicit workspace root")]
@@ -401,6 +412,172 @@ def health(
         service_id=service_id, stale_after_seconds=stale_after_seconds
     )
     _emit(report.model_dump(mode="json"), as_json)
+
+
+@app.command()
+def detect(
+    service_id: Annotated[str, typer.Option("--service-id")],
+    window_start: Annotated[
+        str | None, typer.Option("--window-start", help="ISO-8601")
+    ] = None,
+    window_end: Annotated[
+        str | None, typer.Option("--window-end", help="ISO-8601")
+    ] = None,
+    now: Annotated[
+        str | None,
+        typer.Option("--now", help="ISO-8601 evaluation instant (replay aid)"),
+    ] = None,
+    as_json: _JSON = False,
+    workspace: _WS = None,
+    user_scope: _USER_SCOPE = False,
+) -> None:
+    """Run registered detection rules for a window; dedup into incidents."""
+    ws = _ws(workspace, user_scope)
+    uow = _uow(ws)
+    report = RunDetection(uow, SystemClock(), UlidIdFactory()).execute(
+        service_id=service_id,
+        window_start=(
+            _parse_dt(window_start, "--window-start") if window_start else None
+        ),
+        window_end=(
+            _parse_dt(window_end, "--window-end") if window_end else None
+        ),
+        now=_parse_dt(now, "--now") if now else None,
+    )
+    _emit(report.model_dump(mode="json"), as_json)
+
+
+@app.command("incidents")
+def incidents_cmd(
+    status: Annotated[
+        str | None,
+        typer.Option("--status", help="'open' or a concrete status"),
+    ] = None,
+    service_id: Annotated[str | None, typer.Option("--service-id")] = None,
+    as_json: _JSON = False,
+    workspace: _WS = None,
+    user_scope: _USER_SCOPE = False,
+) -> None:
+    """List incidents; --status open filters to unresolved statuses."""
+    ws = _ws(workspace, user_scope)
+    uow = _uow(ws)
+    open_only = False
+    parsed: IncidentStatus | None = None
+    if status is not None:
+        if status.strip().lower() == "open":
+            open_only = True
+        else:
+            try:
+                parsed = IncidentStatus(status.strip().upper())
+            except ValueError as exc:
+                raise ValidationError(
+                    f"invalid --status: {status!r}",
+                    details={
+                        "expected": ["open", *sorted(s.value for s in IncidentStatus)]
+                    },
+                ) from exc
+    out = [
+        i.model_dump(mode="json")
+        for i in ListIncidents(uow).execute(
+            status=parsed, service_id=service_id, open_only=open_only
+        )
+    ]
+    _emit(out, as_json)
+
+
+@incident_app.command("show")
+def incident_show(
+    incident_id: Annotated[str, typer.Argument()],
+    as_json: _JSON = False,
+    workspace: _WS = None,
+    user_scope: _USER_SCOPE = False,
+) -> None:
+    """Incident detail: current state + journal timeline + anomalies."""
+    ws = _ws(workspace, user_scope)
+    uow = _uow(ws)
+    view = ShowIncident(uow).execute(incident_id=incident_id)
+    _emit(view.model_dump(mode="json"), as_json)
+
+
+def _incident_transition(
+    incident_id: str,
+    to_status: IncidentStatus,
+    *,
+    actor: str,
+    note: str | None,
+    as_json: bool,
+    workspace: str | None,
+    user_scope: bool,
+) -> None:
+    ws = _ws(workspace, user_scope)
+    uow = _uow(ws)
+    incident = TransitionIncident(uow, SystemClock(), UlidIdFactory()).execute(
+        incident_id=incident_id, to_status=to_status, actor=actor, note=note
+    )
+    _emit(incident.model_dump(mode="json"), as_json)
+
+
+@incident_app.command("ack")
+def incident_ack(
+    incident_id: Annotated[str, typer.Argument()],
+    actor: Annotated[str, typer.Option("--actor")] = "cli",
+    note: Annotated[str | None, typer.Option("--note")] = None,
+    as_json: _JSON = False,
+    workspace: _WS = None,
+    user_scope: _USER_SCOPE = False,
+) -> None:
+    """Acknowledge: DETECTED/REOPENED → TRIAGED (journaled)."""
+    _incident_transition(
+        incident_id,
+        IncidentStatus.TRIAGED,
+        actor=actor,
+        note=note,
+        as_json=as_json,
+        workspace=workspace,
+        user_scope=user_scope,
+    )
+
+
+@incident_app.command("resolve")
+def incident_resolve(
+    incident_id: Annotated[str, typer.Argument()],
+    actor: Annotated[str, typer.Option("--actor")] = "cli",
+    note: Annotated[str | None, typer.Option("--note")] = None,
+    as_json: _JSON = False,
+    workspace: _WS = None,
+    user_scope: _USER_SCOPE = False,
+) -> None:
+    """Resolve: any open status → RESOLVED (journaled, sets resolved_at)."""
+    _incident_transition(
+        incident_id,
+        IncidentStatus.RESOLVED,
+        actor=actor,
+        note=note,
+        as_json=as_json,
+        workspace=workspace,
+        user_scope=user_scope,
+    )
+
+
+@incident_app.command("reopen")
+def incident_reopen(
+    incident_id: Annotated[str, typer.Argument()],
+    actor: Annotated[str, typer.Option("--actor")] = "cli",
+    note: Annotated[str | None, typer.Option("--note")] = None,
+    as_json: _JSON = False,
+    workspace: _WS = None,
+    user_scope: _USER_SCOPE = False,
+) -> None:
+    """Reopen: RESOLVED/DISMISSED → REOPENED (journaled only)."""
+    _incident_transition(
+        incident_id,
+        IncidentStatus.REOPENED,
+        actor=actor,
+        note=note,
+        as_json=as_json,
+        workspace=workspace,
+        user_scope=user_scope,
+    )
 
 
 def _dispatch() -> int:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import builtins
 import json
 import sqlite3
 from datetime import datetime
@@ -9,11 +10,15 @@ from pathlib import Path
 from typing import Any
 
 from api_sentinel.application.ports import (
+    AnomalyRepository,
     AuditRepository,
     BatchRepository,
     CheckpointRepository,
+    DetectionRuleRepository,
     EnvironmentRepository,
     EvidenceRepository,
+    IncidentEventRepository,
+    IncidentRepository,
     ObservationRepository,
     QuarantineRepository,
     ReleaseRepository,
@@ -22,9 +27,12 @@ from api_sentinel.application.ports import (
     SloDefinitionRepository,
     SourceRepository,
 )
+from api_sentinel.detection.protocol import Anomaly
+from api_sentinel.detection.registry import DetectionRule
 from api_sentinel.domain import (
     ApiService,
     AuditEvent,
+    ConflictError,
     EvidenceArtifact,
     ExternalRef,
     IngestionCheckpoint,
@@ -37,6 +45,8 @@ from api_sentinel.domain import (
     StorageError,
     TelemetrySource,
 )
+from api_sentinel.incidents.journal import IncidentEvent
+from api_sentinel.incidents.models import Incident, IncidentStatus
 from api_sentinel.infrastructure.storage.db import connect
 from api_sentinel.infrastructure.storage.migrations import migrate
 from api_sentinel.ingestion.models import NormalizedMeasurement, NormalizedObservation
@@ -160,6 +170,18 @@ class _ReleaseRepo:
     def __init__(self, conn: sqlite3.Connection) -> None:
         self._c = conn
 
+    def _row(self, r: sqlite3.Row) -> ServiceRelease:
+        return ServiceRelease(
+            release_id=r["release_id"],
+            service_id=r["service_id"],
+            version=r["version"],
+            deployed_at=(
+                datetime.fromisoformat(r["deployed_at"]) if r["deployed_at"] else None
+            ),
+            source=r["source"],
+            created_at=datetime.fromisoformat(r["created_at"]),
+        )
+
     def put(self, r: ServiceRelease) -> ServiceRelease:
         self._c.execute(
             "INSERT OR REPLACE INTO service_releases"
@@ -170,6 +192,19 @@ class _ReleaseRepo:
              r.created_at.isoformat()),
         )
         return r
+
+    def list(self, service_id: str | None = None) -> builtins.list[ServiceRelease]:
+        if service_id:
+            rows = self._c.execute(
+                "SELECT * FROM service_releases WHERE service_id=?"
+                " ORDER BY deployed_at, release_id",
+                (service_id,),
+            ).fetchall()
+        else:
+            rows = self._c.execute(
+                "SELECT * FROM service_releases ORDER BY deployed_at, release_id"
+            ).fetchall()
+        return [self._row(r) for r in rows]
 
 
 class _BatchRepo:
@@ -552,6 +587,298 @@ class _SloAssessmentRepo:
         rows = self._c.execute(sql, args).fetchall()
         return [self._row(r) for r in rows]
 
+    def list_for_service(self, service_id: str) -> builtins.list[SloAssessment]:
+        # service lives on the immutable definition; join on (slo_id, revision)
+        rows = self._c.execute(
+            "SELECT a.* FROM slo_assessments a"
+            " JOIN slo_definitions d"
+            "   ON d.slo_id = a.slo_id AND d.revision = a.revision"
+            " WHERE d.service_id=?"
+            " ORDER BY a.window_start, a.assessment_id",
+            (service_id,),
+        ).fetchall()
+        return [self._row(r) for r in rows]
+
+
+class _DetectionRuleRepo:
+    """Immutable per (rule_id, revision) — INSERT only, like SLO definitions."""
+
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._c = conn
+
+    def _row(self, r: sqlite3.Row) -> DetectionRule:
+        return DetectionRule(
+            rule_id=r["rule_id"],
+            revision=r["revision"],
+            service_id=r["service_id"],
+            kind=r["kind"],
+            config=json.loads(r["config"]),
+            enabled=bool(r["enabled"]),
+            created_at=datetime.fromisoformat(r["created_at"]),
+        )
+
+    def get(self, rule_id: str, revision: int | None = None) -> DetectionRule | None:
+        if revision is None:
+            r = self._c.execute(
+                "SELECT * FROM detection_rules WHERE rule_id=?"
+                " ORDER BY revision DESC LIMIT 1",
+                (rule_id,),
+            ).fetchone()
+        else:
+            r = self._c.execute(
+                "SELECT * FROM detection_rules WHERE rule_id=? AND revision=?",
+                (rule_id, revision),
+            ).fetchone()
+        return self._row(r) if r else None
+
+    def list(self, service_id: str | None = None) -> list[DetectionRule]:
+        if service_id:
+            rows = self._c.execute(
+                "SELECT * FROM detection_rules WHERE service_id=?"
+                " ORDER BY rule_id, revision",
+                (service_id,),
+            )
+        else:
+            rows = self._c.execute(
+                "SELECT * FROM detection_rules ORDER BY rule_id, revision"
+            )
+        return [self._row(r) for r in rows]
+
+    def put(self, rule: DetectionRule) -> None:
+        # INSERT only: a revision is immutable; conflicting re-define is a
+        # ConflictError handled by the caller (rule changes never rewrite
+        # historical results without an explicit revision).
+        self._c.execute(
+            "INSERT INTO detection_rules"
+            " (rule_id, revision, service_id, kind, config, enabled, created_at)"
+            " VALUES (?,?,?,?,?,?,?)",
+            (
+                rule.rule_id, rule.revision, rule.service_id, rule.kind,
+                json.dumps(rule.config, default=str), int(rule.enabled),
+                rule.created_at.isoformat(),
+            ),
+        )
+
+
+class _AnomalyRepo:
+    """Deterministic anomaly ids — INSERT OR IGNORE makes replays idempotent."""
+
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._c = conn
+
+    def _row(self, r: sqlite3.Row) -> Anomaly:
+        return Anomaly.model_validate(json.loads(r["anomaly"]))
+
+    def get(self, anomaly_id: str) -> Anomaly | None:
+        r = self._c.execute(
+            "SELECT * FROM anomalies WHERE anomaly_id=?", (anomaly_id,)
+        ).fetchone()
+        return self._row(r) if r else None
+
+    def put(self, anomaly: Anomaly) -> None:
+        self._c.execute(
+            "INSERT OR IGNORE INTO anomalies"
+            " (anomaly_id, service_id, operation_id, detected_at, window_start,"
+            "  window_end, rule_id, rule_revision, detector_id, detector_version,"
+            "  severity, status, explanation, evidence_refs, unknowns, dedup_key,"
+            "  anomaly, incident_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (
+                anomaly.anomaly_id, anomaly.service_id, anomaly.operation_id,
+                anomaly.detected_at.isoformat(), anomaly.window_start.isoformat(),
+                anomaly.window_end.isoformat(), anomaly.rule.rule_id,
+                anomaly.rule.rule_revision, anomaly.rule.detector_id,
+                anomaly.rule.detector_version, anomaly.severity.value,
+                anomaly.status.value, anomaly.explanation.model_dump_json(),
+                json.dumps(anomaly.evidence_refs), json.dumps(anomaly.unknowns),
+                anomaly.dedup_key, anomaly.model_dump_json(), anomaly.incident_id,
+            ),
+        )
+
+    def attach_incident(self, anomaly_id: str, incident_id: str) -> None:
+        # Write-once dedup link; the anomaly row's own content is preserved.
+        anomaly = self.get(anomaly_id)
+        if anomaly is None:
+            raise StorageError(f"anomaly not found: {anomaly_id}")
+        if anomaly.incident_id is not None:
+            return  # already attached — never rewrites
+        linked = anomaly.model_copy(update={"incident_id": incident_id})
+        self._c.execute(
+            "UPDATE anomalies SET incident_id=?, anomaly=? WHERE anomaly_id=?"
+            " AND incident_id IS NULL",
+            (incident_id, linked.model_dump_json(), anomaly_id),
+        )
+
+    def list_for_service(self, service_id: str) -> list[Anomaly]:
+        rows = self._c.execute(
+            "SELECT * FROM anomalies WHERE service_id=?"
+            " ORDER BY detected_at, anomaly_id",
+            (service_id,),
+        )
+        return [self._row(r) for r in rows]
+
+    def list_for_incident(self, incident_id: str) -> list[Anomaly]:
+        rows = self._c.execute(
+            "SELECT * FROM anomalies WHERE incident_id=?"
+            " ORDER BY detected_at, anomaly_id",
+            (incident_id,),
+        )
+        return [self._row(r) for r in rows]
+
+
+class _IncidentRepo:
+    """Current-state rows; `expected_revision` is the concurrency guard."""
+
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._c = conn
+
+    def _row(self, r: sqlite3.Row) -> Incident:
+        return Incident.model_validate(json.loads(r["state"]))
+
+    def get(self, incident_id: str) -> Incident | None:
+        r = self._c.execute(
+            "SELECT * FROM incidents WHERE incident_id=?", (incident_id,)
+        ).fetchone()
+        return self._row(r) if r else None
+
+    def put(self, incident: Incident, expected_revision: int | None = None) -> None:
+        if expected_revision is None:
+            self._c.execute(
+                "INSERT INTO incidents"
+                " (incident_id, title, severity, status, service_id, operation_id,"
+                "  group_key, first_observed_at, detected_at, acknowledged_at,"
+                "  resolved_at, owner, revision, state)"
+                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                self._cols(incident),
+            )
+            return
+        cur = self._c.execute(
+            "UPDATE incidents SET title=?, severity=?, status=?, service_id=?,"
+            " operation_id=?, group_key=?, first_observed_at=?, detected_at=?,"
+            " acknowledged_at=?, resolved_at=?, owner=?, revision=?, state=?"
+            " WHERE incident_id=? AND revision=?",
+            (
+                incident.title, incident.severity.value, incident.status.value,
+                incident.service_id, incident.operation_id, incident.group_key,
+                incident.first_observed_at.isoformat(),
+                incident.detected_at.isoformat(),
+                incident.acknowledged_at.isoformat()
+                if incident.acknowledged_at else None,
+                incident.resolved_at.isoformat() if incident.resolved_at else None,
+                incident.owner, incident.revision, incident.model_dump_json(),
+                incident.incident_id, expected_revision,
+            ),
+        )
+        if cur.rowcount == 0:
+            raise ConflictError(
+                "incident revision conflict (concurrent modification or stale"
+                f" read): {incident.incident_id}",
+                details={
+                    "incident_id": incident.incident_id,
+                    "expected_revision": expected_revision,
+                },
+            )
+
+    @staticmethod
+    def _cols(i: Incident) -> tuple[object, ...]:
+        return (
+            i.incident_id, i.title, i.severity.value, i.status.value,
+            i.service_id, i.operation_id, i.group_key,
+            i.first_observed_at.isoformat(), i.detected_at.isoformat(),
+            i.acknowledged_at.isoformat() if i.acknowledged_at else None,
+            i.resolved_at.isoformat() if i.resolved_at else None,
+            i.owner, i.revision, i.model_dump_json(),
+        )
+
+    def list(
+        self,
+        status: IncidentStatus | None = None,
+        service_id: str | None = None,
+    ) -> list[Incident]:
+        sql = "SELECT * FROM incidents"
+        args: list[Any] = []
+        clauses: list[str] = []
+        if status is not None:
+            clauses.append("status=?")
+            args.append(status.value)
+        if service_id is not None:
+            clauses.append("service_id=?")
+            args.append(service_id)
+        if clauses:
+            sql += " WHERE " + " AND ".join(clauses)
+        rows = self._c.execute(
+            sql + " ORDER BY detected_at DESC, incident_id", args
+        ).fetchall()
+        return [self._row(r) for r in rows]
+
+    def find_open(self, service_id: str, group_key: str) -> Incident | None:
+        row = self._c.execute(
+            "SELECT * FROM incidents WHERE service_id=? AND group_key=?"
+            " AND status IN"
+            " ('DETECTED','TRIAGED','INVESTIGATING','MITIGATING','MONITORING',"
+            "  'REOPENED')"
+            " ORDER BY detected_at DESC, incident_id LIMIT 1",
+            (service_id, group_key),
+        ).fetchone()
+        return self._row(row) if row else None
+
+
+class _IncidentEventRepo:
+    """The journal — append-only by design: no update/delete paths exist."""
+
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._c = conn
+
+    def _row(self, r: sqlite3.Row) -> IncidentEvent:
+        return IncidentEvent(
+            event_id=r["event_id"],
+            incident_id=r["incident_id"],
+            at=datetime.fromisoformat(r["at"]),
+            actor=r["actor"],
+            kind=r["kind"],
+            from_status=(
+                IncidentStatus(r["from_status"]) if r["from_status"] else None
+            ),
+            to_status=(
+                IncidentStatus(r["to_status"]) if r["to_status"] else None
+            ),
+            note=r["note"],
+            details=json.loads(r["details"]),
+        )
+
+    def append(self, event: IncidentEvent) -> None:
+        # Deterministic event ids: a replayed detection run is INSERT OR
+        # IGNORE — a no-op, never a duplicated journal entry.
+        self._c.execute(
+            "INSERT OR IGNORE INTO incident_events"
+            " (event_id, incident_id, at, actor, kind, from_status, to_status,"
+            "  note, details) VALUES (?,?,?,?,?,?,?,?,?)",
+            (
+                event.event_id, event.incident_id, event.at.isoformat(),
+                event.actor, event.kind.value,
+                event.from_status.value if event.from_status else None,
+                event.to_status.value if event.to_status else None,
+                event.note, json.dumps(event.details),
+            ),
+        )
+
+    def list(self, incident_id: str) -> list[IncidentEvent]:
+        # Journal order is append order: the timeline is read in insertion
+        # sequence (rowid), not re-sorted by timestamp — two events may share
+        # the same recorded `at` under a fixed clock.
+        rows = self._c.execute(
+            "SELECT * FROM incident_events WHERE incident_id=? ORDER BY rowid",
+            (incident_id,),
+        ).fetchall()
+        return [self._row(r) for r in rows]
+
+    def count(self, incident_id: str) -> int:
+        return int(
+            self._c.execute(
+                "SELECT COUNT(*) FROM incident_events WHERE incident_id=?",
+                (incident_id,),
+            ).fetchone()[0]
+        )
+
 
 class SqliteUnitOfWork:
     """One connection, explicit commit/rollback; repos share the transaction."""
@@ -568,6 +895,10 @@ class SqliteUnitOfWork:
     quarantine: QuarantineRepository
     slo_definitions: SloDefinitionRepository
     slo_assessments: SloAssessmentRepository
+    detection_rules: DetectionRuleRepository
+    anomalies: AnomalyRepository
+    incidents: IncidentRepository
+    incident_events: IncidentEventRepository
 
     def __init__(self, db_path: Path | str) -> None:
         self._db_path = db_path
@@ -593,6 +924,10 @@ class SqliteUnitOfWork:
         self.quarantine = _QuarantineRepo(conn)
         self.slo_definitions = _SloDefinitionRepo(conn)
         self.slo_assessments = _SloAssessmentRepo(conn)
+        self.detection_rules = _DetectionRuleRepo(conn)
+        self.anomalies = _AnomalyRepo(conn)
+        self.incidents = _IncidentRepo(conn)
+        self.incident_events = _IncidentEventRepo(conn)
         conn.execute("BEGIN")
         return self
 

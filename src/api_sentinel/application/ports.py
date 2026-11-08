@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import builtins
 from datetime import datetime
 from typing import Any, Protocol, runtime_checkable
 
+from api_sentinel.detection.protocol import Anomaly
+from api_sentinel.detection.registry import DetectionRule
 from api_sentinel.domain import (
     ApiService,
     AuditEvent,
@@ -15,6 +18,8 @@ from api_sentinel.domain import (
     ServiceRelease,
     TelemetrySource,
 )
+from api_sentinel.incidents.journal import IncidentEvent
+from api_sentinel.incidents.models import Incident, IncidentStatus
 from api_sentinel.ingestion.models import NormalizedObservation
 from api_sentinel.ingestion.quarantine import QuarantineEntry
 from api_sentinel.reliability.slo import SloAssessment, SloDefinition
@@ -44,6 +49,7 @@ class SourceRepository(Protocol):
 @runtime_checkable
 class ReleaseRepository(Protocol):
     def put(self, release: ServiceRelease) -> ServiceRelease: ...
+    def list(self, service_id: str | None = None) -> builtins.list[ServiceRelease]: ...
 
 
 @runtime_checkable
@@ -120,6 +126,50 @@ class SloAssessmentRepository(Protocol):
     def list(
         self, slo_id: str, revision: int | None = None
     ) -> list[SloAssessment]: ...
+    def list_for_service(self, service_id: str) -> builtins.list[SloAssessment]: ...
+
+
+@runtime_checkable
+class DetectionRuleRepository(Protocol):
+    """Versioned rules — immutable per (rule_id, revision), like SLOs."""
+
+    def get(self, rule_id: str, revision: int | None = None) -> DetectionRule | None: ...
+    def list(self, service_id: str | None = None) -> list[DetectionRule]: ...
+    def put(self, rule: DetectionRule) -> None: ...
+
+
+@runtime_checkable
+class AnomalyRepository(Protocol):
+    """Anomaly store — deterministic ids make writes idempotent."""
+
+    def get(self, anomaly_id: str) -> Anomaly | None: ...
+    def put(self, anomaly: Anomaly) -> None: ...
+    def attach_incident(self, anomaly_id: str, incident_id: str) -> None: ...
+    def list_for_service(self, service_id: str) -> list[Anomaly]: ...
+    def list_for_incident(self, incident_id: str) -> list[Anomaly]: ...
+
+
+@runtime_checkable
+class IncidentRepository(Protocol):
+    """Current-state rows (ADR-008); `expected_revision` enforces concurrency."""
+
+    def get(self, incident_id: str) -> Incident | None: ...
+    def put(self, incident: Incident, expected_revision: int | None = None) -> None: ...
+    def list(
+        self,
+        status: IncidentStatus | None = None,
+        service_id: str | None = None,
+    ) -> list[Incident]: ...
+    def find_open(self, service_id: str, group_key: str) -> Incident | None: ...
+
+
+@runtime_checkable
+class IncidentEventRepository(Protocol):
+    """The journal — append-only by design: no update/delete paths exist."""
+
+    def append(self, event: IncidentEvent) -> None: ...
+    def list(self, incident_id: str) -> list[IncidentEvent]: ...
+    def count(self, incident_id: str) -> int: ...
 
 
 @runtime_checkable
@@ -136,6 +186,10 @@ class UnitOfWork(Protocol):
     quarantine: QuarantineRepository
     slo_definitions: SloDefinitionRepository
     slo_assessments: SloAssessmentRepository
+    detection_rules: DetectionRuleRepository
+    anomalies: AnomalyRepository
+    incidents: IncidentRepository
+    incident_events: IncidentEventRepository
 
     def __enter__(self) -> UnitOfWork: ...
     def __exit__(self, exc_type: object, exc_val: object, exc_tb: object) -> None: ...
