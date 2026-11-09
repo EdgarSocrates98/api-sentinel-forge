@@ -66,3 +66,26 @@ hosted CI, portal E2E) are all unproven at Wave 0.
 | Atlas contract | code-atlas + sentinel | producer missing — F011 |
 | Portal surface | portal + sentinel + product-forge | adapter needed — F005 |
 | Forge routing | the-forge + sentinel | executor gap — F010 |
+
+---
+
+## Wave-5 refresh (final stage state — supersedes the tables above)
+
+Later waves proved more than the Wave-0 audit recorded. Final stages,
+as served by `api-sentinel capabilities` / `/v1/capabilities` at HEAD
+(`src/api_sentinel/capabilities.py`), captured verbatim in
+`evidence/capability-manifest.json`:
+
+| Capability | Final stage | Change driver |
+|---|---|---|
+| api.portal-operations | TESTED → **VERIFIED** | Wave 3 — real Portal consumer: served SPA + same-origin proxy + Chromium 19/19 (`evidence/portal-verification.json`, F005 closed) |
+| api.aws-readonly-observability | TESTED → **VERIFIED** | Wave 4 — bounded real AWS account homologation (`evidence/aws-validation.json`, F008 partially closed) |
+| api.doctor-handoff | TESTED → **VERIFIED** | Wave 2 — real in-process Doctor 0.3.1 run (F009 closed) |
+| the-forge seam (8 pairs) | TESTED → **VERIFIED** | Wave 2 — routed `theforge ask` runs with receipts (F010/F015/F018 closed) |
+| code-atlas seam | TESTED (fixture) → **VERIFIED** (real store) | Wave 2 — `DbStructuralContext` over real `atlas.db` snapshot (F011 closed) |
+| `api-sentinel mcp serve` | ABSENT → **VERIFIED** | Wave 1 — read-only stdio server implemented (F012 closed) |
+| api.agentic-investigation | stays **IMPLEMENTED/DECLARED** | Bridge transport still absent (F004; S12 honestly BLOCKED) |
+
+**PRODUCTION_VALIDATED: still none.** The AWS run was real but bounded
+(single homologation account, demo API, ≤15 calls) — a lab-grade
+external, not a production workload.

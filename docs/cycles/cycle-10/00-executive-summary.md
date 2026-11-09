@@ -1,7 +1,48 @@
-# Cycle 10 — Executive summary (Wave 0 seed + Wave 2 results)
+# Cycle 10 — Executive summary (final, Wave 5)
 
-> Seeded by Wave 0 (reality audit). Sections marked *pending* are filled by
-> later waves per `factory/specs/active/cycle-10-wave0-baseline.md`.
+> Waves 0–5 executed on `cycle-10`. Full record below; consolidated
+> report in `final-report.md`, gate scorecard + decision in
+> `18-release-readiness.md`, PR artifacts in `15-pr-plan.md`.
+
+## Result — CONDITIONAL GO
+
+**16/18 federated golden path + 2 honestly BLOCKED · 40/40 security ·
+544 tests · Doctor/Atlas/the-forge/Portal INTEGRATED with receipts.**
+
+The cycle closed the homologation loop the prompt demanded: every
+"declared" seam either became a real execution with a receipt or kept
+an honest named state. No capability is `production_validated` — the
+AWS run was real but bounded, Bridge/Lens never executed, hosted CI
+has not run at HEAD. Conditions before `v0.1.0-rc.2`: hosted CI green
++ PR-scope decisions (`15-pr-plan.md`).
+
+## Wave 5 — release closure (executed)
+
+- Gates A–G scored item-by-item → `18-release-readiness.md`:
+  A/B/C/E/F **PASS**, D **PARTIAL** (Bridge/Lens blocked), G **PARTIAL**
+  (Linux + hosted CI unobserved).
+- Docs 14–18 filled; test results consolidated (440→544);
+  compatibility matrix refreshed with real versions
+  (`docs/16-compatibility-matrix.md` + `16-compatibility-matrix.md`).
+- Capability stage manifest generated — `evidence/capability-manifest.json`;
+  `/v1/capabilities` drift corrected: `api.portal-operations` and
+  `api.aws-readonly-observability` → `verified` (W3/W4 homologations).
+- Packaging re-verified: `uv build` clean, wheel 127 files (6/6
+  migrations), sdist 190 (tests+schemas), fresh-venv smoke incl.
+  path-with-spaces + repeat-install — `evidence/installation-results.json`.
+- README de-staled (F001 closed); CHANGELOG cycle-10 entry under
+  `[Unreleased]`; tag plan `v0.1.0-rc.2` — **not tagged**.
+- PR drafts for 3 repos — `15-pr-plan.md`; **no PRs opened, no push**.
+
+## Waves 3–4 recap
+
+- **W3** — Portal `/api-operations` rewired to live Sentinel `/v1`
+  (`SentinelApi`; PF-independent); CSP topology discovered → same-origin
+  proxy pattern; Chromium 19/19 — F005 closed, F019–F021 recorded.
+- **W4** — federated e2e S1–S18 (16/2 BLOCKED/0 fail); F006 N+1 →
+  batch ports (2 880→2); §12 battery 40/40 (F022/F023 fixed en route);
+  bounded real AWS (acct `7025****1161`, 15 calls, STS-gated) — F008
+  partially closed, F024 documented.
 
 ## Wave 2 — real cross-Forge federation (executed)
 
@@ -81,6 +122,9 @@ mostly **DECLARED→TESTED**, not INTEGRATED: every peer transport is
 file-emission or named-unavailable; nothing executes a peer today. Full
 matrix: `03-capability-ownership.md`.
 
-## Pending (later waves)
+## Carry-overs (recorded, not hidden)
 
-- Final executive summary text, gates A–D status, release recommendation.
+Bridge/Lens/api-forge/data-sentinel named states (09) · F016/F017
+peer-side items · F020/F021 P3 gaps · hosted CI pending observation ·
+`production_validated` unclaimed. Full register:
+`17-unresolved-risks.md`.

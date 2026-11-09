@@ -9,9 +9,10 @@ Two axes, never conflated (Cycle-10 §5.4):
   flips a capability to `available` — the mechanical proof decides.
 - `stage` — *highest PROVEN maturity* on the Wave-0 ladder
   `implemented → tested → integrated → verified →
-  production_validated`. The data below mirrors the Wave-0 audit
-  (`docs/cycles/cycle-10/03-capability-ownership.md`) verbatim — a
-  stage is only ever as high as real evidence allows.
+  production_validated`. The data below mirrors the cycle-10 audits
+  (`docs/cycles/cycle-10/03-capability-ownership.md`, refreshed by the
+  wave-3/4 homologations) — a stage is only ever as high as real
+  evidence allows.
 """
 
 from __future__ import annotations
@@ -47,11 +48,13 @@ class Capability:
 
 _AWS_CAPABILITY_ID = "api.aws-readonly-observability"
 
-# Highest-proven-stage data — copied truthfully from the Wave-0 stage
-# matrix (docs/cycles/cycle-10/03-capability-ownership.md); nothing is
-# inflated: the four CLI-VERIFIED/forge-TESTED capabilities carry
-# `verified` for the capability itself; C10-F010 is closed in Wave 2 —
-# every advertised execute pair now has a real executor.
+# Highest-proven-stage data — seeded from the Wave-0 stage matrix
+# (docs/cycles/cycle-10/03-capability-ownership.md) and refreshed at
+# each wave's real homologation; nothing is inflated: C10-F010 closed
+# in Wave 2 (every advertised execute pair has a real executor),
+# C10-F005 closed in Wave 3 (real Portal consumer proven) and the
+# AWS seam ran a bounded real account in Wave 4. `production_validated`
+# remains unclaimed everywhere — see the notes on each capability.
 _CAPABILITIES: list[Capability] = [
     Capability(
         "api.service-inventory",
@@ -123,17 +126,23 @@ _CAPABILITIES: list[Capability] = [
     Capability(
         "api.portal-operations",
         CapabilityStatus.AVAILABLE,
-        CapabilityStage.TESTED,
+        CapabilityStage.VERIFIED,
         "0.2.5",
-        notes="Cycle 6 — local /v1 surface via `api-sentinel serve` (api "
-        "extra); no Portal consumes it — C10-F005",
+        notes="Cycle 6 surface; Cycle 10 Wave 3 — real forge-portal "
+        "consumer proven end-to-end (served SPA → same-origin /sentinel "
+        "proxy → live /v1 → Chromium journey 19/19, real investigation "
+        "POST) — C10-F005 closed; evidence/portal-verification.json",
     ),
     Capability(
         _AWS_CAPABILITY_ID,
         CapabilityStatus.DECLARED,
-        CapabilityStage.TESTED,
-        notes="Cycle 7 — mechanical read-only proof required; no real "
-        "AWS account exercised — C10-F008",
+        CapabilityStage.VERIFIED,
+        notes="Cycle 7 — mechanical read-only proof required; Cycle 10 "
+        "Wave 4 — bounded real-account homologation (STS-gated, masked "
+        "acct hash, 15 calls, discover+collect receipts, negative "
+        "battery) — evidence/aws-validation.json. production_validated "
+        "deliberately not claimed: single homologation account, demo "
+        "API, bounded windows — C10-F008 partially closed",
     ),
     Capability(
         "api.change-intelligence",

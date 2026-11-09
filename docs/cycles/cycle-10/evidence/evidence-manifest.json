@@ -1,10 +1,11 @@
 {
  "schema": "api-sentinel/EvidenceManifest/v1",
  "cycle": "cycle-10",
- "wave": "wave4-e2e-perf",
- "collected_at": "2026-11-09T15:35:56Z",
+ "wave": "wave5-release",
+ "collected_at": "2026-11-09T17:45:00Z",
  "branch": "cycle-10",
- "head_sha": "97dfc66",
+ "head_sha": "e7a9323",
+ "note": "head_sha is the pre-wave-5-commit head at collection time; the wave-5 commit itself lands this manifest plus docs 14–18, 15-pr-plan, final-report, README/CHANGELOG/docs-16 refreshes and the capabilities.py stage drift fix.",
  "files": [
   {
    "path": "evidence/baseline.json",
@@ -57,10 +58,17 @@
   },
   {
    "path": "evidence/installation-results.json",
-   "kind": "uv build + fresh-venv install + cli probes + mcp probe",
+   "kind": "uv build + fresh-venv install + cli probes + mcp probe (wave-0) + wave-5 reverification: wheel/sdist contents, path-with-spaces install, repeat-install idempotency, extra-gated mcp refusal",
    "truth_labels": "LOCAL_REAL",
-   "sha256": "sha256:13ced78165baa5c32b57d5fe3e6a395877d61dc9a82609ca349ef65c2c7ef135",
-   "bytes": 2026
+   "sha256": "sha256:9165a8330ca25e6396d2fa146d80602e06f469dce353e7d741ba0eb649317b1a",
+   "bytes": 6067
+  },
+  {
+   "path": "evidence/capability-manifest.json",
+   "kind": "final capability stage manifest — verbatim list_capabilities() stages + per-capability evidence refs + integration seam states (wave-5)",
+   "truth_labels": "LOCAL_REAL",
+   "sha256": "sha256:8e6840972cada39724380a6b603d3e6e8b29193be07cbd8743493653fad59306",
+   "bytes": 6402
   },
   {
    "path": "evidence/federated-e2e-receipt.json",

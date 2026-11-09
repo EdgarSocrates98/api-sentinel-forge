@@ -7,7 +7,11 @@ a specialist in the FORGE ecosystem. It watches how running APIs evolve over
 time, turns telemetry into evidence-backed investigations, and delegates
 specialized diagnosis to the other Forges instead of re-implementing them.
 
-> Status: **Cycle 1 — Core, Identity & Persistence** (see `docs/cycles/`).
+> Status: **0.1.0 release candidate — Cycles 0–10 consolidated**
+> (see `CHANGELOG.md` and `docs/cycles/`). Cycle 10 closed the
+> cross-forge homologation loop: real Doctor/Atlas/the-forge
+> integrations, Portal `/api-operations` on live Sentinel data,
+> hardened `/v1` auth, federated E2E 16/18 (+2 honestly blocked).
 > Portuguese README: [`README.pt-BR.md`](README.pt-BR.md).
 
 ## What it is (and is not)
@@ -44,15 +48,19 @@ api-sentinel status                 # workspace state
 api-sentinel capabilities           # what this build actually offers
 ```
 
-Import telemetry, analyze a service and open an incident — delivered in
-Cycles 2–4 (see `factory/specs/inbox/`):
+Import telemetry, evaluate an SLO, detect anomalies and serve the local
+API — all delivered (Cycles 2–9, hardened in 10):
 
 ```bash
-api-sentinel ingest ./telemetry.jsonl     # Cycle 2
-api-sentinel analyze --service payments   # Cycle 3
-api-sentinel incidents                    # Cycle 4
-api-sentinel serve                        # local HTTP API for the Portal
+api-sentinel ingest --source-id <src> --file ./telemetry.jsonl   # Cycle 2
+api-sentinel slo evaluate --slo-id <slo> --window-start <t0> --window-end <t1>  # Cycle 3
+api-sentinel detect --service-id <svc> --window-start <t0> --window-end <t1>    # Cycle 4
+api-sentinel serve --workspace <ws>                              # /v1 API for the Portal (token-gated)
 ```
+
+`serve` binds loopback by default and requires a workspace token
+(`api-sentinel install` generates one; or `API_SENTINEL_TOKEN`) —
+self-declared role headers are rejected (Cycle 10).
 
 ## Layout
 
@@ -61,7 +69,7 @@ src/api_sentinel/   core package (domain / application / infrastructure / contra
 contracts/v1/       versioned JSON Schemas of the public envelopes
 src/api_sentinel/migrations/  versioned SQLite migrations (packaged)
 docs/               Cycle-0 canonical set + ADRs + cycle plans
-factory/specs/      queued specs for Cycles 2–9 (loop-factory format)
+factory/specs/      executed specs for Cycles 2–10 (loop-factory format)
 tests/              unit / contract / integration / security / e2e / fixtures
 lab/                sample API + reproducible scenarios (grows per cycle)
 ```

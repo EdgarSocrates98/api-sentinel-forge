@@ -39,16 +39,31 @@ ingested series remain interpretable.
 
 ## Forge compatibility
 
-| Sibling forge | Consumed contract | Sentinel provides | Version floor / note |
+Verified versions below were homologated in Cycle 10 (receipts under
+`docs/cycles/cycle-10/evidence/`); "named" means the seam is a real,
+honest named state, not a failure.
+
+| Sibling forge | Consumed contract | Sentinel provides | Verified version / state |
 | --- | --- | --- | --- |
-| `forge-doctor-api` | findings, unknowns, diagnostics over bounded evidence handoffs (`ApiHandoffBundle`, adapter-translated) | `api-sentinel/InvestigationHandoff/v1` envelope; runtime evidence | `>=0.2.0,<0.3.0` (optional dep); **requires post-PR-13 main (`035b635`)** for the `ApiHandoffBundle` `DeltaContext` fix, per the the-forge knowledge package |
-| `code-atlas-forge` | structural entities/relations per repo+snapshot+identity | resolved service/operation identities | contract pinned at Cycle 5 integration |
-| `the-forge` | routing, execution, receipt (`ForgeRequest`/`ForgeHandoff`, adapter-translated) | capabilities `api.runtime-observation`, `api.slo-assessment`, `api.anomaly-detection`, `api.incident-investigation`, `api.deployment-correlation` (ids verified against the live catalog) | adapter `the-forge/adapters/apisentinel` lands Cycle 5 |
-| `forge-agent-bridge` | governed agent sessions + execution events | authorized context packs | Cycle 8 |
-| `forge-lens` | agentic execution evidence by trace/session id | reference ids + provenance (never full trace copies) | optional integration (ADR-016) |
-| `data-sentinel-forge` | pipeline/workload diagnosis | data-problem references | optional, domain-triggered (LAB-012) |
-| `forge-portal` | query/operation APIs | local `/v1/*` surface for the API Operations area | Cycle 6 |
-| `api-forge` | plans/implementations for suggested changes | problem + evidence + suggested change | handoff, Cycle 8 |
+| `forge-doctor-api` | findings, unknowns, diagnostics over bounded evidence handoffs (`ApiHandoffBundle` v1/v2, `ForgeRequest` protocol v2) | `api-sentinel/InvestigationHandoff/v1` envelope; runtime evidence | **0.3.1 INTEGRATED** — in-process `DoctorBoundary` run completed (10 findings / 9 unknowns, receipt `rcpt_hnd_h_01M70777F9VS1TQ2XNJ8ZD5X8Q`); `ProjectContext` resolved from `core.context` (0.3.x) with `handoff.context` fallback (<0.3) |
+| `code-atlas-forge` | SQLite index store (`atlas.db`: repositories/snapshots/domain_entities/domain_relations/evidence) via `DbStructuralContext` | resolved service/operation identities (`code_atlas_identity` external ref) | **1.1.1 INTEGRATED** — real index run (snapshot 11) + correlate → 3 declared CONTAINS edges; `api-sentinel/AtlasExport/v1` file seam still supported for pre-exported manifests |
+| `the-forge` | `forge/v1` Request/Response + `theforge/ExecutionResult/v1` | provider `api-sentinel-forge` via `adapters/apisentinel` (`theforge-apisentinel-adapter==0.1.0`); 8 execute pairs | **INTEGRATED** — registry `state=ready`, 7 capabilities, routed `ask` runs receipted (`evidence/theforge/runs/`); adapter commit `5aea039` on `the-forge@cycle-10-apisentinel` |
+| `forge-agent-bridge` | governed agent sessions + execution events | authorized context packs (`AgentSessionRequest` envelopes, redacted, workspace-bounded) | **NAMED `unverified | file`** — no session-import seam exists bridge-side; delegated, never executed (F004) |
+| `forge-lens` | agentic execution evidence by trace/session id | reference ids + provenance (never full trace copies) | **NAMED `unavailable | file`** — no `forge_lens` module / refs manifest configured (optional, ADR-016) |
+| `data-sentinel-forge` | pipeline/workload diagnosis | data-problem references | **NAMED `unverified | handoff_file`** — stale-data handoffs only; never generic telemetry (optional, LAB-012) |
+| `forge-portal` | `application/problem+json` `/v1/*` surface + bearer token | local `/v1/*` surface for the API Operations area | **INTEGRATED** — `cycle-10-sentinel` branch: dedicated `SentinelApi` adapter, same-origin `/sentinel` proxy pattern (CSP `connect-src 'self'`), Chromium journey 19/19 |
+| `api-forge` | plans/implementations for suggested changes | problem + evidence + suggested change | **NAMED `unverified | handoff_file`** — implementation-request envelopes; no consumer proven |
+| `product-forge` | — | — | deliberately independent: `/api-operations` renders fully with Product Forge absent (separation §7.3) |
 
 Every integration is optional; absence produces a named state
 (`UNAVAILABLE`/`UNVERIFIED`), never simulated execution.
+
+## Platform / packaging (Cycle 10 re-verified)
+
+| Axis | Verified |
+| --- | --- |
+| Python | 3.11 (mypy floor) / 3.12 (dev venv + CI + fresh-venv smoke) |
+| OS | Windows (dev + CI `windows-latest`) · Linux (CI `ubuntu-latest`) |
+| Install | `uv build` wheel+sdist clean; wheel ships `src/api_sentinel` incl. 6 SQL migrations; sdist adds `tests/` + `contracts/v1/*.schema.json`; fresh-venv wheel install → `install`/`doctor`/`capabilities`/`mcp` (extra-gated) all green; workspace path-with-spaces + repeat-install idempotent |
+| Extras | `api` (fastapi+uvicorn — serve), `aws` (boto3 — collectors), `mcp` (mcp — stdio server), `dev` (test/lint/type gates) |
+| Auth surface | `Authorization: Bearer` workspace token or HMAC integrated principal; loopback bind default; `--allow-remote` opt-in with loud warning |
