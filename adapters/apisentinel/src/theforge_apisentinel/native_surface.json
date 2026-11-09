@@ -1,7 +1,7 @@
 {
   "protocol_version": 1,
   "provenance": "recorded",
-  "recorded_at": "2026-11-09T00:07:26Z",
+  "recorded_at": "2026-11-09T13:08:53Z",
   "seams": [
     {
       "callable": "SentinelBoundary",
