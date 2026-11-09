@@ -37,6 +37,10 @@ from api_sentinel.incidents import IncidentStatus
 from api_sentinel.infrastructure.security import redact
 from api_sentinel.infrastructure.storage import SqliteUnitOfWork
 from api_sentinel.ingestion import IngestionPipeline
+from api_sentinel.integrations.aws.client import (
+    AwsClientSet,
+    AwsSessionConfig,
+)
 from api_sentinel.integrations.service import (
     Correlate,
     DelegateToDoctor,
@@ -76,6 +80,12 @@ handoff_app = typer.Typer(
     no_args_is_help=True,
 )
 app.add_typer(handoff_app, name="handoff")
+aws_app = typer.Typer(
+    name="aws",
+    help="AWS read-only observability: collect/discover (ADR-013).",
+    no_args_is_help=True,
+)
+app.add_typer(aws_app, name="aws")
 
 _JSON = Annotated[bool, typer.Option("--json", help="Emit machine-readable JSON")]
 _WS = Annotated[str | None, typer.Option("--workspace", help="Explicit workspace root")]
@@ -235,6 +245,13 @@ def sources_cmd(
         str | None, typer.Option("--register", help="Source kind to register")
     ] = None,
     service_id: Annotated[str | None, typer.Option("--service-id")] = None,
+    config: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--config",
+            help="Source config KEY=VALUE (repeatable; e.g. region=us-east-1)",
+        ),
+    ] = None,
 ) -> None:
     """List telemetry sources, or register one with --register KIND --service-id ID."""
     ws = _ws(workspace, user_scope)
@@ -243,8 +260,16 @@ def sources_cmd(
         if not service_id:
             typer.echo("error: --service-id is required with --register", err=True)
             raise typer.Exit(EXIT_USAGE)
+        cfg: dict[str, str] = {}
+        for pair in config or []:
+            key, sep, value = pair.partition("=")
+            if not sep or not key.strip():
+                raise ValidationError(
+                    f"invalid --config entry: {pair!r} (expected KEY=VALUE)"
+                )
+            cfg[key.strip()] = value
         src = RegisterSource(uow, SystemClock(), UlidIdFactory()).execute(
-            kind=register, service_id=service_id
+            kind=register, service_id=service_id, config=cfg
         )
         _emit({"source_id": src.source_id, "kind": src.kind, "service_id": src.service_id}, as_json)
         return
@@ -845,6 +870,214 @@ def correlate(
         if window_end else None,
     )
     _emit(report.model_dump(mode="json"), as_json)
+
+
+_SIMULATE_ENV = "API_SENTINEL_AWS_SIMULATE"
+
+
+def _aws_clients(
+    *,
+    simulate: str | None,
+    session_config: AwsSessionConfig,
+    now: datetime,
+) -> AwsClientSet:
+    """Build the read-only client set — real session or lab-only stub.
+
+    `--simulate`/`API_SENTINEL_AWS_SIMULATE` inject the canned offline
+    transport (LAB-013); they are lab-only and never perform egress.
+    """
+    import os
+
+    from api_sentinel.integrations.aws.client import real_clientset
+    from api_sentinel.integrations.aws.simulated import (
+        SIMULATED_SCENARIOS,
+        simulated_clientset,
+    )
+
+    scenario = simulate or os.environ.get(_SIMULATE_ENV)
+    if scenario:
+        builder = SIMULATED_SCENARIOS.get(scenario)
+        if builder is None:
+            raise ValidationError(
+                f"unknown simulated AWS scenario: {scenario!r}",
+                details={"supported": sorted(SIMULATED_SCENARIOS)},
+            )
+        return simulated_clientset(script_by_service=builder(now=now)).clients
+    return real_clientset(session_config)
+
+
+@aws_app.command("collect")
+def aws_collect(
+    source_id: Annotated[str, typer.Option("--source-id")],
+    window: Annotated[
+        str, typer.Option("--window", help="Lookback window, e.g. 30m")
+    ] = "30m",
+    end: Annotated[
+        str | None,
+        typer.Option("--end", help="ISO-8601 window end (default: now)"),
+    ] = None,
+    resume: Annotated[
+        bool,
+        typer.Option("--resume", help="Resume from the stored checkpoint"),
+    ] = False,
+    simulate: Annotated[
+        str | None,
+        typer.Option(
+            "--simulate",
+            help="LAB-ONLY: canned offline transport scenario "
+            "(lab013 | throttle-forever); never performs real egress",
+        ),
+    ] = None,
+    max_calls: Annotated[int | None, typer.Option("--max-calls")] = None,
+    max_datapoints: Annotated[
+        int | None, typer.Option("--max-datapoints")
+    ] = None,
+    max_lookback_minutes: Annotated[
+        int | None, typer.Option("--max-lookback-minutes")
+    ] = None,
+    max_runtime_seconds: Annotated[
+        float | None, typer.Option("--max-runtime-seconds")
+    ] = None,
+    max_retries: Annotated[int | None, typer.Option("--max-retries")] = None,
+    max_pages: Annotated[int | None, typer.Option("--max-pages")] = None,
+    max_estimated_cost_usd: Annotated[
+        float | None, typer.Option("--max-estimated-cost-usd")
+    ] = None,
+    as_json: _JSON = False,
+    workspace: _WS = None,
+    user_scope: _USER_SCOPE = False,
+) -> None:
+    """Collect one window from a cloudwatch/api-gateway source.
+
+    STS identity is verified first; every egress is budgeted; the run
+    writes a redacted receipt under `receipts/` and ingests through the
+    existing pipeline (idempotent — re-collecting a window dedups).
+    """
+    from api_sentinel.integrations.aws.budgets import AwsCollectBudget
+    from api_sentinel.integrations.aws.collect import CollectAwsSource
+
+    try:
+        window_seconds = parse_duration_seconds(window)
+    except ValueError as exc:
+        raise ValidationError(str(exc)) from exc
+    ws = _ws(workspace, user_scope)
+    ensure_workspace(ws)
+    uow = _uow(ws)
+    clock = SystemClock()
+    with uow:
+        source = uow.sources.get(source_id)
+        if source is None:
+            raise NotFoundError(f"telemetry source not found: {source_id}")
+    # credential-shaped config keys are refused BEFORE any session work —
+    # the environment holds credentials, never Sentinel config
+    session_config = AwsSessionConfig.from_source_config(source.config)
+    # anchor the lab scenario at the window end so `--end` makes a
+    # simulated re-collection deterministic (same window → same points
+    # → pipeline dedup), never a moving wall-clock
+    window_end = _parse_dt(end, "--end") if end else clock.now()
+    clients = _aws_clients(
+        simulate=simulate,
+        session_config=session_config,
+        now=window_end,
+    )
+    budget = AwsCollectBudget.from_source_config(
+        source.config,
+        overrides={
+            "max_calls_per_cycle": max_calls,
+            "max_datapoints": max_datapoints,
+            "max_lookback_minutes": max_lookback_minutes,
+            "max_runtime_seconds": max_runtime_seconds,
+            "max_retries": max_retries,
+            "max_pages_per_call": max_pages,
+            "max_estimated_cost_usd": max_estimated_cost_usd,
+        },
+    )
+    report = CollectAwsSource(uow, clock, UlidIdFactory()).execute(
+        source=source,
+        clients=clients,
+        budget=budget,
+        window_seconds=window_seconds,
+        end=window_end if end else None,
+        resume=resume,
+        receipts_dir=ws.receipts_dir,
+    )
+    _emit(report.model_dump(mode="json"), as_json)
+
+
+@aws_app.command("discover")
+def aws_discover(
+    profile: Annotated[
+        str | None, typer.Option("--profile", help="AWS profile name")
+    ] = None,
+    region: Annotated[
+        str | None, typer.Option("--region", help="Region scope")
+    ] = None,
+    account_id: Annotated[
+        str | None,
+        typer.Option("--account-id", help="Expected 12-digit account id"),
+    ] = None,
+    role_arn: Annotated[
+        str | None, typer.Option("--role-arn", help="Role to assume first")
+    ] = None,
+    simulate: Annotated[
+        str | None,
+        typer.Option(
+            "--simulate",
+            help="LAB-ONLY: canned offline transport scenario",
+        ),
+    ] = None,
+    as_json: _JSON = False,
+    workspace: _WS = None,
+    user_scope: _USER_SCOPE = False,
+) -> None:
+    """Verify identity and list REST + HTTP APIs — no collection."""
+    from api_sentinel.integrations.aws.apigateway import discover_gateways
+    from api_sentinel.integrations.aws.budgets import (
+        AwsCollectBudget,
+        BudgetMeter,
+        JitteredBackoff,
+    )
+    from api_sentinel.integrations.aws.identities import verify_identity
+
+    clock = SystemClock()
+    session_config = AwsSessionConfig(
+        profile=profile,
+        region=region,
+        role_arn=role_arn,
+        expected_account_id=account_id,
+    )
+    clients = _aws_clients(
+        simulate=simulate,
+        session_config=session_config,
+        now=clock.now(),
+    )
+    identity = verify_identity(
+        clients.sts,
+        region=clients.region,
+        expected_account_id=account_id,
+        expected_region=region,
+    )
+    budget = AwsCollectBudget()
+    meter = BudgetMeter(budget)
+    inventory = discover_gateways(
+        clients.apigateway,
+        clients.apigatewayv2,
+        meter=meter,
+        backoff=JitteredBackoff(),
+        budget=budget,
+        detailed_metrics=False,
+    )
+    _emit(
+        {
+            "account_masked": identity.masked_account,
+            "account_hash": identity.account_digest,
+            "region": identity.region,
+            "endpoints": [e.model_dump(mode="json") for e in inventory.endpoints],
+            "unknowns": inventory.unknowns,
+            "calls": meter.calls,
+        },
+        as_json,
+    )
 
 
 def _is_loopback(host: str) -> bool:

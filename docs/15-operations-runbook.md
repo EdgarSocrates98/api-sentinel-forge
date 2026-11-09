@@ -107,6 +107,103 @@ receipts or the `blobs/` store.
 A telemetry gap is **not** an outage; a missing source never produces
 fabricated positive health (§24.1 failure strategy).
 
+## AWS read-only observability (Cycle 7, opt-in)
+
+The `aws` extra (`pip install api-sentinel-forge[aws]` → boto3) adds a
+read-only CloudWatch/API Gateway connector. The domain core never sees
+AWS; the adapter emits standard `RuntimeObservation` envelopes into the
+existing ingestion pipeline.
+
+### Credentials — held by the environment, never by the Sentinel
+
+Session resolution order: `--profile`/`config profile` → `config
+role_arn` (assumed via STS) → the AWS default credential chain
+(SSO/Identity Center, env vars, workload identity). Secret-shaped keys
+(`aws_access_key_id`, `aws_secret_access_key`, …) in source config are
+refused **before** any session work — credentials are never embedded,
+persisted or logged.
+
+### Least-privilege IAM permission set
+
+Attach this policy to the read-only principal (replace ACCOUNT/REGION —
+or keep `*` on the resource ARN since the actions are read-only):
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "SentinelIdentity",
+      "Effect": "Allow",
+      "Action": "sts:GetCallerIdentity",
+      "Resource": "*"
+    },
+    {
+      "Sid": "SentinelCloudWatchMetrics",
+      "Effect": "Allow",
+      "Action": ["cloudwatch:GetMetricData", "cloudwatch:ListMetrics"],
+      "Resource": "*",
+      "Condition": {"StringEquals": {"aws:RequestedRegion": "REGION"}}
+    },
+    {
+      "Sid": "SentinelApiGatewayInventory",
+      "Effect": "Allow",
+      "Action": "apigateway:GET",
+      "Resource": [
+        "arn:aws:apigateway:REGION::/restapis",
+        "arn:aws:apigateway:REGION::/restapis/*",
+        "arn:aws:apigateway:REGION::/apis",
+        "arn:aws:apigateway:REGION::/apis/*"
+      ]
+    }
+  ]
+}
+```
+
+No `AdministratorAccess`, no `*` action, no write verb — the adapter's
+`ReadOnlyClient` allowlist (`get_*`/`list_*`/`describe_*`/`query`)
+independently refuses any non-read call before it reaches the
+transport, verified mechanically by `prove_read_only()`.
+
+### Register and collect
+
+```bash
+api-sentinel sources --register cloudwatch --service-id svc_… \
+    --config region=us-east-1 \
+    --config account_id=123456789012 \
+    --config 'queries_json=[{"namespace":"AWS/ApiGateway","metric_name":"Latency","stat":"Average","unit":"Milliseconds","period_seconds":300}]'
+
+api-sentinel aws collect --source-id src_… --window 30m --json
+api-sentinel aws discover --profile obs-readonly --region us-east-1 --json
+```
+
+`kind=api-gateway` sources discover REST **and** HTTP APIs (stages,
+opt-in per-route detail via `detailed_metrics=true` — cost-bearing and
+bounded by `budget.max_detailed_routes_per_api`).
+
+### Budgets
+
+Every egress knob is configurable per source (`--config
+budget.<knob>=value`) or per run (`--max-*` flags):
+`max_metrics_per_query`, `max_datapoints`, `max_lookback_minutes`,
+`max_calls_per_cycle`, `max_bytes_processed`, `concurrency` (pinned
+1), `max_runtime_seconds`, `max_retries`, `max_pages_per_call`,
+`max_stored_bytes`, `max_estimated_cost_usd`. Exhaustion is a named
+refusal or a PARTIAL result with unknowns — never silent truncation.
+
+### Simulated lab (offline, LAB-013)
+
+`--simulate lab013` (or `API_SENTINEL_AWS_SIMULATE=lab013`) injects the
+canned account boundary — throttling ×2 → backoff → 2-page paginated
+result ending in `Messages` (PARTIAL). `throttle-forever` exercises the
+bounded-refusal path. Simulated runs never perform egress; receipts are
+written identically to real runs.
+
+### Homologation
+
+Real-account homologation is pending (no credentials in the dev
+environment); checklist lives in `docs/cycles/cycle-07-report.md`.
+
 ## Upgrade / downgrade policy
 
 Migrations are versioned and applied forward only. Before upgrading:

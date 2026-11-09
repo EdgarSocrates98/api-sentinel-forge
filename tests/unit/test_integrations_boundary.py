@@ -37,11 +37,16 @@ class TestDescribe:
         ):
             assert cap in ids
 
-    def test_declared_caps_heuristic_not_supported(self) -> None:
+    def test_aws_cap_supported_only_when_readonly_proof_passes(self) -> None:
+        from api_sentinel.integrations.aws.client import prove_read_only
+
         m = SentinelBoundary().describe()
         states = {c["id"]: c["state"] for c in m["capabilities"]}
-        # Cycle-7 capabilities are discovered but heuristic — not executable.
-        assert states["api.aws-readonly-observability"] == "heuristic"
+        # Cycle 7: AVAILABLE ⇔ mechanical read-only proof passed (boto3
+        # installed + allowlist enforced); otherwise stays heuristic.
+        passed, _detail = prove_read_only()
+        expected = "supported" if passed else "heuristic"
+        assert states["api.aws-readonly-observability"] == expected
         assert states["api.portal-operations"] == "supported"
         assert states["api.runtime-observation"] == "supported"
 
@@ -60,8 +65,16 @@ class TestCapabilities:
         assert r["status"] in ("ok", "partial")
         ids = {f["id"] for f in r["findings"]}
         assert "api.runtime-observation" in ids
-        # Declared caps surface as unknowns — honest, not executable.
-        assert any("api.aws-readonly-observability" in u for u in r["unknowns"])
+        assert "api.aws-readonly-observability" in ids
+        # Declared caps still surface as unknowns — honest, not executable.
+        # AWS is DECLARED only while the read-only proof fails.
+        from api_sentinel.integrations.aws.client import prove_read_only
+
+        passed, _detail = prove_read_only()
+        if not passed:
+            assert any(
+                "api.aws-readonly-observability" in u for u in r["unknowns"]
+            )
 
 
 class TestExecute:
@@ -72,8 +85,12 @@ class TestExecute:
         assert resp["status"] == "refused"
         assert resp["error"]["code"] == "APISENT-UNKNOWN-CAPABILITY"
 
-    def test_declared_capability_refused_not_simulated(self) -> None:
-        # api.aws-readonly-observability is DECLARED — discovered but not executable.
+    def test_aws_capability_has_no_forge_routed_action(self) -> None:
+        # Cycle 7: the capability is AVAILABLE (proof-backed), but the
+        # forge seam routes no action for it — collection is CLI-scoped
+        # (`api-sentinel aws collect`), so every action is a named refusal.
+        from api_sentinel.integrations.aws.client import prove_read_only
+
         resp = SentinelBoundary().handle(
             _req(
                 "execute",
@@ -81,7 +98,12 @@ class TestExecute:
             )
         )
         assert resp["status"] == "refused"
-        assert "UNAVAILABLE" in resp["error"]["code"]
+        passed, _detail = prove_read_only()
+        expected = (
+            "APISENT-UNKNOWN-ACTION" if passed
+            else "APISENT-CAPABILITY-UNAVAILABLE"
+        )
+        assert resp["error"]["code"] == expected
 
     def test_unknown_action_refused(self) -> None:
         resp = SentinelBoundary().handle(

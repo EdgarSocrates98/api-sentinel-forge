@@ -287,10 +287,16 @@ class TestSentinelEndpoints:
     def test_capabilities_portal_operations_available(
         self, client: TestClient
     ) -> None:
+        from api_sentinel.integrations.aws.client import prove_read_only
+
         body = client.get("/v1/capabilities").json()
         caps = {c["capability_id"]: c["status"] for c in body["capabilities"]}
         assert caps["api.portal-operations"] == "available"
-        assert caps["api.aws-readonly-observability"] == "declared"
+        # Cycle 7: AVAILABLE ⇔ the mechanical read-only proof passed.
+        passed, _detail = prove_read_only()
+        assert caps["api.aws-readonly-observability"] == (
+            "available" if passed else "declared"
+        )
 
     def test_integrations_status_named_states(self, client: TestClient) -> None:
         body = client.get("/v1/integrations/status").json()

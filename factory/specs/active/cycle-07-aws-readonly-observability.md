@@ -24,38 +24,41 @@ states)._
 
 # Acceptance Criteria
 
-- [ ] AWS profile/role discovery uses existing profiles and temporary
+- [x] AWS profile/role discovery uses existing profiles and temporary
   credentials; IAM Identity Center/SSO or workload credentials preferred;
   identity is verified before any collection; account and region scope is
   explicit.
-- [ ] CloudWatch Metrics adapter supports `GetMetricData` with multiple
+- [x] CloudWatch Metrics adapter supports `GetMetricData` with multiple
   queries, `NextToken` pagination, quotas and partial results — a response
   is never assumed to contain the whole requested window.
-- [ ] API Gateway discovery covers REST and HTTP APIs; `Count`, `4xx`,
+- [x] API Gateway discovery covers REST and HTTP APIs; `Count`, `4xx`,
   `5xx`, `Latency` and `IntegrationLatency` are mapped to observations;
   per-route detailed metrics are flagged as opt-in and cost-bearing.
-- [ ] Collection checkpoints per source/account/region allow resuming
+- [x] Collection checkpoints per source/account/region allow resuming
   without re-fetching or duplicating points.
-- [ ] Query budgets are configurable on every knob from the cost model:
+- [x] Query budgets are configurable on every knob from the cost model:
   metrics per query, datapoints, retrospective window, collection
   frequency, max calls per cycle, max bytes processed, concurrency, max
   runtime, retries, stored volume and estimated financial budget.
-- [ ] Throttling responses are handled with bounded backoff; LAB-013 proves
+- [x] Throttling responses are handled with bounded backoff; LAB-013 proves
   backoff, pagination and budget enforcement under simulated throttling.
-- [ ] Retries carry jitter and are capped by the configured budget.
-- [ ] Pagination is handled completely on every list/metrics API used.
-- [ ] Documented least-privilege IAM permission set; no `AdministratorAccess`,
+- [x] Retries carry jitter and are capped by the configured budget.
+- [x] Pagination is handled completely on every list/metrics API used.
+- [x] Documented least-privilege IAM permission set; no `AdministratorAccess`,
   no permanent access keys required; adapter code paths contain zero
   resource-mutating AWS calls (verified by test/scan).
-- [ ] Collected data passes redaction before persistence; audit logs never
+- [x] Collected data passes redaction before persistence; audit logs never
   contain credentials.
-- [ ] Cost indicators: each collection run reports measurable API usage and
+- [x] Cost indicators: each collection run reports measurable API usage and
   an estimated cost figure.
 - [ ] Sandbox lab runs against simulated AWS APIs covering throttling,
   pagination and partial results; an authorized real test-account
   homologation is performed and recorded separately from the simulated
   suite.
-- [ ] Read-only verification: a test proves no mutating AWS API call is ever
+  (simulated suite green — `lab013`/`throttle-forever` canned boundary;
+  real-account homologation pending, no credentials in the dev
+  environment — checklist in `docs/cycles/cycle-07-report.md`)
+- [x] Read-only verification: a test proves no mutating AWS API call is ever
   issued on any code path (no resource mutation, verifiably).
 
 # Constraints
