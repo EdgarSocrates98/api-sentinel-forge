@@ -111,6 +111,13 @@ plugins = ["pydantic.mypy"]
 module = ["boto3", "boto3.*", "botocore", "botocore.*"]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+# forge_doctor_api is an optional peer integration (editable install
+# only where the real seam is exercised); imports stay inside guarded
+# methods — absent in CI by design, same pattern as boto3 above.
+module = ["forge_doctor_api", "forge_doctor_api.*"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 markers = ["slow: heavyweight integration tests (clean venv etc.)"]
 testpaths = ["tests"]
