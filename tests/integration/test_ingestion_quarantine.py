@@ -4,12 +4,11 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 
-from conftest import seed_service_and_source
-
 from api_sentinel.domain import FixedClock, SequentialIdFactory
 from api_sentinel.infrastructure.security import MASK, redact
 from api_sentinel.infrastructure.storage import SqliteUnitOfWork
 from api_sentinel.ingestion import IngestionPipeline, IngestionPolicy
+from conftest import seed_service_and_source
 
 NOW = datetime(2026, 1, 1, 0, 10, tzinfo=UTC)
 

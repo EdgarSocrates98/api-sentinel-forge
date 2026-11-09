@@ -11,7 +11,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-from conftest import seed_service_and_source
 from typer.testing import CliRunner
 
 from api_sentinel.application.use_cases import (
@@ -31,6 +30,7 @@ from api_sentinel.infrastructure.security import redact
 from api_sentinel.infrastructure.storage import SqliteUnitOfWork
 from api_sentinel.ingestion import IngestionPipeline
 from api_sentinel.reliability import AssessmentState, HealthState
+from conftest import seed_service_and_source
 
 FIXTURE = (
     Path(__file__).resolve().parents[2] / "lab" / "fixtures" / "lab-001-elevated-latency.jsonl"

@@ -29,41 +29,41 @@ cycle-08-agentic-investigation-change._
 
 # Acceptance Criteria
 
-- [ ] Scale benchmark executed on target hardware with throughput, memory
+- [x] Scale benchmark executed on target hardware with throughput, memory
   and time measured and recorded under `factory/runs/` — numbers are
   documented, no artificial threshold is invented.
-- [ ] Performance and retention: the configurable retention policy
+- [x] Performance and retention: the configurable retention policy
   (ADR-015) is enforced and verified; performance stays within measured
   budgets on the benchmark corpus.
-- [ ] Recovery and backup: a documented backup/restore procedure passes a
+- [x] Recovery and backup: a documented backup/restore procedure passes a
   restore scenario — LAB-014 proves state and history stay consistent
   across restart.
-- [ ] Authentication/authorization verification: the capability permission
+- [x] Authentication/authorization verification: the capability permission
   model is exercised — LAB-016 proves an unauthorized principal is denied
   without information leakage.
-- [ ] Connectors under partial failure: each integration is degraded
+- [x] Connectors under partial failure: each integration is degraded
   independently (Doctor down, Atlas down, Portal down, Bridge down,
   telemetry source down) and the documented failure-strategy behavior is
   verified — the Sentinel is never a global point of failure.
-- [ ] Self-observability: the Sentinel exposes its own operational
+- [x] Self-observability: the Sentinel exposes its own operational
   indicators (ingestion lag, quarantine size, storage health, connector
   states).
-- [ ] Threat model re-evaluated against the shipped surface;
+- [x] Threat model re-evaluated against the shipped surface;
   `docs/07-security-threat-model.md` is updated and residual risks are
   recorded.
-- [ ] Multiplatform CI: the suite runs on Windows and Linux across the
+- [x] Multiplatform CI: the suite runs on Windows and Linux across the
   supported shells and packaging paths.
-- [ ] Release candidates: an RC process produces tagged candidates with
+- [x] Release candidates: an RC process produces tagged candidates with
   smoke gates (`api-sentinel doctor` green post-install).
-- [ ] Documentation and onboarding are complete: install → first
+- [x] Documentation and onboarding are complete: install → first
   investigation journey documented per the §26 documentation set.
-- [ ] Operational runbooks exist for backup/restore, connector failure,
+- [x] Operational runbooks exist for backup/restore, connector failure,
   quarantine triage and budget exhaustion.
-- [ ] Safe upgrade/downgrade: versioned migrations are tested in both
+- [x] Safe upgrade/downgrade: versioned migrations are tested in both
   directions on real workspaces; irreversible steps are documented.
-- [ ] Contract version compatibility: a producer/consumer compatibility
+- [x] Contract version compatibility: a producer/consumer compatibility
   matrix for `api-sentinel/<Name>/v1` envelopes is approved.
-- [ ] Offline functionality verified: the suite runs with network blocked
+- [x] Offline functionality verified: the suite runs with network blocked
   except declared connector tests.
 
 # Constraints

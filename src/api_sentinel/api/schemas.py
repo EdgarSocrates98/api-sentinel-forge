@@ -64,6 +64,11 @@ class HealthResponse(Envelope):
     `state` is `AVAILABLE` only when the workspace store is initialized and
     the database is present; a missing database is `PARTIAL` (the process
     serves, the data layer is uninitialized) — never a fabricated score.
+
+    `sentinel` (Cycle 9, additive): live self-observability indicators —
+    table counts, db size/integrity, observation span, source staleness,
+    quarantine depth, checkpoint freshness — computed at read time from the
+    store; an absent store yields the `unavailable` sub-state, not zeros.
     """
 
     state: str  # AVAILABLE | PARTIAL
@@ -71,6 +76,7 @@ class HealthResponse(Envelope):
     workspace_initialized: bool
     database: str  # present | absent
     capabilities: dict[str, int] = Field(default_factory=dict)
+    sentinel: dict[str, Any] = Field(default_factory=dict)
 
 
 class CapabilitiesResponse(Envelope):

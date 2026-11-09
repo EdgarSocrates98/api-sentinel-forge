@@ -1,6 +1,6 @@
 """`/v1/health` + `/v1/capabilities` — the Sentinel's own honest state."""
 
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends
 
@@ -20,8 +20,17 @@ router = APIRouter(tags=["sentinel"])
 def health(ctx: Annotated[ApiContext, Depends(get_ctx)]) -> HealthResponse:
     """Process/workspace self-report — `PARTIAL`, never fiction, when the
     database is absent; a global "health 87%" score does not exist."""
+    from api_sentinel.operations.health import sentinel_health
+
     db_present = ctx.workspace.db_path.is_file()
     unknowns = [] if db_present else ["database_absent"]
+    sentinel: dict[str, Any] = {}
+    if db_present:
+        try:
+            sentinel = sentinel_health(ctx.workspace, now=ctx.clock.now())
+        except Exception:  # self-observability degrades honestly too
+            sentinel = {"state": "unavailable"}
+            unknowns.append("self_observability_failed")
     return HealthResponse(
         state="AVAILABLE" if db_present else "PARTIAL",
         version=__version__,
@@ -35,6 +44,7 @@ def health(ctx: Annotated[ApiContext, Depends(get_ctx)]) -> HealthResponse:
                 1 for c in list_capabilities() if c.status.value == "declared"
             ),
         },
+        sentinel=sentinel,
         unknowns=unknowns,
     )
 

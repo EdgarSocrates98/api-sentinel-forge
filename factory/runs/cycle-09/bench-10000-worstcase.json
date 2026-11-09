@@ -1,0 +1,18 @@
+{
+  "accepted": 10000,
+  "chunk": 5000,
+  "chunk_seconds": [
+    3.556,
+    6.137
+  ],
+  "db_size_bytes": 9383936,
+  "db_size_mib": 8.95,
+  "elapsed_seconds": 10.761,
+  "n": 10000,
+  "observations_per_second": 929.3,
+  "platform": "win32",
+  "python": "3.12.13",
+  "stored": 10000,
+  "tracemalloc_peak_mib": 48.02,
+  "wal_size_bytes": 0
+}

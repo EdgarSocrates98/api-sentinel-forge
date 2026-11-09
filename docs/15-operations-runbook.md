@@ -59,20 +59,120 @@ api-sentinel incident show INC-001         # detail: status, hypotheses, evidenc
 
 ## Backup & restore
 
-```bash
-# backup (database + evidence)
-sqlite3 .api-sentinel/sentinel.db ".backup backup/sentinel-$(date +%Y%m%d).db"
-cp -r .api-sentinel/blobs backup/blobs/
+The `backup` command group (Cycle 9) produces verifiable snapshots: a
+consistent `.backup`-API copy of `sentinel.db`, the `blobs/` content-
+addressed store, `config.yaml`, and a `manifest.json` recording app
+version, per-table row counts, SHA-256 checksums and the snapshot time.
 
-# restore
-cp backup/sentinel-YYYYMMDD.db .api-sentinel/sentinel.db
-cp -r backup/blobs/ .api-sentinel/blobs/
+```bash
+# create a verified snapshot under <workspace>/backups/
+api-sentinel backup create --workspace .api-sentinel --json
+
+# restore — refuses while live data exists
+api-sentinel backup restore --from <workspace>/backups/backup-<ts> \
+    --workspace .api-sentinel
+
+# restore over a live workspace — the live files are MOVED ASIDE
+# (sentinel.db.prerestore-<ts>), never silently deleted
+api-sentinel backup restore --from <backup-dir> --workspace .api-sentinel --force
 ```
 
-Restore the DB **and** the blob directory together — evidence rows
-reference blob hashes, so a DB without its blobs yields unverifiable
-references. Backup/restore is a tested path (Cycle 9 gate); run it
-before any upgrade that carries migrations.
+Restore verifies every manifest checksum before touching the workspace
+(`integrity: ok` in the report) and runs `PRAGMA integrity_check` +
+`foreign_key_check` on the restored database. A checksum mismatch aborts
+the restore without writing. Restore the DB **and** the blob directory
+together — evidence rows reference blob hashes, so a DB without its
+blobs yields unverifiable references.
+
+The full recovery path (backup → corrupt/delete → restore → identical
+service/source/evidence/query state) is proven by LAB-014
+(`tests/integration/test_backup_restore.py`). Run a backup before any
+upgrade that carries migrations.
+
+## Retention
+
+Retention enforces the docs/10 policy through `api-sentinel retention`.
+It is **dry-run by default** — candidates are counted and reported,
+nothing is deleted — and journals a receipt under `receipts/` plus an
+`operations.retention` audit row when applied.
+
+```bash
+# preview the policy decision (exit 0, "apply": false)
+api-sentinel retention --workspace .api-sentinel --json
+
+# apply deletions, receipt + audit row written
+api-sentinel retention --workspace .api-sentinel --apply --json
+
+# per-tier overrides (also configurable in config.yaml under `retention:`)
+api-sentinel retention --apply --observations-days 14 --incidents-days 365
+```
+
+Policy tiers (docs/10): detailed observations 7d, 1-minute-class
+aggregates 30d, hourly-class 90d, quarantine 30d, terminal incidents
+180d, evidence 180d, audit events **never** auto-purged unless
+`--audit-days` is passed explicitly.
+
+The hard rule (ADR-015): evidence referenced by a live incident,
+anomaly, investigation or dependency observation is **never** deleted —
+protection follows the reference, not the age. Evidence owned by a
+*purged* incident loses protection with its incident. Orphan `blobs/`
+files with no evidence row are reported (`orphan_blob_files`), never
+silently dropped. Proven by `tests/integration/test_retention.py`.
+
+## Connector-failure triage
+
+Every integration reports a named state — `AVAILABLE`, `UNAVAILABLE`,
+`UNVERIFIED` — never simulated success (`api-sentinel integrations`,
+`api-sentinel doctor --json`, `/v1/health`).
+
+| Symptom | First checks |
+| --- | --- |
+| `code-atlas-forge: unavailable` | `integrations.atlas.export` set in `config.yaml`? file readable? |
+| `forge-lens: unavailable` | `forge_lens` importable? `integrations.lens.refs` exported manifest path valid? |
+| `forge-doctor-api: unverified` | handoff mode: envelope emitted under `handoffs/` — is the peer running? |
+| `forge-agent-bridge: unverified` | `forge_agent_bridge` importable? `agent_sessions/` envelopes pending? |
+| `aws` errors | `api-sentinel aws` receipts under `receipts/` record the named failure |
+
+Core query/detect/incident surfaces stay available through every
+integration failure — proven by the degradation matrix
+(`tests/integration/test_degradation_matrix.py`). A telemetry gap
+produces `UNVERIFIED`/`UNKNOWN`, never fabricated health.
+
+## Quarantine triage
+
+Items that fail validation land in `ingestion_quarantine` — bounded,
+redacted, never silently dropped. Check depth via `api-sentinel doctor
+--json` (`sentinel.quarantine.depth`) or `/v1/health`.
+
+```bash
+# inspect quarantined entries (reason, batch, truncated flag)
+sqlite3 .api-sentinel/sentinel.db \
+  "SELECT item_id, batch_id, reason, payload_truncated FROM ingestion_quarantine;"
+
+# drain via retention once diagnosed (default 30d tier)
+api-sentinel retention --apply --quarantine-days 30 --json
+```
+
+A growing quarantine depth means the producer is shipping malformed or
+oversized envelopes — check `reason` (schema violation vs size bound)
+before touching the source.
+
+## Budget exhaustion
+
+Bounded refusal is the design contract: oversized batches, quarantine
+payloads and connector calls refuse deterministically rather than
+degrading silently.
+
+| Budget | Where | Exhaustion behavior |
+| --- | --- | --- |
+| `max_batch_bytes` | ingest policy | `sentinel.validation` error, batch refused |
+| quarantine payload bytes | ingest policy | payload truncated + `payload_truncated` flag |
+| AWS calls/pages | `aws` connector budgets | named failure (`throttled`, `budget_exhausted`) in receipt |
+| investigation time | `budget_seconds` constraint | hypothesis set returns with `budget_exhausted` marker |
+
+Check `api-sentinel doctor --json` → `sentinel` for storage size,
+oldest/newest observation and per-source staleness before raising a
+budget; retention (`above`) is the correct lever for storage growth.
 
 ## Corrupt-database recovery
 
@@ -206,6 +306,29 @@ environment); checklist lives in `docs/cycles/cycle-07-report.md`.
 
 ## Upgrade / downgrade policy
 
-Migrations are versioned and applied forward only. Before upgrading:
-backup. Before downgrading: **restore the pre-upgrade backup** — running
-an older binary against a newer schema is unsupported.
+Migrations are versioned, checksum-recorded (`schema_migrations`) and
+applied forward only — Cycle 9 verified apply-once behavior on a
+populated workspace (`tests/integration/test_storage.py`) and a full
+backup/restore round-trip on populated state (LAB-014).
+
+Before upgrading: `api-sentinel backup create`. Before downgrading:
+**restore the pre-upgrade backup** (`api-sentinel backup restore
+--force`) — running an older binary against a newer schema is
+unsupported, and no reverse migrations exist. The irreversible step is
+the schema migration itself; that is why the pre-upgrade backup is the
+documented rollback path, not a `--downgrade` flag.
+
+## Continuous verification
+
+`.github/workflows/ci.yml` (Cycle 9) gates every push/PR on
+Windows + Linux × Python 3.12 through the same local checks:
+`ruff check .`, `mypy src`, `pytest -q`, `uv build`, and a post-install
+`api-sentinel doctor` smoke on the built wheel. Local mirror:
+
+```bash
+.venv/Scripts/python.exe -m ruff check .
+.venv/Scripts/python.exe -m mypy src
+.venv/Scripts/python.exe -m pytest -q          # offline: sockets blocked
+.venv/Scripts/python.exe -m pytest -m slow -q  # scale bench gate (opt-in)
+uv build
+```

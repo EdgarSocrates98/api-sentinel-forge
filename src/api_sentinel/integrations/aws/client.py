@@ -249,8 +249,11 @@ def resolve_session(config: AwsSessionConfig) -> tuple[Any, str]:
             "(pip install api-sentinel-forge[aws])",
             details={"install": "api-sentinel-forge[aws]"},
         )
-    import boto3  # type: ignore[import-untyped]  # no shipped stubs; optional extra
-    import botocore.exceptions  # type: ignore[import-untyped]
+    # boto3/botocore ship no stubs; resolved via mypy override in
+    # pyproject.toml ([[tool.mypy.overrides]]) — portable across
+    # platforms where untyped-vs-not-found differs
+    import boto3
+    import botocore.exceptions
 
     try:
         if config.profile:

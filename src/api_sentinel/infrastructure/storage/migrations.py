@@ -8,7 +8,12 @@ import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 
-MIGRATIONS_DIR = Path(__file__).resolve().parents[4] / "migrations"
+from api_sentinel.domain import StorageError
+
+# Inside the package so wheels carry the SQL — a repo-root `migrations/`
+# dir is sdist-only and made installed `install` produce table-less dbs
+# (Cycle 9 packaging fix; caught by the post-install doctor smoke gate).
+MIGRATIONS_DIR = Path(__file__).resolve().parents[2] / "migrations"
 _MIGRATION_RE = re.compile(r"^(\d{4})_.*\.sql$")
 
 
@@ -32,9 +37,17 @@ def applied_versions(conn: sqlite3.Connection) -> set[int]:
 
 def migrate(conn: sqlite3.Connection, migrations_dir: Path | None = None) -> list[int]:
     """Apply pending migrations; returns versions applied this call."""
+    found = discover(migrations_dir)
+    if not found:
+        # zero files discovered is a packaging/config bug, not "nothing to
+        # do" — fail loudly instead of leaving a table-less db
+        raise StorageError(
+            f"no migration files discovered under "
+            f"{(migrations_dir or MIGRATIONS_DIR)}"
+        )
     applied = applied_versions(conn)
     now_applied: list[int] = []
-    for version, name, path in discover(migrations_dir):
+    for version, name, path in found:
         if version in applied:
             continue
         sql = path.read_text(encoding="utf-8")

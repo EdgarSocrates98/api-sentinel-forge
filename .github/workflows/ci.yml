@@ -1,0 +1,68 @@
+# Cycle 9 — multiplatform CI gate (docs/16 compatibility matrix).
+#
+# Windows + Linux, Python 3.12, uv-managed env. Runs the same local gates a
+# release candidate must pass: pytest -q, ruff, mypy src, and a packaging
+# build. No secrets — every test is offline; connector egress is declared in
+# tests via the socket guard in tests/conftest.py.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    name: ${{ matrix.os }} / py${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+        python: ["3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Set up Python ${{ matrix.python }}
+        run: uv python install ${{ matrix.python }}
+
+      - name: Sync dependencies (locked, all extras)
+        # --all-extras: mypy src must see boto3/botocore (aws extra) and
+        # mcp; the dev group alone leaves botocore unresolvable.
+        run: uv sync --locked --all-extras --python ${{ matrix.python }}
+
+      - name: Ruff
+        run: uv run ruff check .
+
+      - name: Mypy
+        run: uv run mypy src
+
+      - name: Tests (offline suite)
+        run: uv run pytest -q
+
+      - name: Build wheel + sdist
+        run: uv build
+
+      - name: Post-install doctor smoke gate
+        shell: bash
+        run: |
+          WHEEL=$(ls dist/*.whl | head -1)
+          uv venv .smoke-venv --python ${{ matrix.python }}
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            PY=.smoke-venv/Scripts/python.exe
+            BIN=.smoke-venv/Scripts/api-sentinel.exe
+          else
+            PY=.smoke-venv/bin/python
+            BIN=.smoke-venv/bin/api-sentinel
+          fi
+          uv pip install --python "$PY" --quiet "$WHEEL[api]"
+          "$BIN" install -y --workspace .smoke-ws --json
+          "$BIN" doctor --workspace .smoke-ws --json | tee doctor.json
+          "$BIN" doctor --workspace .smoke-ws --json \
+            | grep -q '"workspace_initialized": true'

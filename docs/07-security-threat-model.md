@@ -81,3 +81,43 @@ conformity depends on the installing organization.
 - Single-user local operator; multi-user authz is Cycle 9.
 - Local HTTP binds to localhost by default.
 - Agent data channels are firewalled from instructions by adapter design.
+
+## Cycle-9 delta — newly exposed surfaces, re-evaluated
+
+Cycle 9 hardened the release candidate without adding product surface,
+but Cycles 6–8 landed surfaces this threat model's "single-user local
+operator" assumption did not fully cover. The delta below is appended,
+not rewritten into history.
+
+### New entry points
+
+| Surface | Entry point | Mitigations in place | Residual risk |
+| --- | --- | --- | --- |
+| `api-sentinel serve` (FastAPI) | local HTTP on loopback | binds `127.0.0.1` by default; `--allow-remote` is explicit and audited; every request requires a declared `X-Sentinel-Role` | **medium**: the role header is a documented placeholder — bearer-less, no signature. Acceptable on loopback with a local trusted operator; NOT sufficient if `--allow-remote` is used on a hostile network. Recorded: real authn/z is deferred to a post-RC cycle with an explicit design decision. |
+| AWS connector (Cycle 7) | cloud egress + credentials | credentials held by environment only, never by the Sentinel; read-only scope documented; egress declared in tests via the socket guard; simulated path egress-free | **low–medium**: `--allow-remote`-style misuse is impossible (connector egress is scoped to AWS endpoints), but real-account homologation is still pending — least-privilege IAM guidance is written, not yet exercised against a live account. |
+| `agent_sessions/` handoff dir | Bridge session envelopes | workspace-local files; peer never writes into the Sentinel; requests are approval-gated before any action | **low**: an envelope is data, not instruction — the instruction/data firewall assumption now has a concrete carrier; adapters must keep it that way. |
+| `backup` / `restore` / `retention` CLI | file-system writes + deletes | restore refuses live overwrite without `--force` and moves replaced files aside; retention is dry-run by default; evidence protection (ADR-015) proven by test; receipts + `operations.*` audit rows journal every applied operation | **low**: `--force` and `--apply` are operator foot-guns by design (explicit flags), audited but not interactive-confirmed. |
+
+### Verified this cycle (was assumption, now evidence)
+
+- Denials precede resource lookup — no existence leakage — and emit
+  `api.scope.denied` audit rows (`tests/integration/test_authz_matrix.py`,
+  LAB-016).
+- The full test suite runs with non-loopback sockets hard-blocked
+  (`tests/conftest.py`) — the offline claim is now mechanical, not
+  documented intent.
+- Retention deletion paths were re-audited: evidence referenced by live
+  incidents/anomalies/investigations is never a deletion candidate
+  (`tests/integration/test_retention.py`) — zero silent evidence loss.
+
+### Residual risks accepted for the RC
+
+1. `X-Sentinel-Role` placeholder auth — loopback-only trust model;
+   `--allow-remote` shifts the burden to the deployer. Tracked for a
+   dedicated authz cycle.
+2. Real AWS-account homologation not executed (no credentials in dev) —
+   checklist in `docs/cycles/cycle-07-report.md`.
+3. Live Bridge/Doctor/Lens peer round-trips unverified — handoff-file
+   transport emits envelopes; peer consumption is out of local scope.
+4. Binary-version downgrade is intentionally unsupported — restore
+   from backup is the rollback path (docs/15).

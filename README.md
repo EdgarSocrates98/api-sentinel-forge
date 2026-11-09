@@ -59,7 +59,7 @@ api-sentinel serve                        # local HTTP API for the Portal
 ```
 src/api_sentinel/   core package (domain / application / infrastructure / contracts / cli)
 contracts/v1/       versioned JSON Schemas of the public envelopes
-migrations/         versioned SQLite migrations
+src/api_sentinel/migrations/  versioned SQLite migrations (packaged)
 docs/               Cycle-0 canonical set + ADRs + cycle plans
 factory/specs/      queued specs for Cycles 2–9 (loop-factory format)
 tests/              unit / contract / integration / security / e2e / fixtures

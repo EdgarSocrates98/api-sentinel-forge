@@ -98,6 +98,12 @@ aws_app = typer.Typer(
     no_args_is_help=True,
 )
 app.add_typer(aws_app, name="aws")
+backup_app = typer.Typer(
+    name="backup",
+    help="Workspace backup/restore: verifiable snapshots (Cycle 9).",
+    no_args_is_help=True,
+)
+app.add_typer(backup_app, name="backup")
 
 _JSON = Annotated[bool, typer.Option("--json", help="Emit machine-readable JSON")]
 _WS = Annotated[str | None, typer.Option("--workspace", help="Explicit workspace root")]
@@ -187,6 +193,9 @@ def doctor(
         report["integrations"] = integration_status(
             atlas_manifest=_atlas_path(config, ws)
         )
+    from api_sentinel.operations.health import sentinel_health
+
+    report["sentinel"] = sentinel_health(ws, now=SystemClock().now())
     _emit(report, as_json)
 
 
@@ -1534,6 +1543,136 @@ def aws_discover(
         },
         as_json,
     )
+
+
+@backup_app.command("create")
+def backup_create(
+    dest: Annotated[
+        str | None,
+        typer.Option("--dest", help="Backup parent dir (default: <ws>/backups)"),
+    ] = None,
+    as_json: _JSON = False,
+    workspace: _WS = None,
+    user_scope: _USER_SCOPE = False,
+) -> None:
+    """Verifiable workspace snapshot: db (.backup) + blobs + manifest."""
+    from api_sentinel.operations.backup import create_backup
+
+    ws = _ws(workspace, user_scope)
+    result = create_backup(
+        ws,
+        dest_parent=Path(dest) if dest else None,
+        clock=SystemClock(),
+        ids=UlidIdFactory(),
+    )
+    _emit(
+        {"backup_dir": str(result.backup_dir), "manifest": result.manifest},
+        as_json,
+    )
+
+
+@backup_app.command("restore")
+def backup_restore(
+    from_dir: Annotated[
+        Path, typer.Option("--from", help="Backup directory to restore")
+    ],
+    force: Annotated[
+        bool,
+        typer.Option("--force", help="Replace a live workspace (moved aside)"),
+    ] = False,
+    as_json: _JSON = False,
+    workspace: _WS = None,
+    user_scope: _USER_SCOPE = False,
+) -> None:
+    """Restore a verified backup; refuses to overwrite live data w/o --force."""
+    from api_sentinel.operations.backup import restore_backup
+
+    ws = _ws(workspace, user_scope)
+    result = restore_backup(
+        from_dir,
+        ws,
+        force=force,
+        clock=SystemClock(),
+        ids=UlidIdFactory(),
+    )
+    _emit(
+        {
+            "backup_dir": str(result.backup_dir),
+            "replaced_paths": [str(p) for p in result.replaced_paths],
+            "blobs_restored": result.blobs_restored,
+            "integrity": result.integrity,
+        },
+        as_json,
+    )
+
+
+@app.command()
+def retention(
+    apply: Annotated[
+        bool,
+        typer.Option("--apply", help="Execute deletions (default: dry-run)"),
+    ] = False,
+    observations_days: Annotated[
+        int | None,
+        typer.Option("--observations-days", help="Detailed-observation tier"),
+    ] = None,
+    minute_days: Annotated[
+        int | None,
+        typer.Option("--minute-days", help="Minute-class observation tier"),
+    ] = None,
+    hourly_days: Annotated[
+        int | None,
+        typer.Option("--hourly-days", help="Hourly-class observation tier"),
+    ] = None,
+    quarantine_days: Annotated[
+        int | None, typer.Option("--quarantine-days")
+    ] = None,
+    incidents_days: Annotated[
+        int | None, typer.Option("--incidents-days")
+    ] = None,
+    evidence_days: Annotated[
+        int | None, typer.Option("--evidence-days")
+    ] = None,
+    audit_days: Annotated[
+        int | None,
+        typer.Option("--audit-days", help="Opt-in audit purge (off by default)"),
+    ] = None,
+    as_json: _JSON = False,
+    workspace: _WS = None,
+    user_scope: _USER_SCOPE = False,
+) -> None:
+    """Retention policy (docs/10, ADR-015) — dry-run by default.
+
+    Evidence referenced by live incidents/anomalies/investigations is never
+    deleted; purged-incident evidence loses protection with its incident.
+    """
+    from api_sentinel.operations.retention import RetentionPolicy, run_retention
+
+    ws = _ws(workspace, user_scope)
+    try:
+        policy = RetentionPolicy.from_config(_load_cfg(ws))
+    except Exception:
+        policy = RetentionPolicy()
+    policy = policy.with_overrides(
+        {
+            "observations_detailed_days": observations_days,
+            "observations_minute_days": minute_days,
+            "observations_hourly_days": hourly_days,
+            "quarantine_days": quarantine_days,
+            "incidents_days": incidents_days,
+            "evidence_days": evidence_days,
+            "audit_days": audit_days,
+        }
+    )
+    report = run_retention(
+        ws,
+        apply=apply,
+        policy=policy,
+        clock=SystemClock(),
+        ids=UlidIdFactory(),
+        receipts_dir=ws.receipts_dir,
+    )
+    _emit(report.to_dict(), as_json)
 
 
 def _is_loopback(host: str) -> bool:

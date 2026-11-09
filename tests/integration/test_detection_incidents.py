@@ -17,7 +17,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-from conftest import seed_service_and_source
 from typer.testing import CliRunner
 
 from api_sentinel.application.use_cases import (
@@ -47,6 +46,7 @@ from api_sentinel.ingestion.models import (
     NormalizedMeasurement,
     NormalizedObservation,
 )
+from conftest import seed_service_and_source
 
 LAB1 = (
     Path(__file__).resolve().parents[2]

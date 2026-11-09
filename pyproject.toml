@@ -74,7 +74,7 @@ path = "src/api_sentinel/__init__.py"
 packages = ["src/api_sentinel"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src", "tests", "contracts", "migrations", "README.md", "CHANGELOG.md", "LICENSE"]
+include = ["src", "tests", "contracts", "README.md", "CHANGELOG.md", "LICENSE"]
 
 [tool.ruff]
 target-version = "py311"
@@ -99,6 +99,13 @@ strict = true
 mypy_path = "src"
 packages = ["api_sentinel"]
 plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+# boto3/botocore ship no py.typed; the error code differs by platform
+# (import-untyped vs import-not-found) — ignore_missing_imports covers
+# both, keeping `mypy src` portable in the Windows/Linux CI matrix.
+module = ["boto3", "boto3.*", "botocore", "botocore.*"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 markers = ["slow: heavyweight integration tests (clean venv etc.)"]
