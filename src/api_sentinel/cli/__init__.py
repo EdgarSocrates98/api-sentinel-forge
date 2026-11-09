@@ -847,6 +847,70 @@ def correlate(
     _emit(report.model_dump(mode="json"), as_json)
 
 
+def _is_loopback(host: str) -> bool:
+    import ipaddress
+
+    if host.strip().lower() == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+@app.command()
+def serve(
+    host: Annotated[
+        str, typer.Option("--host", help="Bind address (loopback only)")
+    ] = "127.0.0.1",
+    port: Annotated[int, typer.Option("--port", help="Bind port")] = 8080,
+    allow_remote: Annotated[
+        bool,
+        typer.Option(
+            "--allow-remote",
+            help="Permit a non-loopback bind (docs/07 requires explicit opt-in)",
+        ),
+    ] = False,
+    workspace: _WS = None,
+    user_scope: _USER_SCOPE = False,
+) -> None:
+    """Serve the local /v1 HTTP surface (docs/04) for the Forge Portal.
+
+    Localhost by default — a non-loopback bind is refused unless
+    `--allow-remote` is passed, and even then it is warned, never silent
+    (docs/07: no internet exposure by default).
+    """
+    if not _is_loopback(host):
+        if not allow_remote:
+            raise ValidationError(
+                f"refusing non-loopback bind: {host!r} — pass --allow-remote "
+                "to opt into remote exposure (docs/07)",
+                details={"host": host},
+            )
+        typer.echo(
+            f"warning: binding {host} beyond loopback — the /v1 surface is "
+            "single-user local with a placeholder role model (Cycle 9 "
+            "authz); do not expose it to untrusted networks",
+            err=True,
+        )
+    try:
+        import uvicorn
+    except ImportError as exc:
+        raise ValidationError(
+            "the 'api' extra is required to serve (fastapi/uvicorn)",
+            details={"install": "pip install api-sentinel-forge[api]"},
+        ) from exc
+    from api_sentinel.api import create_app
+
+    ws = _ws(workspace, user_scope)
+    uvicorn.run(
+        create_app(workspace=ws.root),
+        host=host,
+        port=port,
+        log_level="info",
+    )
+
+
 def _dispatch() -> int:
     """Entry point with domain-error exit-code mapping."""
     try:

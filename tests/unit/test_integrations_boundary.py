@@ -40,8 +40,9 @@ class TestDescribe:
     def test_declared_caps_heuristic_not_supported(self) -> None:
         m = SentinelBoundary().describe()
         states = {c["id"]: c["state"] for c in m["capabilities"]}
-        # Cycle-6/7 capabilities are discovered but heuristic — not executable.
-        assert states["api.portal-operations"] == "heuristic"
+        # Cycle-7 capabilities are discovered but heuristic — not executable.
+        assert states["api.aws-readonly-observability"] == "heuristic"
+        assert states["api.portal-operations"] == "supported"
         assert states["api.runtime-observation"] == "supported"
 
 
@@ -60,7 +61,7 @@ class TestCapabilities:
         ids = {f["id"] for f in r["findings"]}
         assert "api.runtime-observation" in ids
         # Declared caps surface as unknowns — honest, not executable.
-        assert any("api.portal-operations" in u for u in r["unknowns"])
+        assert any("api.aws-readonly-observability" in u for u in r["unknowns"])
 
 
 class TestExecute:
@@ -72,11 +73,11 @@ class TestExecute:
         assert resp["error"]["code"] == "APISENT-UNKNOWN-CAPABILITY"
 
     def test_declared_capability_refused_not_simulated(self) -> None:
-        # api.portal-operations is DECLARED — discovered but not executable.
+        # api.aws-readonly-observability is DECLARED — discovered but not executable.
         resp = SentinelBoundary().handle(
             _req(
                 "execute",
-                {"capability": "api.portal-operations", "action": "list"},
+                {"capability": "api.aws-readonly-observability", "action": "list"},
             )
         )
         assert resp["status"] == "refused"

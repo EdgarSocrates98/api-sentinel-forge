@@ -3,8 +3,10 @@
 from api_sentinel.domain.clock import Clock, FixedClock, SystemClock
 from api_sentinel.domain.errors import (
     CapabilityUnavailableError,
+    ConcurrencyLimitError,
     ConflictError,
     ContractError,
+    ForbiddenError,
     NotFoundError,
     SentinelError,
     StorageError,
@@ -47,6 +49,7 @@ __all__ = [
     "ChangeEvent",
     "ChangeKind",
     "Clock",
+    "ConcurrencyLimitError",
     "ConflictError",
     "ContractError",
     "DependencyObservation",
@@ -55,6 +58,7 @@ __all__ = [
     "ExternalHandoff",
     "ExternalRef",
     "FixedClock",
+    "ForbiddenError",
     "HandoffStatus",
     "IdFactory",
     "IngestionCheckpoint",

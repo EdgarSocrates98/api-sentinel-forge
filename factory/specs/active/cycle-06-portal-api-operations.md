@@ -24,7 +24,7 @@ cycle-05-cross-forge-intelligence (specialist availability states)._
 
 # Acceptance Criteria
 
-- [ ] Local HTTP surface implements the minimum endpoint set:
+- [x] Local HTTP surface implements the minimum endpoint set:
   `/v1/health`, `/v1/capabilities`, `/v1/services`, `/v1/services/{id}`,
   `/v1/services/{id}/operations`, `/v1/services/{id}/metrics`,
   `/v1/services/{id}/slos`, `/v1/ingestion/jobs`,
@@ -32,9 +32,9 @@ cycle-05-cross-forge-intelligence (specialist availability states)._
   `/v1/incidents/{id}`, `/v1/incidents/{id}/timeline`,
   `/v1/incidents/{id}/investigations`, `/v1/investigations/{id}`,
   `/v1/evidence/{id}`, `/v1/integrations/status`.
-- [ ] No generic `/execute`-style endpoint capable of invoking arbitrary
+- [x] No generic `/execute`-style endpoint capable of invoking arbitrary
   commands exists.
-- [ ] Import/investigation initiation has scoped authorization, concurrency
+- [x] Import/investigation initiation has scoped authorization, concurrency
   limits, idempotency, audit records and asynchronous responses where
   appropriate.
 - [ ] Portal shows the list of observed services with coverage indicators
@@ -48,17 +48,17 @@ cycle-05-cross-forge-intelligence (specialist availability states)._
 - [ ] Incident screens list active/historical incidents and render the
   investigation view: timeline, clickable evidence links to each artifact's
   origin, hypotheses with limitations.
-- [ ] Availability states are honest — `AVAILABLE`, `UNAVAILABLE`,
+- [x] Availability states are honest — `AVAILABLE`, `UNAVAILABLE`,
   `PARTIAL`, `UNVERIFIED`; no arbitrary global health score (no "health
   87%") and no fabricated health when a source is missing.
-- [ ] Product Forge experience integration activates only when a proven
+- [x] Product Forge experience integration activates only when a proven
   identity correspondence exists — never on name matching.
-- [ ] Permission model is enforced by capability (Viewer/Analyst/Operator/
+- [x] Permission model is enforced by capability (Viewer/Analyst/Operator/
   Admin per docs/07): unauthorized requests are denied without information
   leakage (LAB-016 groundwork).
 - [ ] Browser E2E proves the journey: a user investigates an API through
   Overview → Service Detail → Investigation without touching the CLI.
-- [ ] Portal down → CLI and local API keep working; Sentinel down states are
+- [x] Portal down → CLI and local API keep working; Sentinel down states are
   shown rather than cached fiction.
 
 # Constraints

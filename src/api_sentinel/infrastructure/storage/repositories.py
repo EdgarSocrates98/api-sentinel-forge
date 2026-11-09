@@ -9,6 +9,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from api_sentinel.application.jobs import (
+    IngestionJob,
+    IngestionJobStatus,
+    Investigation,
+    InvestigationStatus,
+)
 from api_sentinel.application.ports import (
     AnomalyRepository,
     AuditRepository,
@@ -22,7 +28,10 @@ from api_sentinel.application.ports import (
     HandoffRecordRepository,
     IncidentEventRepository,
     IncidentRepository,
+    IngestionJobRepository,
+    InvestigationRepository,
     ObservationRepository,
+    OperationRepository,
     QuarantineRepository,
     ReleaseRepository,
     ServiceRepository,
@@ -30,9 +39,10 @@ from api_sentinel.application.ports import (
     SloDefinitionRepository,
     SourceRepository,
 )
-from api_sentinel.detection.protocol import Anomaly
+from api_sentinel.detection.protocol import Anomaly, AnomalyStatus
 from api_sentinel.detection.registry import DetectionRule
 from api_sentinel.domain import (
+    ApiOperation,
     ApiService,
     AuditEvent,
     ChangeEvent,
@@ -44,6 +54,7 @@ from api_sentinel.domain import (
     HandoffStatus,
     IngestionCheckpoint,
     ObservationBatch,
+    OperationIdentity,
     Provenance,
     QualityState,
     ServiceEnvironment,
@@ -171,6 +182,56 @@ class _SourceRepo:
              s.created_at.isoformat()),
         )
         return s
+
+
+class _OperationRepo:
+    """Declared operation inventory — reads the api_operations table."""
+
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._c = conn
+
+    def _row(self, r: sqlite3.Row) -> ApiOperation:
+        return ApiOperation(
+            operation_id=r["operation_id"],
+            service_id=r["service_id"],
+            identity=OperationIdentity(
+                protocol=r["protocol"], method=r["method"], route=r["route"]
+            ),
+            normalized_route=r["normalized_route"],
+            created_at=datetime.fromisoformat(r["created_at"]),
+        )
+
+    def get(self, operation_id: str) -> ApiOperation | None:
+        r = self._c.execute(
+            "SELECT * FROM api_operations WHERE operation_id=?", (operation_id,)
+        ).fetchone()
+        return self._row(r) if r else None
+
+    def list(self, service_id: str | None = None) -> list[ApiOperation]:
+        if service_id:
+            rows = self._c.execute(
+                "SELECT * FROM api_operations WHERE service_id=?"
+                " ORDER BY operation_id",
+                (service_id,),
+            )
+        else:
+            rows = self._c.execute(
+                "SELECT * FROM api_operations ORDER BY service_id, operation_id"
+            )
+        return [self._row(r) for r in rows]
+
+    def put(self, o: ApiOperation) -> ApiOperation:
+        self._c.execute(
+            "INSERT OR REPLACE INTO api_operations"
+            " (operation_id, service_id, protocol, method, route, normalized_route,"
+            "  created_at) VALUES (?,?,?,?,?,?,?)",
+            (
+                o.operation_id, o.service_id, o.identity.protocol,
+                o.identity.method, o.identity.route, o.normalized_route,
+                o.created_at.isoformat(),
+            ),
+        )
+        return o
 
 
 class _ReleaseRepo:
@@ -731,6 +792,30 @@ class _AnomalyRepo:
         )
         return [self._row(r) for r in rows]
 
+    def list_filtered(
+        self,
+        service_id: str | None = None,
+        status: AnomalyStatus | None = None,
+        limit: int | None = None,
+    ) -> list[Anomaly]:
+        """Feed read — most recent first, optionally bounded."""
+        sql = "SELECT * FROM anomalies"
+        args: list[Any] = []
+        clauses: list[str] = []
+        if service_id is not None:
+            clauses.append("service_id=?")
+            args.append(service_id)
+        if status is not None:
+            clauses.append("status=?")
+            args.append(status.value)
+        if clauses:
+            sql += " WHERE " + " AND ".join(clauses)
+        sql += " ORDER BY detected_at DESC, anomaly_id"
+        if limit is not None:
+            sql += " LIMIT ?"
+            args.append(limit)
+        return [self._row(r) for r in self._c.execute(sql, args).fetchall()]
+
 
 class _IncidentRepo:
     """Current-state rows; `expected_revision` is the concurrency guard."""
@@ -1093,12 +1178,137 @@ class _HandoffRecordRepo:
         return [self._row(r) for r in rows]
 
 
+class _InvestigationRepo:
+    """Investigation audit rows — status/result updates in place."""
+
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._c = conn
+
+    def _row(self, r: sqlite3.Row) -> Investigation:
+        return Investigation(
+            investigation_id=r["investigation_id"],
+            incident_id=r["incident_id"],
+            status=InvestigationStatus(r["status"]),
+            result=json.loads(r["result"]),
+            context_pack=json.loads(r["context_pack"]),
+            idempotency_key=r["idempotency_key"],
+            created_at=datetime.fromisoformat(r["created_at"]),
+            finished_at=(
+                datetime.fromisoformat(r["finished_at"])
+                if r["finished_at"] else None
+            ),
+        )
+
+    def get(self, investigation_id: str) -> Investigation | None:
+        r = self._c.execute(
+            "SELECT * FROM investigations WHERE investigation_id=?",
+            (investigation_id,),
+        ).fetchone()
+        return self._row(r) if r else None
+
+    def get_by_idempotency_key(self, key: str) -> Investigation | None:
+        r = self._c.execute(
+            "SELECT * FROM investigations WHERE idempotency_key=?", (key,)
+        ).fetchone()
+        return self._row(r) if r else None
+
+    def put(self, i: Investigation) -> None:
+        self._c.execute(
+            "INSERT INTO investigations"
+            " (investigation_id, incident_id, status, result, context_pack,"
+            "  idempotency_key, created_at, finished_at)"
+            " VALUES (?,?,?,?,?,?,?,?)"
+            " ON CONFLICT(investigation_id) DO UPDATE SET"
+            "   status=excluded.status,"
+            "   result=excluded.result,"
+            "   context_pack=excluded.context_pack,"
+            "   finished_at=excluded.finished_at",
+            (
+                i.investigation_id, i.incident_id, i.status.value,
+                json.dumps(i.result, default=str),
+                json.dumps(i.context_pack, default=str),
+                i.idempotency_key, i.created_at.isoformat(),
+                i.finished_at.isoformat() if i.finished_at else None,
+            ),
+        )
+
+    def list_for_incident(self, incident_id: str) -> list[Investigation]:
+        rows = self._c.execute(
+            "SELECT * FROM investigations WHERE incident_id=?"
+            " ORDER BY created_at, investigation_id",
+            (incident_id,),
+        ).fetchall()
+        return [self._row(r) for r in rows]
+
+
+class _IngestionJobRepo:
+    """HTTP-initiated import audit rows — idempotency-key dedup."""
+
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._c = conn
+
+    def _row(self, r: sqlite3.Row) -> IngestionJob:
+        return IngestionJob(
+            job_id=r["job_id"],
+            source_id=r["source_id"],
+            file_ref=r["file_ref"],
+            kind=r["kind"],
+            status=IngestionJobStatus(r["status"]),
+            accepted=int(r["accepted"]),
+            quarantined=int(r["quarantined"]),
+            skipped_duplicates=int(r["skipped_duplicates"]),
+            batch_id=r["batch_id"],
+            error=r["error"],
+            idempotency_key=r["idempotency_key"],
+            created_at=datetime.fromisoformat(r["created_at"]),
+            finished_at=(
+                datetime.fromisoformat(r["finished_at"])
+                if r["finished_at"] else None
+            ),
+        )
+
+    def get(self, job_id: str) -> IngestionJob | None:
+        r = self._c.execute(
+            "SELECT * FROM ingestion_jobs WHERE job_id=?", (job_id,)
+        ).fetchone()
+        return self._row(r) if r else None
+
+    def get_by_idempotency_key(self, key: str) -> IngestionJob | None:
+        r = self._c.execute(
+            "SELECT * FROM ingestion_jobs WHERE idempotency_key=?", (key,)
+        ).fetchone()
+        return self._row(r) if r else None
+
+    def put(self, j: IngestionJob) -> None:
+        self._c.execute(
+            "INSERT INTO ingestion_jobs"
+            " (job_id, source_id, file_ref, kind, status, accepted, quarantined,"
+            "  skipped_duplicates, batch_id, error, idempotency_key,"
+            "  created_at, finished_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)"
+            " ON CONFLICT(job_id) DO UPDATE SET"
+            "   status=excluded.status,"
+            "   accepted=excluded.accepted,"
+            "   quarantined=excluded.quarantined,"
+            "   skipped_duplicates=excluded.skipped_duplicates,"
+            "   batch_id=excluded.batch_id,"
+            "   error=excluded.error,"
+            "   finished_at=excluded.finished_at",
+            (
+                j.job_id, j.source_id, j.file_ref, j.kind, j.status.value,
+                j.accepted, j.quarantined, j.skipped_duplicates, j.batch_id,
+                j.error, j.idempotency_key, j.created_at.isoformat(),
+                j.finished_at.isoformat() if j.finished_at else None,
+            ),
+        )
+
+
 class SqliteUnitOfWork:
     """One connection, explicit commit/rollback; repos share the transaction."""
 
     services: ServiceRepository
     environments: EnvironmentRepository
     sources: SourceRepository
+    operations: OperationRepository
     releases: ReleaseRepository
     batches: BatchRepository
     evidence: EvidenceRepository
@@ -1115,6 +1325,8 @@ class SqliteUnitOfWork:
     change_events: ChangeEventRepository
     dependency_observations: DependencyObservationRepository
     handoff_records: HandoffRecordRepository
+    investigations: InvestigationRepository
+    ingestion_jobs: IngestionJobRepository
 
     def __init__(self, db_path: Path | str) -> None:
         self._db_path = db_path
@@ -1131,6 +1343,7 @@ class SqliteUnitOfWork:
         self.services = _ServiceRepo(conn)
         self.environments = _EnvironmentRepo(conn)
         self.sources = _SourceRepo(conn)
+        self.operations = _OperationRepo(conn)
         self.releases = _ReleaseRepo(conn)
         self.batches = _BatchRepo(conn)
         self.evidence = _EvidenceRepo(conn)
@@ -1147,6 +1360,8 @@ class SqliteUnitOfWork:
         self.change_events = _ChangeEventRepo(conn)
         self.dependency_observations = _DependencyObservationRepo(conn)
         self.handoff_records = _HandoffRecordRepo(conn)
+        self.investigations = _InvestigationRepo(conn)
+        self.ingestion_jobs = _IngestionJobRepo(conn)
         conn.execute("BEGIN")
         return self
 

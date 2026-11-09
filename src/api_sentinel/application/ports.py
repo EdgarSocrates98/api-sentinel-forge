@@ -6,9 +6,11 @@ import builtins
 from datetime import datetime
 from typing import Any, Protocol, runtime_checkable
 
-from api_sentinel.detection.protocol import Anomaly
+from api_sentinel.application.jobs import IngestionJob, Investigation
+from api_sentinel.detection.protocol import Anomaly, AnomalyStatus
 from api_sentinel.detection.registry import DetectionRule
 from api_sentinel.domain import (
+    ApiOperation,
     ApiService,
     AuditEvent,
     ChangeEvent,
@@ -48,6 +50,16 @@ class SourceRepository(Protocol):
     def get(self, source_id: str) -> TelemetrySource | None: ...
     def list(self, service_id: str | None = None) -> list[TelemetrySource]: ...
     def put(self, source: TelemetrySource) -> TelemetrySource: ...
+
+
+@runtime_checkable
+class OperationRepository(Protocol):
+    """Declared operation inventory (api_operations) — observed coverage is
+    derived from runtime_observations, never merged silently."""
+
+    def get(self, operation_id: str) -> ApiOperation | None: ...
+    def list(self, service_id: str | None = None) -> list[ApiOperation]: ...
+    def put(self, operation: ApiOperation) -> ApiOperation: ...
 
 
 @runtime_checkable
@@ -151,6 +163,12 @@ class AnomalyRepository(Protocol):
     def attach_incident(self, anomaly_id: str, incident_id: str) -> None: ...
     def list_for_service(self, service_id: str) -> list[Anomaly]: ...
     def list_for_incident(self, incident_id: str) -> list[Anomaly]: ...
+    def list_filtered(
+        self,
+        service_id: str | None = None,
+        status: AnomalyStatus | None = None,
+        limit: int | None = None,
+    ) -> list[Anomaly]: ...
 
 
 @runtime_checkable
@@ -224,10 +242,30 @@ class HandoffRecordRepository(Protocol):
 
 
 @runtime_checkable
+class InvestigationRepository(Protocol):
+    """Investigation audit rows (migration 0006) — idempotency-key dedup."""
+
+    def get(self, investigation_id: str) -> Investigation | None: ...
+    def get_by_idempotency_key(self, key: str) -> Investigation | None: ...
+    def put(self, investigation: Investigation) -> None: ...
+    def list_for_incident(self, incident_id: str) -> list[Investigation]: ...
+
+
+@runtime_checkable
+class IngestionJobRepository(Protocol):
+    """HTTP-initiated import audit rows (migration 0006) — key dedup."""
+
+    def get(self, job_id: str) -> IngestionJob | None: ...
+    def get_by_idempotency_key(self, key: str) -> IngestionJob | None: ...
+    def put(self, job: IngestionJob) -> None: ...
+
+
+@runtime_checkable
 class UnitOfWork(Protocol):
     services: ServiceRepository
     environments: EnvironmentRepository
     sources: SourceRepository
+    operations: OperationRepository
     releases: ReleaseRepository
     batches: BatchRepository
     evidence: EvidenceRepository
@@ -244,6 +282,8 @@ class UnitOfWork(Protocol):
     change_events: ChangeEventRepository
     dependency_observations: DependencyObservationRepository
     handoff_records: HandoffRecordRepository
+    investigations: InvestigationRepository
+    ingestion_jobs: IngestionJobRepository
 
     def __enter__(self) -> UnitOfWork: ...
     def __exit__(self, exc_type: object, exc_val: object, exc_tb: object) -> None: ...

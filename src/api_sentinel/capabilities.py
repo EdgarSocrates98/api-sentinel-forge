@@ -31,7 +31,12 @@ _CAPABILITIES: list[Capability] = [
     Capability("api.incident-investigation", CapabilityStatus.AVAILABLE, "0.1.0"),
     Capability("api.deployment-correlation", CapabilityStatus.AVAILABLE, "0.2.5"),
     Capability("api.doctor-handoff", CapabilityStatus.AVAILABLE, "0.2.5"),
-    Capability("api.portal-operations", CapabilityStatus.DECLARED, notes="Cycle 6"),
+    Capability(
+        "api.portal-operations",
+        CapabilityStatus.AVAILABLE,
+        "0.2.5",
+        notes="Cycle 6 — local /v1 surface via `api-sentinel serve` (api extra)",
+    ),
     Capability("api.aws-readonly-observability", CapabilityStatus.DECLARED, notes="Cycle 7"),
 ]
 

@@ -47,3 +47,15 @@ class WorkspaceError(SentinelError):
 
 class StorageError(SentinelError):
     code = "sentinel.storage"
+
+
+class ForbiddenError(SentinelError):
+    """Scope/role denial — raised before resource lookup, never leaks existence."""
+
+    code = "sentinel.forbidden"
+
+
+class ConcurrencyLimitError(SentinelError):
+    """A bounded executor is saturated — a named refusal, never a silent queue."""
+
+    code = "sentinel.concurrency_limit"
