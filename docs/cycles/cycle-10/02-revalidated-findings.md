@@ -652,6 +652,68 @@ status: OPEN — additive candidate for a future wave; non-blocking
   for Wave 3 (no UI element fakes the missing fields).
 ```
 
+## C10-F022 — `handoff ingest` accepted any JSON object as a Doctor bundle
+
+```text
+id: C10-F022
+severity: P2
+repository: api-sentinel-forge
+file: src/api_sentinel/integrations/doctor/translate.py
+  ingest_doctor_bundle (pre-change)
+contract: §12 requires wrong-schema Doctor bundles refused at ingest.
+root_cause: `handoff_version` defaulted to 1 when absent, so an
+  arbitrary JSON object carrying a `findings` list was ingested as
+  verbatim Doctor evidence — no positive bundle marker was required.
+reproduction: lab/security_battery.py SEC-AGT-04 — a fabricated
+  {"schema": "wrong/schema", "findings": [{"forged": true}]} file
+  ingested cleanly (observed rc=0 before the fix).
+impact: a forged findings file could masquerade as Doctor evidence
+  (bounded — ingest is verbatim evidence, never executed, but the
+  provenance claim was uncorrelatable).
+status: FIXED in Wave 4 — ingest now requires an explicit
+  `handoff_version` (V1/V2 always serialize it); the arbitrary-object
+  case raises a typed ContractError. Regression tests in
+  tests/unit/test_integrations_translate.py
+  (test_bundle_without_version_marker_rejected).
+```
+
+## C10-F023 — demo exporter emitted contract-illegal `measurement.temporality`
+
+```text
+id: C10-F023
+severity: P3
+repository: api-sentinel-forge (lab/demo_api)
+file: lab/demo_api/app.py metrics export (pre-change)
+root_cause: the demo `/metrics/export` emitted
+  `measurement.temporality: "delta"`; RuntimeObservation/v1's
+  Measurement is extra-forbidden, so every observation quarantined
+  on schema_validation (S5 first run: accepted=0/quarantined=4).
+impact: lab-only — the fix removed the field; no product code was
+  wrong (the strict contract correctly refused drift).
+status: FIXED in Wave 4 — export emits only contract fields;
+  verified valid by model_validate on emitted dicts.
+```
+
+## C10-F024 — `login_session` AWS profiles unresolvable by botocore
+
+```text
+id: C10-F024
+severity: P3
+repository: api-sentinel-forge (environment/integration docs)
+file: src/api_sentinel/integrations/aws/client.py resolve_session
+contract: `--profile` must resolve whatever AWS CLI v2 supports.
+root_cause: profiles created via `aws login` use the login_session
+  credential provider, which botocore refuses without the optional
+  botocore[crt] extra (MissingDependencyException).
+reproduction: `aws discover --profile sparkforge` →
+  MissingDependencyException (login credential provider).
+workaround used in Wave 4: `aws configure export-credentials`
+  exports session creds to env for the default chain — real,
+  bounded, never persisted. Account identity still STS-verified.
+status: DOCUMENTED — either install botocore[crt] or use the
+  export-credentials env path; recorded in 13-aws-readonly-validation.md.
+```
+
 ---
 
 ### Severity roll-up
@@ -660,13 +722,15 @@ status: OPEN — additive candidate for a future wave; non-blocking
 |---|---|---|
 | P0 | 0 | — |
 | P1 | 11 | F003, F004, F005*, F007*, F008, F009*, F010*, F011*, F012*, F015*, F018* |
-| P2 | 4 | F006, F016, F017, F019* |
-| P3 | 5 | F001, F013, F014*, F020, F021 |
+| P2 | 5 | F006, F016, F017, F019*, F022* |
+| P3 | 7 | F001, F013, F014*, F020, F021, F023*, F024* |
 | Refuted | 1 | F002 (no defect) |
 
 *F007 and F012 FIXED in Wave 1 (status inline). F009, F010, F011, F014,
 F015 and F018 FIXED in Wave 2 (status inline); F016/F017 recorded as
-peer-side / wire-contract limitations with honest workarounds.
+peer-side / wire-contract limitations with honest workarounds. F022 and
+F023 FIXED in Wave 4 (boundary hardening + lab exporter contract fix);
+F024 documented with the env-credential workaround.
 F005 FIXED in Wave 3 (dedicated SentinelApi adapter + real browser
 verification, status inline in 10-portal-api-operations.md).
 F019 DOCUMENTED in Wave 3 (same-origin proxy pattern; a sentinel-side

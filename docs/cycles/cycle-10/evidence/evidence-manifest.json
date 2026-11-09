@@ -1,92 +1,118 @@
 {
-  "schema": "api-sentinel/EvidenceManifest/v1",
-  "cycle": "cycle-10",
-  "wave": "wave2-federation",
-  "collected_at": "2026-11-09T14:30:00Z",
-  "branch": "cycle-10",
-  "head_sha": "de5e9df",
-  "files": [
-    {
-      "path": "evidence/baseline.json",
-      "kind": "repo baseline (10 repos: branch/HEAD/version/contracts/dirty/PRs/env)",
-      "contains": "real git/gh output"
-    },
-    {
-      "path": "evidence/baseline-tests.txt",
-      "kind": "pytest 440-pass tail + ruff 2-error tail + mypy clean + e2e 15/15 + mcp probe",
-      "contains": "verbatim command output"
-    },
-    {
-      "path": "evidence/performance-before.json",
-      "kind": "bench_ingest 10k sequential + instrumented dispersed-1440 with repo-level query counters",
-      "contains": "C10-F006 numbers (1075.6 vs 934.9 obs/s; 10000+2880 queries)"
-    },
-    {
-      "path": "evidence/installation-results.json",
-      "kind": "uv build + fresh-venv install + cli:main/cli:app probes + mcp probe",
-      "contains": "C10-F002 refutation, C10-F012 discovery"
-    },
-    {
-      "path": "evidence/security-results.json",
-      "kind": "X-Sentinel-Role trust analysis + bind exposure + authz test pointers",
-      "contains": "C10-F007 confirmation"
-    },
-    {
-      "path": "evidence/contract-conformance.json",
-      "kind": "per-seam contract inventory with file:line refs + live import probes",
-      "contains": "COMPATIBLE/BROKEN/ORPHAN/UNVERIFIED verdicts"
-    },
-    {
-      "path": "evidence/evidence-manifest.json",
-      "kind": "this index",
-      "contains": "manifest"
-    },
-    {
-      "path": "evidence/doctor_inprocess_run.json",
-      "kind": "real in-process DoctorBoundary run vs lab/fixtures/doctor-project \u2014 completed, 10 findings/9 unknowns (F009 proof)",
-      "contains": "verbatim DelegationOutcome dump"
-    },
-    {
-      "path": "evidence/doctor_inprocess_receipt.json",
-      "kind": "persisted handoff receipt rcpt_hnd_h_01M70777F9VS1TQ2XNJ8ZD5X8Q",
-      "contains": "transport_state=delivered / execution_state=completed"
-    },
-    {
-      "path": "evidence/atlas/index_run.json + entities + status",
-      "kind": "real `code-atlas index lab/fixtures/atlas-repo --domains api` \u2192 snapshot 11 READY (4 entities, 9 relations)",
-      "contains": "CLI output + entities dump"
-    },
-    {
-      "path": "evidence/atlas_correlate_run.json",
-      "kind": "real DbStructuralContext correlate \u2014 service.app#app \u2192 3 structural CONTAINS edges",
-      "contains": "CorrelationReport, observed/structural separation"
-    },
-    {
-      "path": "evidence/theforge/",
-      "kind": "the-forge runtime transcript: registry refresh/show, provider check, 5 routed ask runs with task\u2192routing\u2192result\u2192verification\u2192receipt",
-      "contains": "run ids 20261109T131310Z-34446ffc, -21329c86, -e7974201, -0e57520c, 20261109T132216Z-004a614a"
-    },
-    {
-      "path": "evidence/contract-conformance.json#wave2_updates",
-      "kind": "per-seam wave-2 verdicts appended to the wave-0 audit",
-      "contains": "INTEGRATED/NAMED states + run evidence"
-    }
-  ],
-  "pending_wave_files": [
-    "evidence/federated-e2e-receipt.json",
-    "evidence/portal-e2e-results.json",
-    "evidence/performance-after.json",
-    "evidence/contract-conformance.json (extended)"
-  ],
-  "aux_artifacts": {
-    "bench_dispersed_instrumented_harness": "%TEMP%/bench_dispersed.py (not committed \u00e2\u20ac\u201d wraps repositories._ObservationRepo counters read-only)",
-    "wheel_output": "%TEMP%/sentinel-wheel/",
-    "install_venv": "%TEMP%/sentinel-install-test/",
-    "e2e_transcript": "%TEMP%/sentinel-e2e-ynlpk_m7/e2e-transcript.txt"
+ "schema": "api-sentinel/EvidenceManifest/v1",
+ "cycle": "cycle-10",
+ "wave": "wave4-e2e-perf",
+ "collected_at": "2026-11-09T15:35:56Z",
+ "branch": "cycle-10",
+ "head_sha": "97dfc66",
+ "files": [
+  {
+   "path": "evidence/baseline.json",
+   "kind": "repo baseline (10 repos: branch/HEAD/version/contracts/dirty/PRs/env)",
+   "truth_labels": "LOCAL_REAL",
+   "sha256": "sha256:8209301341640b0f8953650d87013aebc7fbba98b71aa76a0e225784213b2f97",
+   "bytes": 13631
   },
-  "notes": [
-    "All evidence is real command output at the SHAs in baseline.json.",
-    "No product code modified this wave; no sibling repo modified; no sibling env installed.",
-    "Sentinel .api-sentinel workspace accidentally created during a doctor probe was removed (gitignored anyway)."
-  ]
+  {
+   "path": "evidence/baseline-tests.txt",
+   "kind": "pytest/ruff/mypy/e2e verbatim command output",
+   "truth_labels": "LOCAL_REAL",
+   "sha256": "sha256:6e8ed4167e10d9079ca0801a8b6986ebb315e691d1babd693e26f60506cb553c",
+   "bytes": 4855
+  },
+  {
+   "path": "evidence/contract-conformance.json",
+   "kind": "forge/v1 + RuntimeObservation/v1 contract conformance probes",
+   "truth_labels": "LOCAL_REAL",
+   "sha256": "sha256:60f4faa9e8682d2303c49706446140f6c1c072191092af57a4b555cda3aabdc7",
+   "bytes": 6365
+  },
+  {
+   "path": "evidence/doctor_inprocess_receipt.json",
+   "kind": "real in-process Doctor delegation receipt",
+   "truth_labels": "INTEGRATION_REAL",
+   "sha256": "sha256:1cbf395148f93c811a77e6cb4393916a3b0cead257ae694a358543a7cecdcc77",
+   "bytes": 483
+  },
+  {
+   "path": "evidence/doctor_inprocess_run.json",
+   "kind": "real in-process Doctor run record",
+   "truth_labels": "INTEGRATION_REAL",
+   "sha256": "sha256:643f4ff3c2eba74a36705518bbe56f36151fab4d7615341370d98860afe203f8",
+   "bytes": 11351
+  },
+  {
+   "path": "evidence/atlas_correlate_run.json",
+   "kind": "real Code Atlas structural correlate run record",
+   "truth_labels": "INTEGRATION_REAL",
+   "sha256": "sha256:73b517d51440e879151dcdd4860e654fa7b562b9f5bac1650f6a250902a89ccf",
+   "bytes": 1093
+  },
+  {
+   "path": "evidence/portal-verification.json",
+   "kind": "Wave-3 Portal served-page + same-origin verification",
+   "truth_labels": "INTEGRATION_REAL",
+   "sha256": "sha256:8733e53bca259bba66be0a717eb0057fe4b43fa12dc436b7da0c830e0911a233",
+   "bytes": 4736
+  },
+  {
+   "path": "evidence/installation-results.json",
+   "kind": "uv build + fresh-venv install + cli probes + mcp probe",
+   "truth_labels": "LOCAL_REAL",
+   "sha256": "sha256:13ced78165baa5c32b57d5fe3e6a395877d61dc9a82609ca349ef65c2c7ef135",
+   "bytes": 2026
+  },
+  {
+   "path": "evidence/federated-e2e-receipt.json",
+   "kind": "Wave-4 S1\u2013S18 federated golden path oracle \u2014 16 pass / 2 BLOCKED (Bridge/Lens honestly unavailable)",
+   "truth_labels": "LOCAL_REAL+INTEGRATION_REAL+BLOCKED",
+   "sha256": "sha256:7630c8347532280e849f98c032ace0827c12f44c6fb8aa7bde345a07cc5cad77",
+   "bytes": 63352
+  },
+  {
+   "path": "evidence/security-results.json",
+   "kind": "\u00a712 negative security battery \u2014 40/40 controls held (API/storage/agentic/cloud/UI)",
+   "truth_labels": "LOCAL_REAL+SIMULATED",
+   "sha256": "sha256:15fe279fe8b2a291e8fbcbbe73843857219bde562a8d8630ff0e809186d8b73d",
+   "bytes": 15664
+  },
+  {
+   "path": "evidence/performance-before.json",
+   "kind": "F006 pre-change benchmark \u2014 10 shapes, SQL counters (10 000 dedup + 10 000 service + \u22642 880 overlap point queries)",
+   "truth_labels": "LOCAL_REAL",
+   "sha256": "sha256:1d28ef96219581c20024bff5e7def76997717998f732654f91e6f49503030cf2",
+   "bytes": 11210
+  },
+  {
+   "path": "evidence/performance-after.json",
+   "kind": "F006 post-fix benchmark \u2014 identical datasets, batched queries (\u226426 dedup / 2 service / \u22642 overlap batch)",
+   "truth_labels": "LOCAL_REAL",
+   "sha256": "sha256:7525d8a74c3c8e213049677b0565eb57ebb90ab2664ea3ff7b97b99a3a245775",
+   "bytes": 11115
+  },
+  {
+   "path": "evidence/performance-ab.json",
+   "kind": "A/B iteration re-run used during N+1 development",
+   "truth_labels": "LOCAL_REAL",
+   "sha256": "sha256:437a38b347cbbe6baadb915c3d84892ccb4812f471ead41fe40e4f3f851de699",
+   "bytes": 986
+  },
+  {
+   "path": "evidence/aws-validation.json",
+   "kind": "\u00a711 bounded real AWS read-only validation \u2014 STS gate, prove_read_only, real discover/collect receipts, simulated negatives, SLO+detection over collected data",
+   "truth_labels": "EXTERNAL_REAL+SIMULATED",
+   "sha256": "sha256:676a5c4b241c5f24f76d41d8bfe4cc5c43d199af5e471e5a410f64cb7443bad6",
+   "bytes": 16399
+  },
+  {
+   "path": "evidence/atlas/",
+   "kind": "directory (3 files)",
+   "truth_labels": "INTEGRATION_REAL"
+  },
+  {
+   "path": "evidence/theforge/",
+   "kind": "directory (103 files)",
+   "truth_labels": "INTEGRATION_REAL"
+  }
+ ]
 }

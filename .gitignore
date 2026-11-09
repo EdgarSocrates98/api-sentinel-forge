@@ -22,6 +22,12 @@ htmlcov/
 .api-sentinel/
 api/sentinel.db
 
+# Regenerable benchmark corpora (deterministic — see lab/bench/bench_matrix.py)
+lab/bench/datasets/
+
+# Federated E2E run artifacts (reproducible — see lab/federated_e2e.py)
+lab/run/
+
 # Kiro local spec workflow (working memory, not committed)
 .kiro/
 

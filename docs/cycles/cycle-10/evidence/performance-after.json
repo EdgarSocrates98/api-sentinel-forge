@@ -1,0 +1,363 @@
+{
+  "bench": "bench_matrix",
+  "datasets_note": "dataset_sha256 pins identical inputs across before/after",
+  "generated_by": "lab/bench/bench_matrix.py (real IngestionPipeline + SqliteUnitOfWork; SQL counted via sqlite3 trace hook)",
+  "params": {
+    "chunk": 5000,
+    "large_max_mib": 64,
+    "n": 10000,
+    "ops_high_card": 2000,
+    "sources": 4,
+    "windows": 1440
+  },
+  "platform": "win32",
+  "python": "3.12.13",
+  "results": [
+    {
+      "accepted": 10000,
+      "chunk": 5000,
+      "chunk_seconds": [
+        3.698,
+        4.064
+      ],
+      "dataset": "lab\\bench\\datasets\\sequential.jsonl",
+      "dataset_sha256": "sha256:b372b8643f5fd3ec12d7632d571128244e9a560c3737b4ef1214b871de6ac20f",
+      "db_size_bytes": 9244672,
+      "db_size_mib": 8.82,
+      "description": "contiguous windows per chunk",
+      "elapsed_seconds": 7.763,
+      "n": 10000,
+      "observations_per_second": 1288.2,
+      "overlapping_sources": [],
+      "quarantined": 0,
+      "shape": "sequential",
+      "skipped_duplicates": 0,
+      "sql_counts": {
+        "batch_insert": 2,
+        "dedup_batch_query": 26,
+        "observation_insert": 10000,
+        "other": 14,
+        "overlap_batch_query": 2,
+        "service_batch_query": 2
+      },
+      "stored_observations": 10000,
+      "stored_quarantine": 0,
+      "tracemalloc_peak_mib": 42.46,
+      "wal_size_bytes": 0
+    },
+    {
+      "accepted": 10000,
+      "chunk": 5000,
+      "chunk_seconds": [
+        4.371,
+        3.903
+      ],
+      "dataset": "lab\\bench\\datasets\\dispersed.jsonl",
+      "dataset_sha256": "sha256:d6840a0ac6ee6e917e656f7d61f7cf5e67c8fde475e987d75dd343428430f84c",
+      "db_size_bytes": 9285632,
+      "db_size_mib": 8.86,
+      "description": "chunks span --windows distinct 1-min windows",
+      "elapsed_seconds": 8.274,
+      "n": 10000,
+      "observations_per_second": 1208.6,
+      "overlapping_sources": [],
+      "quarantined": 0,
+      "shape": "dispersed",
+      "skipped_duplicates": 0,
+      "sql_counts": {
+        "batch_insert": 2,
+        "dedup_batch_query": 26,
+        "observation_insert": 10000,
+        "other": 14,
+        "overlap_batch_query": 2,
+        "service_batch_query": 2
+      },
+      "stored_observations": 10000,
+      "stored_quarantine": 0,
+      "tracemalloc_peak_mib": 42.45,
+      "wal_size_bytes": 0
+    },
+    {
+      "accepted": 10000,
+      "chunk": 5000,
+      "chunk_seconds": [
+        4.071,
+        4.702
+      ],
+      "dataset": "lab\\bench\\datasets\\out_of_order.jsonl",
+      "dataset_sha256": "sha256:902899d18a85951b374288e8c51cff99a00fcaec5761435849848b7e29773a62",
+      "db_size_bytes": 9228288,
+      "db_size_mib": 8.8,
+      "description": "sequential windows, deterministic shuffle",
+      "elapsed_seconds": 8.773,
+      "n": 10000,
+      "observations_per_second": 1139.9,
+      "overlapping_sources": [],
+      "quarantined": 0,
+      "shape": "out_of_order",
+      "skipped_duplicates": 0,
+      "sql_counts": {
+        "batch_insert": 2,
+        "dedup_batch_query": 26,
+        "observation_insert": 10000,
+        "other": 14,
+        "overlap_batch_query": 2,
+        "service_batch_query": 2
+      },
+      "stored_observations": 10000,
+      "stored_quarantine": 0,
+      "tracemalloc_peak_mib": 42.43,
+      "wal_size_bytes": 0
+    },
+    {
+      "accepted": 10000,
+      "chunk": 5000,
+      "chunk_seconds": [
+        3.864,
+        4.18
+      ],
+      "dataset": "lab\\bench\\datasets\\multi_source.jsonl",
+      "dataset_sha256": "sha256:daab07844489733759dde1969a432b0bc00330358505b249f7f7c74570133792",
+      "db_size_bytes": 9224192,
+      "db_size_mib": 8.8,
+      "description": "N sources covering the same windows",
+      "elapsed_seconds": 8.053,
+      "n": 10000,
+      "observations_per_second": 1241.7,
+      "overlapping_sources": [
+        "src_bench_0"
+      ],
+      "quarantined": 0,
+      "shape": "multi_source",
+      "skipped_duplicates": 0,
+      "sql_counts": {
+        "batch_insert": 2,
+        "dedup_batch_query": 26,
+        "observation_insert": 10000,
+        "other": 14,
+        "overlap_batch_query": 2,
+        "service_batch_query": 2
+      },
+      "stored_observations": 10000,
+      "stored_quarantine": 0,
+      "tracemalloc_peak_mib": 45.33,
+      "wal_size_bytes": 0
+    },
+    {
+      "accepted": 10000,
+      "chunk": 5000,
+      "chunk_seconds": [
+        6.326,
+        4.264
+      ],
+      "dataset": "lab\\bench\\datasets\\high_cardinality.jsonl",
+      "dataset_sha256": "sha256:aa48864a6c25ecaf5caecd335700a636d513ca230583edb87f1e09768be83fcd",
+      "db_size_bytes": 10596352,
+      "db_size_mib": 10.11,
+      "description": "--ops-high-card ops + user.id attr",
+      "elapsed_seconds": 10.59,
+      "n": 10000,
+      "observations_per_second": 944.3,
+      "overlapping_sources": [],
+      "quarantined": 0,
+      "shape": "high_cardinality",
+      "skipped_duplicates": 0,
+      "sql_counts": {
+        "batch_insert": 2,
+        "dedup_batch_query": 26,
+        "observation_insert": 10000,
+        "other": 14,
+        "overlap_batch_query": 2,
+        "service_batch_query": 2
+      },
+      "stored_observations": 10000,
+      "stored_quarantine": 0,
+      "tracemalloc_peak_mib": 43.36,
+      "wal_size_bytes": 0
+    },
+    {
+      "accepted": 5000,
+      "chunk": 5000,
+      "chunk_seconds": [
+        2.951,
+        3.747
+      ],
+      "dataset": "lab\\bench\\datasets\\dup_heavy.jsonl",
+      "dataset_sha256": "sha256:2e8c6f728696328591ca99d74a32f6378223e23f0cb908bf5079010a8292e1d8",
+      "db_size_bytes": 4784128,
+      "db_size_mib": 4.56,
+      "description": "50% redelivered observation ids",
+      "elapsed_seconds": 6.698,
+      "n": 10000,
+      "observations_per_second": 746.5,
+      "overlapping_sources": [],
+      "quarantined": 0,
+      "shape": "dup_heavy",
+      "skipped_duplicates": 5000,
+      "sql_counts": {
+        "batch_insert": 2,
+        "dedup_batch_query": 14,
+        "observation_insert": 5000,
+        "other": 14,
+        "overlap_batch_query": 2,
+        "service_batch_query": 2
+      },
+      "stored_observations": 5000,
+      "stored_quarantine": 0,
+      "tracemalloc_peak_mib": 41.98,
+      "wal_size_bytes": 0
+    },
+    {
+      "accepted": 8000,
+      "chunk": 5000,
+      "chunk_seconds": [
+        3.148,
+        3.389
+      ],
+      "dataset": "lab\\bench\\datasets\\mid_batch_failure.jsonl",
+      "dataset_sha256": "sha256:1429521ab9337dd3c0d7ca55c7c734159e01d91fdabbb9e66f07bf1f0e389b42",
+      "db_size_bytes": 7950336,
+      "db_size_mib": 7.58,
+      "description": "10% malformed lines \u2192 quarantine",
+      "elapsed_seconds": 6.537,
+      "n": 10000,
+      "observations_per_second": 1223.8,
+      "overlapping_sources": [],
+      "quarantined": 2000,
+      "shape": "mid_batch_failure",
+      "skipped_duplicates": 0,
+      "sql_counts": {
+        "batch_insert": 2,
+        "dedup_batch_query": 20,
+        "observation_insert": 8000,
+        "other": 2014,
+        "overlap_batch_query": 2,
+        "service_batch_query": 2
+      },
+      "stored_observations": 8000,
+      "stored_quarantine": 2000,
+      "tracemalloc_peak_mib": 34.88,
+      "wal_size_bytes": 0
+    },
+    {
+      "accepted": 0,
+      "chunk": 5000,
+      "chunk_seconds": [
+        0.148,
+        0.15
+      ],
+      "dataset": "lab\\bench\\datasets\\reprocess.jsonl",
+      "dataset_sha256": "sha256:b372b8643f5fd3ec12d7632d571128244e9a560c3737b4ef1214b871de6ac20f",
+      "db_size_bytes": 9244672,
+      "db_size_mib": 8.82,
+      "description": "same payload ingested twice \u2014 replay measured",
+      "elapsed_seconds": 0.297,
+      "first_run": {
+        "accepted": 10000,
+        "elapsed_seconds": 8.329,
+        "observations_per_second": 1200.7,
+        "overlapping_sources": [],
+        "quarantined": 0,
+        "skipped_duplicates": 0,
+        "sql_counts": {
+          "batch_insert": 2,
+          "dedup_batch_query": 26,
+          "observation_insert": 10000,
+          "other": 14,
+          "overlap_batch_query": 2,
+          "service_batch_query": 2
+        },
+        "tracemalloc_peak_mib": 42.43
+      },
+      "n": 10000,
+      "observations_per_second": 0.0,
+      "overlapping_sources": [],
+      "quarantined": 0,
+      "replay": {
+        "accepted": 0,
+        "elapsed_seconds": 0.297,
+        "observations_per_second": 0.0,
+        "overlapping_sources": [],
+        "quarantined": 0,
+        "skipped_duplicates": 10000,
+        "sql_counts": {
+          "other": 12
+        },
+        "tracemalloc_peak_mib": 3.07
+      },
+      "shape": "reprocess",
+      "skipped_duplicates": 10000,
+      "sql_counts": {
+        "other": 12
+      },
+      "stored_observations": 10000,
+      "stored_quarantine": 0,
+      "tracemalloc_peak_mib": 3.07,
+      "wal_size_bytes": 0
+    },
+    {
+      "accepted": 10000,
+      "chunk": 10000,
+      "chunk_seconds": [
+        7.771
+      ],
+      "dataset": "lab\\bench\\datasets\\large_file.jsonl",
+      "dataset_sha256": "sha256:85d4ad05a658f55bb3244aeb3173fbdaef68b45b0746f12183be38aa1fabfafa",
+      "db_size_bytes": 9220096,
+      "db_size_mib": 8.79,
+      "description": "single ingest call, all N lines",
+      "elapsed_seconds": 7.771,
+      "n": 10000,
+      "observations_per_second": 1286.8,
+      "overlapping_sources": [],
+      "quarantined": 0,
+      "shape": "large_file",
+      "skipped_duplicates": 0,
+      "sql_counts": {
+        "batch_insert": 1,
+        "dedup_batch_query": 25,
+        "observation_insert": 10000,
+        "other": 7,
+        "overlap_batch_query": 1,
+        "service_batch_query": 1
+      },
+      "stored_observations": 10000,
+      "stored_quarantine": 0,
+      "tracemalloc_peak_mib": 84.17,
+      "wal_size_bytes": 0
+    },
+    {
+      "accepted": 10000,
+      "chunk": 5000,
+      "chunk_seconds": [
+        4.439,
+        4.266
+      ],
+      "dataset": "lab\\bench\\datasets\\concurrent.jsonl",
+      "dataset_sha256": "sha256:daab07844489733759dde1969a432b0bc00330358505b249f7f7c74570133792",
+      "db_size_bytes": 9224192,
+      "db_size_mib": 8.8,
+      "description": "--sources channels interleaved chunk-wise",
+      "elapsed_seconds": 8.714,
+      "n": 10000,
+      "note": "interleaved single-process streams (SQLite serializes writers)",
+      "observations_per_second": 1147.6,
+      "overlapping_sources": [],
+      "quarantined": 0,
+      "shape": "concurrent",
+      "skipped_duplicates": 0,
+      "sql_counts": {
+        "batch_insert": 2,
+        "dedup_batch_query": 26,
+        "observation_insert": 10000,
+        "other": 14,
+        "overlap_batch_query": 2,
+        "service_batch_query": 2
+      },
+      "stored_observations": 10000,
+      "stored_quarantine": 0,
+      "tracemalloc_peak_mib": 45.32,
+      "wal_size_bytes": 0
+    }
+  ]
+}

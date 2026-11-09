@@ -127,6 +127,7 @@ class TestContractGuards:
         # a Doctor finding that carries no evidence list is ingested
         # verbatim — the Sentinel records it, never invents evidence
         bundle = {
+            "handoff_version": 2,
             "handoff_id": "hf_neg1",
             "analysis_rev": "rev0",
             "findings": [{"id": "F1", "title": "no evidence finding"}],

@@ -116,7 +116,16 @@ def ingest_doctor_bundle(
     """
     if not isinstance(data, dict):
         raise ContractError("doctor bundle is not a JSON object")
-    version = data.get("handoff_version", 1)
+    if "handoff_version" not in data:
+        # C10-F022: a JSON object without the bundle marker is not a
+        # Doctor handoff — an arbitrary payload with a `findings` key
+        # must never masquerade as Doctor evidence. Real V1/V2 bundles
+        # always serialize `handoff_version` (V1=1, V2=2).
+        raise ContractError(
+            "doctor bundle missing handoff_version — not a Doctor "
+            "handoff artifact",
+        )
+    version = data.get("handoff_version")
     if version not in (1, 2):
         raise ContractError(
             f"unsupported doctor handoff_version {version!r}",

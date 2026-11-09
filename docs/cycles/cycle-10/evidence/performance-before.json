@@ -1,62 +1,363 @@
 {
-  "schema": "api-sentinel/PerformanceEvidence/v1",
-  "collected_at": "2026-11-09T12:15:00Z",
-  "branch": "cycle-10",
-  "head_sha": "29375e3ffda764757991997933e177301ff721bb",
+  "bench": "bench_matrix",
+  "datasets_note": "dataset_sha256 pins identical inputs across before/after",
+  "generated_by": "lab/bench/bench_matrix.py (real IngestionPipeline + SqliteUnitOfWork; SQL counted via sqlite3 trace hook)",
+  "params": {
+    "chunk": 5000,
+    "large_max_mib": 64,
+    "n": 10000,
+    "ops_high_card": 2000,
+    "sources": 4,
+    "windows": 1440
+  },
   "platform": "win32",
   "python": "3.12.13",
-  "finding": "C10-F006",
-
-  "runs": [
+  "results": [
     {
-      "id": "bench-10k-sequential",
-      "command": ".venv/Scripts/python.exe lab/bench/bench_ingest.py --n 10000",
-      "window_shape": "contiguous per-chunk time slices (chunk//100 distinct windows; ~50/chunk at chunk=5000)",
-      "result": {
-        "n": 10000, "chunk": 5000, "accepted": 10000, "stored": 10000,
-        "elapsed_seconds": 9.297,
-        "observations_per_second": 1075.6,
-        "chunk_seconds": [3.796, 4.398],
-        "tracemalloc_peak_mib": 47.8,
-        "db_size_mib": 8.88
-      }
+      "accepted": 10000,
+      "chunk": 5000,
+      "chunk_seconds": [
+        4.047,
+        3.997
+      ],
+      "dataset": "lab\\bench\\datasets\\sequential.jsonl",
+      "dataset_sha256": "sha256:b372b8643f5fd3ec12d7632d571128244e9a560c3737b4ef1214b871de6ac20f",
+      "db_size_bytes": 9244672,
+      "db_size_mib": 8.82,
+      "description": "contiguous windows per chunk",
+      "elapsed_seconds": 8.044,
+      "n": 10000,
+      "observations_per_second": 1243.1,
+      "overlapping_sources": [],
+      "quarantined": 0,
+      "shape": "sequential",
+      "skipped_duplicates": 0,
+      "sql_counts": {
+        "batch_insert": 2,
+        "dedup_point_query": 10000,
+        "observation_insert": 10000,
+        "other": 14,
+        "overlap_window_query": 100,
+        "service_point_query": 10000
+      },
+      "stored_observations": 10000,
+      "stored_quarantine": 0,
+      "tracemalloc_peak_mib": 41.71,
+      "wal_size_bytes": 0
     },
     {
-      "id": "bench-10k-dispersed-instrumented",
-      "command": ".venv/Scripts/python.exe %TEMP%/bench_dispersed.py",
-      "window_shape": "dispersed — each 5000-item chunk cycles across 1440 distinct 1-minute windows (documented worst case, lab/bench/bench_ingest.py:147-151)",
-      "instrumentation": "repository-level counters wrapping _ObservationRepo.get and _ObservationRepo.overlapping_sources (read-only monkeypatch in the bench harness; no product code touched)",
-      "result": {
-        "n": 10000, "chunk": 5000, "accepted": 10000,
-        "dispersed_windows_per_chunk": 1440,
-        "elapsed_seconds": 10.696,
-        "observations_per_second": 934.9,
-        "chunk_seconds": [3.87, 5.684],
-        "tracemalloc_peak_mib": 48.03,
-        "query_counts": {
-          "observations_get": 10000,
-          "overlapping_sources": 2880
+      "accepted": 10000,
+      "chunk": 5000,
+      "chunk_seconds": [
+        3.921,
+        6.946
+      ],
+      "dataset": "lab\\bench\\datasets\\dispersed.jsonl",
+      "dataset_sha256": "sha256:d6840a0ac6ee6e917e656f7d61f7cf5e67c8fde475e987d75dd343428430f84c",
+      "db_size_bytes": 9285632,
+      "db_size_mib": 8.86,
+      "description": "chunks span --windows distinct 1-min windows",
+      "elapsed_seconds": 10.867,
+      "n": 10000,
+      "observations_per_second": 920.2,
+      "overlapping_sources": [],
+      "quarantined": 0,
+      "shape": "dispersed",
+      "skipped_duplicates": 0,
+      "sql_counts": {
+        "batch_insert": 2,
+        "dedup_point_query": 10000,
+        "observation_insert": 10000,
+        "other": 14,
+        "overlap_window_query": 2880,
+        "service_point_query": 10000
+      },
+      "stored_observations": 10000,
+      "stored_quarantine": 0,
+      "tracemalloc_peak_mib": 41.91,
+      "wal_size_bytes": 0
+    },
+    {
+      "accepted": 10000,
+      "chunk": 5000,
+      "chunk_seconds": [
+        4.02,
+        4.123
+      ],
+      "dataset": "lab\\bench\\datasets\\out_of_order.jsonl",
+      "dataset_sha256": "sha256:902899d18a85951b374288e8c51cff99a00fcaec5761435849848b7e29773a62",
+      "db_size_bytes": 9228288,
+      "db_size_mib": 8.8,
+      "description": "sequential windows, deterministic shuffle",
+      "elapsed_seconds": 8.143,
+      "n": 10000,
+      "observations_per_second": 1228.0,
+      "overlapping_sources": [],
+      "quarantined": 0,
+      "shape": "out_of_order",
+      "skipped_duplicates": 0,
+      "sql_counts": {
+        "batch_insert": 2,
+        "dedup_point_query": 10000,
+        "observation_insert": 10000,
+        "other": 14,
+        "overlap_window_query": 100,
+        "service_point_query": 10000
+      },
+      "stored_observations": 10000,
+      "stored_quarantine": 0,
+      "tracemalloc_peak_mib": 41.71,
+      "wal_size_bytes": 0
+    },
+    {
+      "accepted": 10000,
+      "chunk": 5000,
+      "chunk_seconds": [
+        4.103,
+        4.245
+      ],
+      "dataset": "lab\\bench\\datasets\\multi_source.jsonl",
+      "dataset_sha256": "sha256:daab07844489733759dde1969a432b0bc00330358505b249f7f7c74570133792",
+      "db_size_bytes": 9224192,
+      "db_size_mib": 8.8,
+      "description": "N sources covering the same windows",
+      "elapsed_seconds": 8.353,
+      "n": 10000,
+      "observations_per_second": 1197.1,
+      "overlapping_sources": [
+        "src_bench_0"
+      ],
+      "quarantined": 0,
+      "shape": "multi_source",
+      "skipped_duplicates": 0,
+      "sql_counts": {
+        "batch_insert": 2,
+        "dedup_point_query": 10000,
+        "observation_insert": 10000,
+        "other": 14,
+        "overlap_window_query": 240,
+        "service_point_query": 10000
+      },
+      "stored_observations": 10000,
+      "stored_quarantine": 0,
+      "tracemalloc_peak_mib": 44.61,
+      "wal_size_bytes": 0
+    },
+    {
+      "accepted": 10000,
+      "chunk": 5000,
+      "chunk_seconds": [
+        4.06,
+        4.137
+      ],
+      "dataset": "lab\\bench\\datasets\\high_cardinality.jsonl",
+      "dataset_sha256": "sha256:aa48864a6c25ecaf5caecd335700a636d513ca230583edb87f1e09768be83fcd",
+      "db_size_bytes": 10596352,
+      "db_size_mib": 10.11,
+      "description": "--ops-high-card ops + user.id attr",
+      "elapsed_seconds": 8.197,
+      "n": 10000,
+      "observations_per_second": 1219.9,
+      "overlapping_sources": [],
+      "quarantined": 0,
+      "shape": "high_cardinality",
+      "skipped_duplicates": 0,
+      "sql_counts": {
+        "batch_insert": 2,
+        "dedup_point_query": 10000,
+        "observation_insert": 10000,
+        "other": 14,
+        "overlap_window_query": 100,
+        "service_point_query": 10000
+      },
+      "stored_observations": 10000,
+      "stored_quarantine": 0,
+      "tracemalloc_peak_mib": 42.63,
+      "wal_size_bytes": 0
+    },
+    {
+      "accepted": 5000,
+      "chunk": 5000,
+      "chunk_seconds": [
+        3.191,
+        3.317
+      ],
+      "dataset": "lab\\bench\\datasets\\dup_heavy.jsonl",
+      "dataset_sha256": "sha256:2e8c6f728696328591ca99d74a32f6378223e23f0cb908bf5079010a8292e1d8",
+      "db_size_bytes": 4784128,
+      "db_size_mib": 4.56,
+      "description": "50% redelivered observation ids",
+      "elapsed_seconds": 6.508,
+      "n": 10000,
+      "observations_per_second": 768.3,
+      "overlapping_sources": [],
+      "quarantined": 0,
+      "shape": "dup_heavy",
+      "skipped_duplicates": 5000,
+      "sql_counts": {
+        "batch_insert": 2,
+        "dedup_point_query": 5000,
+        "observation_insert": 5000,
+        "other": 14,
+        "overlap_window_query": 50,
+        "service_point_query": 10000
+      },
+      "stored_observations": 5000,
+      "stored_quarantine": 0,
+      "tracemalloc_peak_mib": 31.07,
+      "wal_size_bytes": 0
+    },
+    {
+      "accepted": 8000,
+      "chunk": 5000,
+      "chunk_seconds": [
+        3.354,
+        3.731
+      ],
+      "dataset": "lab\\bench\\datasets\\mid_batch_failure.jsonl",
+      "dataset_sha256": "sha256:1429521ab9337dd3c0d7ca55c7c734159e01d91fdabbb9e66f07bf1f0e389b42",
+      "db_size_bytes": 7950336,
+      "db_size_mib": 7.58,
+      "description": "10% malformed lines \u2192 quarantine",
+      "elapsed_seconds": 7.084,
+      "n": 10000,
+      "observations_per_second": 1129.3,
+      "overlapping_sources": [],
+      "quarantined": 2000,
+      "shape": "mid_batch_failure",
+      "skipped_duplicates": 0,
+      "sql_counts": {
+        "batch_insert": 2,
+        "dedup_point_query": 8000,
+        "observation_insert": 8000,
+        "other": 2014,
+        "overlap_window_query": 80,
+        "service_point_query": 8000
+      },
+      "stored_observations": 8000,
+      "stored_quarantine": 2000,
+      "tracemalloc_peak_mib": 34.65,
+      "wal_size_bytes": 0
+    },
+    {
+      "accepted": 0,
+      "chunk": 5000,
+      "chunk_seconds": [
+        0.146,
+        0.141
+      ],
+      "dataset": "lab\\bench\\datasets\\reprocess.jsonl",
+      "dataset_sha256": "sha256:b372b8643f5fd3ec12d7632d571128244e9a560c3737b4ef1214b871de6ac20f",
+      "db_size_bytes": 9244672,
+      "db_size_mib": 8.82,
+      "description": "same payload ingested twice \u2014 replay measured",
+      "elapsed_seconds": 0.288,
+      "first_run": {
+        "accepted": 10000,
+        "elapsed_seconds": 8.341,
+        "observations_per_second": 1198.9,
+        "overlapping_sources": [],
+        "quarantined": 0,
+        "skipped_duplicates": 0,
+        "sql_counts": {
+          "batch_insert": 2,
+          "dedup_point_query": 10000,
+          "observation_insert": 10000,
+          "other": 14,
+          "overlap_window_query": 100,
+          "service_point_query": 10000
         },
-        "queries_per_observation": 1.0,
-        "overlap_queries_per_chunk": 1440.0
-      }
-    }
-  ],
-
-  "n_plus_one_evidence": {
-    "per_item_dedup_lookup": {
-      "site": "src/api_sentinel/ingestion/pipeline.py:150 — uow.observations.get(obs.observation_id) inside the per-item loop",
-      "query": "SELECT * FROM runtime_observations WHERE observation_id=? (repositories.py:425-429)",
-      "count_10k": 10000,
-      "index": "observation_id TEXT PRIMARY KEY (migrations/0002_ingestion.sql:6) — point lookups, still 1 round-trip per item"
+        "tracemalloc_peak_mib": 41.7
+      },
+      "n": 10000,
+      "observations_per_second": 0.0,
+      "overlapping_sources": [],
+      "quarantined": 0,
+      "replay": {
+        "accepted": 0,
+        "elapsed_seconds": 0.288,
+        "observations_per_second": 0.0,
+        "overlapping_sources": [],
+        "quarantined": 0,
+        "skipped_duplicates": 10000,
+        "sql_counts": {
+          "other": 12
+        },
+        "tracemalloc_peak_mib": 3.07
+      },
+      "shape": "reprocess",
+      "skipped_duplicates": 10000,
+      "sql_counts": {
+        "other": 12
+      },
+      "stored_observations": 10000,
+      "stored_quarantine": 0,
+      "tracemalloc_peak_mib": 3.07,
+      "wal_size_bytes": 0
     },
-    "per_window_overlap_check": {
-      "site": "src/api_sentinel/ingestion/pipeline.py:178-186 — uow.observations.overlapping_sources(service_id,w_start,w_end) once per distinct (service,window) in the batch",
-      "query": "SELECT DISTINCT source_id FROM runtime_observations WHERE service_id=? AND source_id!=? AND window_start < ? AND window_end > ? (repositories.py:487-497)",
-      "count_10k_dispersed": 2880,
-      "index": "idx_observations_service_window(service_id, window_start) (migrations/0002_ingestion.sql:31-32); window_end is not indexed — range predicate scans index range then filters"
+    {
+      "accepted": 10000,
+      "chunk": 10000,
+      "chunk_seconds": [
+        8.658
+      ],
+      "dataset": "lab\\bench\\datasets\\large_file.jsonl",
+      "dataset_sha256": "sha256:85d4ad05a658f55bb3244aeb3173fbdaef68b45b0746f12183be38aa1fabfafa",
+      "db_size_bytes": 9220096,
+      "db_size_mib": 8.79,
+      "description": "single ingest call, all N lines",
+      "elapsed_seconds": 8.658,
+      "n": 10000,
+      "observations_per_second": 1155.0,
+      "overlapping_sources": [],
+      "quarantined": 0,
+      "shape": "large_file",
+      "skipped_duplicates": 0,
+      "sql_counts": {
+        "batch_insert": 1,
+        "dedup_point_query": 10000,
+        "observation_insert": 10000,
+        "other": 7,
+        "overlap_window_query": 100,
+        "service_point_query": 10000
+      },
+      "stored_observations": 10000,
+      "stored_quarantine": 0,
+      "tracemalloc_peak_mib": 83.32,
+      "wal_size_bytes": 0
+    },
+    {
+      "accepted": 10000,
+      "chunk": 5000,
+      "chunk_seconds": [
+        3.767,
+        4.448
+      ],
+      "dataset": "lab\\bench\\datasets\\concurrent.jsonl",
+      "dataset_sha256": "sha256:daab07844489733759dde1969a432b0bc00330358505b249f7f7c74570133792",
+      "db_size_bytes": 9224192,
+      "db_size_mib": 8.8,
+      "description": "--sources channels interleaved chunk-wise",
+      "elapsed_seconds": 8.22,
+      "n": 10000,
+      "note": "interleaved single-process streams (SQLite serializes writers)",
+      "observations_per_second": 1216.6,
+      "overlapping_sources": [],
+      "quarantined": 0,
+      "shape": "concurrent",
+      "skipped_duplicates": 0,
+      "sql_counts": {
+        "batch_insert": 2,
+        "dedup_point_query": 10000,
+        "observation_insert": 10000,
+        "other": 14,
+        "overlap_window_query": 240,
+        "service_point_query": 10000
+      },
+      "stored_observations": 10000,
+      "stored_quarantine": 0,
+      "tracemalloc_peak_mib": 44.61,
+      "wal_size_bytes": 0
     }
-  },
-
-  "verdict": "C10-F006 CONFIRMED and quantified. Sequential 1075.6 obs/s -> dispersed-1440 934.9 obs/s (-13.1% at n=10k; cycle-09 report documents ~200 obs/s at the same worst-case shape on the older harness). Two N+1 query patterns measured: 1 SELECT/observation (dedup get) + 1 SELECT/distinct-window (overlap sources). Degradation grows with distinct windows per chunk and table size."
+  ]
 }
