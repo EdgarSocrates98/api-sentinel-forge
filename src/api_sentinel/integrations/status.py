@@ -13,15 +13,31 @@ from enum import StrEnum
 from pathlib import Path
 
 from api_sentinel.domain import SentinelError
+from api_sentinel.integrations.apiforge.adapter import (
+    APIFORGE_FORGE,
+    apiforge_importable,
+)
 from api_sentinel.integrations.atlas.file_adapter import (
     ATLAS_FORGE,
     FileStructuralContext,
+)
+from api_sentinel.integrations.bridge.adapter import (
+    BRIDGE_FORGE,
+    bridge_importable,
+)
+from api_sentinel.integrations.data_sentinel.adapter import (
+    DATA_SENTINEL_FORGE,
+    data_sentinel_importable,
 )
 from api_sentinel.integrations.doctor.adapter import (
     DoctorMode,
     doctor_importable,
 )
 from api_sentinel.integrations.doctor.translate import DOCTOR_FORGE
+from api_sentinel.integrations.lens.adapter import (
+    LENS_FORGE,
+    lens_importable,
+)
 from api_sentinel.integrations.the_forge.handoff import THE_FORGE
 
 
@@ -88,12 +104,91 @@ def _the_forge_state() -> dict[str, object]:
     }
 
 
+def _bridge_state() -> dict[str, object]:
+    if bridge_importable():
+        return {
+            "forge": BRIDGE_FORGE,
+            "state": IntegrationState.UNVERIFIED.value,
+            "mode": "in_process",
+            "reason": "forge_agent_bridge importable — session governance "
+                      "is Bridge-owned; live delegation not yet confirmed",
+        }
+    return {
+        "forge": BRIDGE_FORGE,
+        "state": IntegrationState.UNVERIFIED.value,
+        "mode": "file",
+        "reason": "forge_agent_bridge not importable — governed session "
+                  "requests emit envelopes under agent_sessions/ for a "
+                  "separately-run Bridge; the peer is unconfirmed",
+    }
+
+
+def _lens_state() -> dict[str, object]:
+    if lens_importable():
+        return {
+            "forge": LENS_FORGE,
+            "state": IntegrationState.UNVERIFIED.value,
+            "mode": "in_process",
+            "reason": "forge_lens importable — trace references resolve "
+                      "through the Lens store; payloads stay Lens-owned",
+        }
+    return {
+        "forge": LENS_FORGE,
+        "state": IntegrationState.UNAVAILABLE.value,
+        "mode": "file",
+        "reason": "forge_lens not importable — set integrations.lens.refs "
+                  "to an exported refs manifest for trace references",
+    }
+
+
+def _data_sentinel_state() -> dict[str, object]:
+    if data_sentinel_importable():
+        return {
+            "forge": DATA_SENTINEL_FORGE,
+            "state": IntegrationState.UNVERIFIED.value,
+            "mode": "in_process",
+            "reason": "data_sentinel importable — domain-triggered "
+                      "stale-data handoffs only",
+        }
+    return {
+        "forge": DATA_SENTINEL_FORGE,
+        "state": IntegrationState.UNVERIFIED.value,
+        "mode": "handoff_file",
+        "reason": "data_sentinel not importable — stale-data handoffs "
+                  "emit envelopes under handoffs/ for a separately-run "
+                  "peer; generic telemetry never leaves",
+    }
+
+
+def _apiforge_state() -> dict[str, object]:
+    if apiforge_importable():
+        return {
+            "forge": APIFORGE_FORGE,
+            "state": IntegrationState.UNVERIFIED.value,
+            "mode": "in_process",
+            "reason": "apiforge importable — implementation-request "
+                      "handoffs require VERIFIED hypotheses",
+        }
+    return {
+        "forge": APIFORGE_FORGE,
+        "state": IntegrationState.UNVERIFIED.value,
+        "mode": "handoff_file",
+        "reason": "apiforge not importable — implementation-request "
+                  "envelopes emit under handoffs/ for a separately-run "
+                  "peer; the Sentinel never edits API Forge's code",
+    }
+
+
 def integration_status(atlas_manifest: Path | None = None) -> list[dict[str, object]]:
     """Report every sibling Forge's honest state, deterministically sorted."""
     return sorted(
         (
+            _apiforge_state(),
             _atlas_state(atlas_manifest),
+            _bridge_state(),
+            _data_sentinel_state(),
             _doctor_state(),
+            _lens_state(),
             _the_forge_state(),
         ),
         key=lambda s: str(s["forge"]),

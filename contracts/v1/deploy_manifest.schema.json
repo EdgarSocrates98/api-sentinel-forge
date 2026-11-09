@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://api-sentinel-forge.local/schemas/api-sentinel/DeployManifest/v1",
+  "title": "api-sentinel/DeployManifest/v1",
+  "type": "object",
+  "required": ["schema", "deploys"],
+  "properties": {
+    "schema": { "const": "api-sentinel/DeployManifest/v1" },
+    "exported_at": { "type": ["string", "null"], "format": "date-time" },
+    "exporter": { "type": "string", "description": "e.g. github-actions" },
+    "deploys": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["service", "at"],
+        "properties": {
+          "service": {
+            "type": "string",
+            "description": "Sentinel service_id or unique service_name"
+          },
+          "kind": {
+            "type": "string",
+            "description": "deploy | rollback | config | flag | contract | dependency | maintenance",
+            "default": "deploy"
+          },
+          "at": { "type": "string", "format": "date-time" },
+          "ref": {
+            "type": ["string", "null"],
+            "description": "sha, version, release id or run url"
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": { "type": "string" }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

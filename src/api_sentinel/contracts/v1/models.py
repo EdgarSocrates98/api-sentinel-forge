@@ -183,6 +183,36 @@ class TelemetrySourceV1(Envelope):
     created_at: datetime | None = None
 
 
+class DeployRecord(BaseModel):
+    """One deployment/change entry inside a `DeployManifest/v1` file.
+
+    `service` carries a Sentinel `service_id` *or* a service name; ambiguous
+    or unresolvable names are skipped with an explicit unknown, never
+    name-guessed. `ref` is the opaque external pointer (sha, version,
+    release id, run url).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+    service: str
+    kind: str = "deploy"
+    at: datetime
+    ref: str | None = None
+    details: dict[str, str] = Field(default_factory=dict)
+
+
+class DeployManifestV1(Envelope):
+    """Exported pipeline manifest (e.g. GitHub Actions) — a file, no creds.
+
+    Produced by CI/export tooling toward this documented shape; unknown
+    versions are rejected, never defaulted.
+    """
+
+    expected_schema: ClassVar[str] = "api-sentinel/DeployManifest/v1"
+    exported_at: datetime | None = None
+    exporter: str = "unknown"  # e.g. github-actions
+    deploys: list[DeployRecord] = Field(default_factory=list)
+
+
 class EvidenceProvenance(BaseModel):
     model_config = ConfigDict(extra="forbid")
     source_id: str
@@ -213,6 +243,7 @@ ENVELOPES: dict[str, type[Envelope]] = {
         AtlasExportV1,
         TelemetrySourceV1,
         EvidenceArtifactV1,
+        DeployManifestV1,
     )
 }
 

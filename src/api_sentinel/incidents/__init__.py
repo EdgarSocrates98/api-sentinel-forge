@@ -33,6 +33,7 @@ from api_sentinel.incidents.models import (
     Incident,
     IncidentAction,
     IncidentStatus,
+    VerificationRecord,
     group_key_for,
     incident_id_for,
 )
@@ -48,6 +49,7 @@ __all__ = [
     "IncidentAction",
     "IncidentEvent",
     "IncidentStatus",
+    "VerificationRecord",
     "add_hypothesis",
     "assign_owner",
     "attach_anomaly",

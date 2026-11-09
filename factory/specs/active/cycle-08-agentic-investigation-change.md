@@ -25,42 +25,42 @@ cycle-04-detection-incident-lifecycle (anomalies/incidents to investigate)._
 
 # Acceptance Criteria
 
-- [ ] Agentic investigation sessions are created and governed by the Agent
+- [x] Agentic investigation sessions are created and governed by the Agent
   Bridge — the Sentinel builds no agent runtime; sessions preserve the
   authorized principal, workspace, provider selection, cost limits,
   approvals and history (ADR-010).
-- [ ] Lens traces of agentic executions are referenced by trace/session id
+- [x] Lens traces of agentic executions are referenced by trace/session id
   plus provenance; the Sentinel never stores a full trace copy (ADR-016).
-- [ ] Context packs handed to agents are bounded in scope and size; no log,
+- [x] Context packs handed to agents are bounded in scope and size; no log,
   trace or API document is ever treated as trusted agent instruction
   (prompt-injection boundary, docs/07).
-- [ ] `ChangeEvent` ingestion covers commits, releases, deployments,
+- [x] `ChangeEvent` ingestion covers commits, releases, deployments,
   rollbacks, feature flags, configuration changes, gateway changes, auth
   policy changes, contract changes, dependency changes and maintenance
   events; GitHub Actions integration starts from exported pipeline
   manifests — no GitHub credential required.
-- [ ] Change correlation uses a configurable temporal window plus plausible
+- [x] Change correlation uses a configurable temporal window plus plausible
   impact on operations/dependencies, version and environment, and
   independent evidence; LAB-004 associates a regressive deploy with its
   evidence — temporal proximity alone is never claimed as root cause.
-- [ ] Hypotheses are explainable: each carries an explicit confidence class
+- [x] Hypotheses are explainable: each carries an explicit confidence class
   (`PROBABLE`/`POSSIBLE`/`UNVERIFIED`…) distinct from workflow state, and no
   uncalibrated numeric confidence score is fabricated.
-- [ ] The anomaly status ladder
+- [x] The anomaly status ladder
   `OBSERVED → CORRELATED → HYPOTHESIZED → VERIFIED` is enforced; a
   hypothesis becomes `VERIFIED` only when an independent tool or procedure
   supplies sufficient evidence.
-- [ ] Verification plans recommend concrete next checks bound to authorized
+- [x] Verification plans recommend concrete next checks bound to authorized
   tools, with scope stated.
-- [ ] Action approval: any external action requires an authorized scope and
+- [x] Action approval: any external action requires an authorized scope and
   explicit approval; a Sentinel admin does not automatically obtain
   authorization to change external systems.
-- [ ] API Forge handoff: problem + evidence + suggested change is delegated
+- [x] API Forge handoff: problem + evidence + suggested change is delegated
   through the governed handoff path; the Sentinel never edits code in API
   Forge's place.
-- [ ] Independent post-fix verification: after a fix, a separate
+- [x] Independent post-fix verification: after a fix, a separate
   check confirms indicator improvement — resolution is never self-declared.
-- [ ] Bridge unavailable → deterministic investigations remain available;
+- [x] Bridge unavailable → deterministic investigations remain available;
   the degradation is a named state, not a failure.
 
 # Constraints

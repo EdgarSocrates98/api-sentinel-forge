@@ -147,12 +147,16 @@ class IngestionCheckpoint(FrozenModel):
 
 
 class ChangeKind(StrEnum):
-    """Change classes correlated during investigation (docs/03, Cycle 5)."""
+    """Change classes correlated during investigation (docs/03, Cycle 5/8)."""
 
+    COMMIT = "commit"
+    RELEASE = "release"
     DEPLOY = "deploy"
     ROLLBACK = "rollback"
     CONFIG = "config"
     FLAG = "flag"
+    GATEWAY = "gateway"  # gateway/routing/ingress changes (Cycle 8)
+    AUTH_POLICY = "auth_policy"  # authn/authz policy changes (Cycle 8)
     CONTRACT = "contract"
     DEPENDENCY = "dependency"
     MAINTENANCE = "maintenance"

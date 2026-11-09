@@ -56,9 +56,11 @@ from api_sentinel.domain.identity import FrozenModel
 from api_sentinel.domain.quality import worst_of
 from api_sentinel.incidents import (
     OPEN_STATUSES,
+    Hypothesis,
     Incident,
     IncidentEvent,
     IncidentStatus,
+    VerificationRecord,
     attach_anomaly,
     group_key_for,
     open_incident,
@@ -1259,7 +1261,13 @@ class GetServiceLinks:
 
 
 class IncidentTimeline(FrozenModel):
-    """`GET /v1/incidents/{id}/timeline` — journal + related events."""
+    """`GET /v1/incidents/{id}/timeline` — journal + related events.
+
+    Cycle 8 surfaces the full investigation record: governed investigation
+    attempts, the hypothesis ladder (confidence states, directional
+    evidence) and verification records alongside journal entries and
+    change/dependency events — the incident's whole evidence trail.
+    """
 
     incident: Incident
     events: list[IncidentEvent] = Field(default_factory=list)
@@ -1267,6 +1275,9 @@ class IncidentTimeline(FrozenModel):
     dependency_observations: list[DependencyObservation] = Field(
         default_factory=list
     )
+    investigations: list[Investigation] = Field(default_factory=list)
+    hypotheses: list[Hypothesis] = Field(default_factory=list)
+    verifications: list[VerificationRecord] = Field(default_factory=list)
     truncated: bool = False
     unknowns: list[str] = Field(default_factory=list)
 
@@ -1293,6 +1304,7 @@ class GetIncidentTimeline:
             edges = uow.dependency_observations.list_for_service(
                 incident.service_id, window_start=incident.first_observed_at
             )
+            investigations = uow.investigations.list_for_incident(incident_id)
         truncated = (
             len(changes) > self.RELATED_LIMIT
             or len(edges) > self.RELATED_LIMIT
@@ -1307,6 +1319,9 @@ class GetIncidentTimeline:
             events=events,
             change_events=changes[: self.RELATED_LIMIT],
             dependency_observations=edges[: self.RELATED_LIMIT],
+            investigations=investigations[: self.RELATED_LIMIT],
+            hypotheses=incident.hypotheses,
+            verifications=incident.verifications,
             truncated=truncated,
             unknowns=unknowns,
         )

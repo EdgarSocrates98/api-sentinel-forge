@@ -33,6 +33,8 @@ class EventKind(StrEnum):
     HYPOTHESIS_UPDATED = "hypothesis_updated"
     ACTION_RECORDED = "action_recorded"
     RECOVERY_OBSERVED = "recovery_observed"
+    VERIFICATION_RECORDED = "verification_recorded"
+    SESSION_REQUESTED = "session_requested"
     NOTE = "note"
 
 

@@ -1,0 +1,27 @@
+{
+  "schema": "api-sentinel/DeployManifest/v1",
+  "exported_at": "2026-01-01T00:12:00Z",
+  "exporter": "github-actions",
+  "deploys": [
+    {
+      "service": "checkout-api",
+      "kind": "deploy",
+      "at": "2026-01-01T00:03:30Z",
+      "ref": "sha_a11ce99",
+      "details": {
+        "version": "2.7.0",
+        "run_url": "ci://actions/run/48151"
+      }
+    },
+    {
+      "service": "checkout-api",
+      "kind": "rollback",
+      "at": "2026-01-01T00:09:45Z",
+      "ref": "sha_a11ce99~1",
+      "details": {
+        "version": "2.6.3",
+        "run_url": "ci://actions/run/48160"
+      }
+    }
+  ]
+}

@@ -80,6 +80,18 @@ handoff_app = typer.Typer(
     no_args_is_help=True,
 )
 app.add_typer(handoff_app, name="handoff")
+changes_app = typer.Typer(
+    name="changes",
+    help="Change intelligence: list/record/import/correlate (Cycle 8).",
+    no_args_is_help=True,
+)
+app.add_typer(changes_app, name="changes")
+hypotheses_app = typer.Typer(
+    name="hypotheses",
+    help="Hypothesis lifecycle: add/promote/demote/verify (Cycle 8).",
+    no_args_is_help=True,
+)
+app.add_typer(hypotheses_app, name="hypotheses")
 aws_app = typer.Typer(
     name="aws",
     help="AWS read-only observability: collect/discover (ADR-013).",
@@ -744,46 +756,490 @@ def handoff_ingest(
     _emit(ingest.model_dump(mode="json"), as_json)
 
 
-@app.command("changes")
-def changes_cmd(
-    service_id: Annotated[str, typer.Option("--service-id")],
-    record: Annotated[
+@handoff_app.command("apiforge")
+def handoff_apiforge(
+    incident_id: Annotated[str, typer.Option("--incident-id")],
+    hypothesis_id: Annotated[str, typer.Option("--hypothesis-id")],
+    suggested_change: Annotated[
+        str,
+        typer.Option("--suggested-change", help="The fix being requested"),
+    ],
+    evidence_ref: Annotated[
         str | None,
-        typer.Option("--record", help="Change kind to record (deploy|config|…)"),
+        typer.Option("--evidence-ref", help="Extra evidence refs (CSV)"),
     ] = None,
-    at: Annotated[
-        str | None, typer.Option("--at", help="ISO-8601 event time")
+    now: Annotated[
+        str | None, typer.Option("--now", help="ISO-8601 injected clock")
     ] = None,
-    ref: Annotated[str | None, typer.Option("--ref")] = None,
-    source: Annotated[str, typer.Option("--source")] = "cli",
+    as_json: _JSON = False,
+    workspace: _WS = None,
+    user_scope: _USER_SCOPE = False,
+) -> None:
+    """Emit an `implementation-request` to API Forge — VERIFIED only.
+
+    The handoff carries problem + verified hypothesis + evidence refs +
+    suggested change; the Sentinel requests — API Forge owns the
+    implementation. A non-VERIFIED hypothesis is refused before
+    transport; an absent transport is a named `unavailable`.
+    """
+    from api_sentinel.integrations.apiforge.adapter import (
+        apiforge_from_config,
+    )
+
+    ws = _ws(workspace, user_scope)
+    ensure_workspace(ws)
+    uow = _uow(ws)
+    config = _load_cfg(ws)
+    acl = apiforge_from_config(config, ws.root)
+    clock_now = _parse_dt(now, "--now") if now else SystemClock().now()
+    with uow:
+        incident = uow.incidents.get(incident_id)
+        if incident is None:
+            raise NotFoundError(f"incident not found: {incident_id}")
+        hypothesis = next(
+            (h for h in incident.hypotheses
+             if h.hypothesis_id == hypothesis_id),
+            None,
+        )
+        if hypothesis is None:
+            raise NotFoundError(f"hypothesis not found: {hypothesis_id}")
+    result = acl.implementation_request(
+        incident=incident,
+        hypothesis=hypothesis,
+        suggested_change=suggested_change,
+        evidence_refs=_csv(evidence_ref),
+        at_iso=clock_now.isoformat(),
+    )
+    from api_sentinel.domain.models import ExternalHandoff, HandoffStatus
+
+    status_map = {
+        "delegated": HandoffStatus.DELEGATED,
+        "refused": HandoffStatus.REFUSED,
+        "unavailable": HandoffStatus.UNAVAILABLE,
+        "failed": HandoffStatus.FAILED,
+    }
+    with uow:
+        uow.handoff_records.put(
+            ExternalHandoff(
+                handoff_id=result.handoff_id,
+                to_forge="api-forge",
+                kind="implementation-request",
+                status=status_map.get(result.status, HandoffStatus.FAILED),
+                request_ref=result.request_ref,
+                detail=result.detail,
+                created_at=clock_now,
+            )
+        )
+        uow.commit()
+    _emit(
+        {
+            "handoff_id": result.handoff_id,
+            "status": result.status,
+            "request_ref": result.request_ref,
+            "detail": result.detail,
+        },
+        as_json,
+    )
+
+
+@handoff_app.command("apiforge-ingest")
+def handoff_apiforge_ingest(
+    response: Annotated[
+        Path,
+        typer.Option("--response", help="API Forge response file path"),
+    ],
+    as_json: _JSON = False,
+    workspace: _WS = None,
+    user_scope: _USER_SCOPE = False,
+) -> None:
+    """Ingest an API Forge response back as verbatim evidence."""
+    from api_sentinel.integrations.apiforge.adapter import (
+        ApiForgeACL,
+        ApiForgeMode,
+    )
+
+    ingest = ApiForgeACL(mode=ApiForgeMode.HANDOFF_FILE).ingest(response)
+    _emit(ingest.model_dump(mode="json"), as_json)
+
+
+@changes_app.command("list")
+def changes_list(
+    service_id: Annotated[str, typer.Option("--service-id")],
     at_start: Annotated[str | None, typer.Option("--at-start")] = None,
     at_end: Annotated[str | None, typer.Option("--at-end")] = None,
     as_json: _JSON = False,
     workspace: _WS = None,
     user_scope: _USER_SCOPE = False,
 ) -> None:
-    """List change events for a service, or record one with --record."""
+    """List change events for a service."""
     ws = _ws(workspace, user_scope)
     uow = _uow(ws)
-    if record is not None:
-        if at is None:
-            typer.echo("error: --at is required with --record", err=True)
-            raise typer.Exit(EXIT_USAGE)
-        event = RecordChange(uow, SystemClock()).execute(
-            service_id=service_id,
-            kind=record,
-            at=_parse_dt(at, "--at"),
-            source=source,
-            ref=ref,
-        )
-        _emit(event.model_dump(mode="json"), as_json)
-        return
     events = ListChanges(uow).execute(
         service_id=service_id,
         at_start=_parse_dt(at_start, "--at-start") if at_start else None,
         at_end=_parse_dt(at_end, "--at-end") if at_end else None,
     )
     _emit([e.model_dump(mode="json") for e in events], as_json)
+
+
+@changes_app.command("record")
+def changes_record(
+    service_id: Annotated[str, typer.Option("--service-id")],
+    kind: Annotated[
+        str,
+        typer.Option(
+            "--kind",
+            help="deploy|rollback|release|commit|config|flag|gateway|"
+            "auth_policy|contract|dependency|maintenance",
+        ),
+    ],
+    at: Annotated[str, typer.Option("--at", help="ISO-8601 event time")],
+    ref: Annotated[str | None, typer.Option("--ref")] = None,
+    source: Annotated[str, typer.Option("--source")] = "cli",
+    detail: Annotated[
+        str | None,
+        typer.Option("--detail", help="key=value details (CSV)"),
+    ] = None,
+    as_json: _JSON = False,
+    workspace: _WS = None,
+    user_scope: _USER_SCOPE = False,
+) -> None:
+    """Record one change event — deterministic id, re-recording dedups."""
+    ws = _ws(workspace, user_scope)
+    uow = _uow(ws)
+    details: dict[str, str] = {}
+    for pair in (detail or "").split(","):
+        if "=" in pair:
+            k, v = pair.split("=", 1)
+            details[k.strip()] = v.strip()
+    event = RecordChange(uow, SystemClock()).execute(
+        service_id=service_id,
+        kind=kind,
+        at=_parse_dt(at, "--at"),
+        source=source,
+        ref=ref,
+        details=details or None,
+    )
+    _emit(event.model_dump(mode="json"), as_json)
+
+
+@changes_app.command("import")
+def changes_import(
+    file: Annotated[
+        Path,
+        typer.Option("--file", help="DeployManifest/v1 JSON export"),
+    ],
+    source: Annotated[
+        str | None,
+        typer.Option("--source", help="Change source label (default: file)"),
+    ] = None,
+    now: Annotated[
+        str | None, typer.Option("--now", help="ISO-8601 injected clock")
+    ] = None,
+    as_json: _JSON = False,
+    workspace: _WS = None,
+    user_scope: _USER_SCOPE = False,
+) -> None:
+    """Import an exported pipeline manifest — no GitHub credential needed.
+
+    Reads `api-sentinel/DeployManifest/v1` JSON (e.g. a GitHub Actions
+    export) into `change_events`; re-importing the same manifest dedups
+    by deterministic change id — imported/deduplicated/skipped are
+    reported honestly, never silently.
+    """
+    from api_sentinel.investigation.changes import ImportDeployManifest
+
+    ws = _ws(workspace, user_scope)
+    uow = _uow(ws)
+    clock_now = _parse_dt(now, "--now") if now else SystemClock().now()
+    report = ImportDeployManifest(uow, clock_now).execute(
+        file=file, source=source
+    )
+    _emit(report.model_dump(mode="json"), as_json)
+
+
+@changes_app.command("correlate")
+def changes_correlate(
+    incident_id: Annotated[str, typer.Option("--incident-id")],
+    window_seconds: Annotated[
+        int,
+        typer.Option("--window-seconds", help="Lookback window (default 3600)"),
+    ] = 3600,
+    as_json: _JSON = False,
+    workspace: _WS = None,
+    user_scope: _USER_SCOPE = False,
+) -> None:
+    """Rank changes before the incident's first signal — never causal.
+
+    Candidates are scored by temporal proximity and plausible scope with
+    reasons listed; the report carries the `proximity≠cause` disclaimer —
+    temporal proximity alone is never root cause.
+    """
+    from api_sentinel.investigation.changes import CorrelateIncidentChanges
+
+    ws = _ws(workspace, user_scope)
+    uow = _uow(ws)
+    report = CorrelateIncidentChanges(uow).execute(
+        incident_id=incident_id, window_seconds=window_seconds
+    )
+    _emit(report.model_dump(mode="json"), as_json)
+
+
+@app.command()
+def investigate(
+    incident_id: Annotated[str, typer.Option("--incident-id")],
+    principal: Annotated[
+        str, typer.Option("--principal", help="Authorized session principal")
+    ] = "cli",
+    provider: Annotated[
+        str | None, typer.Option("--provider", help="Provider selection")
+    ] = None,
+    model: Annotated[str | None, typer.Option("--model")] = None,
+    cost_limit: Annotated[
+        float | None, typer.Option("--cost-limit", help="USD budget cap")
+    ] = None,
+    approval: Annotated[
+        str | None,
+        typer.Option("--approval", help="Granted action scope (repeatable)"),
+    ] = None,
+    budget_bytes: Annotated[
+        int, typer.Option("--budget-bytes", help="Context pack byte budget")
+    ] = 65536,
+    idempotency_key: Annotated[
+        str | None, typer.Option("--idempotency-key")
+    ] = None,
+    now: Annotated[
+        str | None, typer.Option("--now", help="ISO-8601 injected clock")
+    ] = None,
+    as_json: _JSON = False,
+    workspace: _WS = None,
+    user_scope: _USER_SCOPE = False,
+) -> None:
+    """Bounded pack → governed session request → audited investigation.
+
+    Assembles a bounded, redacted `ContextPack` (incident, anomalies,
+    journal tail, evidence refs, latest indicators, structural context,
+    change correlation with proximity≠cause) and attempts a governed
+    session through the Agent Bridge seam — a request, never a runtime.
+    An absent Bridge is a named `unavailable`, never a simulated session;
+    the deterministic investigation is persisted either way.
+    """
+    from api_sentinel.integrations.bridge.adapter import (
+        bridge_session_from_config,
+    )
+    from api_sentinel.investigation.agent_session import AgentSessionPort
+    from api_sentinel.investigation.service import RunAgenticInvestigation
+
+    ws = _ws(workspace, user_scope)
+    ensure_workspace(ws)
+    uow = _uow(ws)
+    config = _load_cfg(ws)
+    session_port: AgentSessionPort = bridge_session_from_config(
+        config, ws.root
+    )
+    structural = load_structural(config, ws.root)
+    clock_now = _parse_dt(now, "--now") if now else SystemClock().now()
+    approvals = (
+        [a.strip() for a in approval.split(",") if a.strip()]
+        if approval else []
+    )
+    outcome = RunAgenticInvestigation(
+        uow,
+        clock_now,
+        UlidIdFactory(),
+        session_port=session_port,
+        structural=structural,
+        workspace_root=ws.root,
+        budget_bytes=budget_bytes,
+    ).execute(
+        incident_id=incident_id,
+        principal=principal,
+        workspace=str(ws.root),
+        provider_choice=provider,
+        model=model,
+        cost_limit=cost_limit,
+        approvals=approvals,
+        idempotency_key=idempotency_key,
+    )
+    _emit(outcome.model_dump(mode="json"), as_json)
+
+
+@hypotheses_app.command("add")
+def hypotheses_add(
+    incident_id: Annotated[str, typer.Option("--incident-id")],
+    text: Annotated[str, typer.Option("--text")],
+    confidence: Annotated[
+        str,
+        typer.Option("--confidence", help="CORRELATED | HYPOTHESIZED"),
+    ] = "HYPOTHESIZED",
+    evidence_for: Annotated[
+        str | None, typer.Option("--evidence-for", help="Evidence refs (CSV)")
+    ] = None,
+    evidence_against: Annotated[
+        str | None,
+        typer.Option("--evidence-against", help="Evidence refs (CSV)"),
+    ] = None,
+    unknown: Annotated[
+        str | None, typer.Option("--unknown", help="Unknown note (CSV)")
+    ] = None,
+    note: Annotated[str | None, typer.Option("--note")] = None,
+    now: Annotated[
+        str | None, typer.Option("--now", help="ISO-8601 injected clock")
+    ] = None,
+    as_json: _JSON = False,
+    workspace: _WS = None,
+    user_scope: _USER_SCOPE = False,
+) -> None:
+    """Attach a candidate cause — CORRELATED or HYPOTHESIZED only.
+
+    Directional evidence and unknowns are explicit; VERIFIED is never a
+    starting point — it requires an independent verification record.
+    """
+    from api_sentinel.investigation.hypotheses import AddHypothesis
+
+    ws = _ws(workspace, user_scope)
+    uow = _uow(ws)
+    clock_now = _parse_dt(now, "--now") if now else SystemClock().now()
+    hypothesis, _incident = AddHypothesis(
+        uow, clock_now, UlidIdFactory()
+    ).execute(
+        incident_id=incident_id,
+        text=text,
+        confidence=confidence,
+        evidence_for=_csv(evidence_for),
+        evidence_against=_csv(evidence_against),
+        unknowns=_csv(unknown),
+        note=note,
+    )
+    _emit(hypothesis.model_dump(mode="json"), as_json)
+
+
+@hypotheses_app.command("promote")
+def hypotheses_promote(
+    incident_id: Annotated[str, typer.Option("--incident-id")],
+    hypothesis_id: Annotated[str, typer.Option("--hypothesis-id")],
+    verification_id: Annotated[
+        str,
+        typer.Option(
+            "--verification-id",
+            help="A persisted VERIFIED verification for this hypothesis",
+        ),
+    ],
+    note: Annotated[str | None, typer.Option("--note")] = None,
+    now: Annotated[
+        str | None, typer.Option("--now", help="ISO-8601 injected clock")
+    ] = None,
+    as_json: _JSON = False,
+    workspace: _WS = None,
+    user_scope: _USER_SCOPE = False,
+) -> None:
+    """Promote to VERIFIED — only on independent verification evidence.
+
+    `verification_id` must name a persisted record on this incident,
+    bound to the hypothesis, with verdict VERIFIED — promotion is never
+    self-declared.
+    """
+    from api_sentinel.investigation.hypotheses import PromoteHypothesis
+
+    ws = _ws(workspace, user_scope)
+    uow = _uow(ws)
+    clock_now = _parse_dt(now, "--now") if now else SystemClock().now()
+    hypothesis, _incident = PromoteHypothesis(uow, clock_now).execute(
+        incident_id=incident_id,
+        hypothesis_id=hypothesis_id,
+        verification_id=verification_id,
+        note=note,
+    )
+    _emit(hypothesis.model_dump(mode="json"), as_json)
+
+
+@hypotheses_app.command("demote")
+def hypotheses_demote(
+    incident_id: Annotated[str, typer.Option("--incident-id")],
+    hypothesis_id: Annotated[str, typer.Option("--hypothesis-id")],
+    reason: Annotated[str, typer.Option("--reason")],
+    evidence_against: Annotated[
+        str | None,
+        typer.Option("--evidence-against", help="Evidence refs (CSV)"),
+    ] = None,
+    note: Annotated[str | None, typer.Option("--note")] = None,
+    now: Annotated[
+        str | None, typer.Option("--now", help="ISO-8601 injected clock")
+    ] = None,
+    as_json: _JSON = False,
+    workspace: _WS = None,
+    user_scope: _USER_SCOPE = False,
+) -> None:
+    """Demote to REFUTED — the terminal contradiction state, with reason."""
+    from api_sentinel.investigation.hypotheses import DemoteHypothesis
+
+    ws = _ws(workspace, user_scope)
+    uow = _uow(ws)
+    clock_now = _parse_dt(now, "--now") if now else SystemClock().now()
+    hypothesis, _incident = DemoteHypothesis(uow, clock_now).execute(
+        incident_id=incident_id,
+        hypothesis_id=hypothesis_id,
+        reason=reason,
+        evidence_against=_csv(evidence_against),
+        note=note,
+    )
+    _emit(hypothesis.model_dump(mode="json"), as_json)
+
+
+@hypotheses_app.command("verify")
+def hypotheses_verify(
+    incident_id: Annotated[str, typer.Option("--incident-id")],
+    hypothesis_id: Annotated[str, typer.Option("--hypothesis-id")],
+    window_start: Annotated[
+        str, typer.Option("--window-start", help="ISO-8601 post-change start")
+    ],
+    window_end: Annotated[
+        str, typer.Option("--window-end", help="ISO-8601 post-change end")
+    ],
+    doctor: Annotated[
+        bool,
+        typer.Option("--doctor", help="Include a Doctor handoff step"),
+    ] = False,
+    now: Annotated[
+        str | None, typer.Option("--now", help="ISO-8601 injected clock")
+    ] = None,
+    as_json: _JSON = False,
+    workspace: _WS = None,
+    user_scope: _USER_SCOPE = False,
+) -> None:
+    """Run a falsifiable verification plan through the authorized ports.
+
+    `re_detect` re-runs the grouping rule(s) over the post-change window —
+    independent post-fix evidence; the loop closes only when the rule no
+    longer fires. Verdict + step receipts persist on the incident and are
+    journaled.
+    """
+    from api_sentinel.investigation.verification import RunVerification
+
+    ws = _ws(workspace, user_scope)
+    uow = _uow(ws)
+    config = _load_cfg(ws)
+    structural = load_structural(config, ws.root)
+    doctor_acl = doctor_acl_from_config(config) if doctor else None
+    clock_now = _parse_dt(now, "--now") if now else SystemClock().now()
+    result = RunVerification(
+        uow,
+        clock_now,
+        structural=structural,
+        doctor=doctor_acl,
+        workspace_root=ws.root,
+    ).execute(
+        incident_id=incident_id,
+        hypothesis_id=hypothesis_id,
+        window_start=_parse_dt(window_start, "--window-start"),
+        window_end=_parse_dt(window_end, "--window-end"),
+        include_doctor=doctor,
+    )
+    _emit(result.model_dump(mode="json"), as_json)
+
+
+def _csv(raw: str | None) -> list[str]:
+    return [s.strip() for s in (raw or "").split(",") if s.strip()]
 
 
 @app.command("deps")

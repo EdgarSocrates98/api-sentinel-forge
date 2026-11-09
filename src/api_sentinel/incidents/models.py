@@ -101,26 +101,55 @@ class ConfidenceClass(StrEnum):
     """Hypothesis confidence ladder — separate from operational status.
 
     `OBSERVED → CORRELATED → HYPOTHESIZED → VERIFIED`; VERIFIED requires
-    independent tool/procedure evidence (docs/09). No fake precision: states
-    and observable evidence, never invented percentages.
+    independent tool/procedure evidence (docs/09). `REFUTED` is the terminal
+    demotion: independent evidence contradicted the candidate. No fake
+    precision: states and observable evidence, never invented percentages.
     """
 
     OBSERVED = "OBSERVED"
     CORRELATED = "CORRELATED"
     HYPOTHESIZED = "HYPOTHESIZED"
     VERIFIED = "VERIFIED"
+    REFUTED = "REFUTED"
 
 
 class Hypothesis(FrozenModel):
-    """A candidate cause with explicit, explainable confidence."""
+    """A candidate cause with explicit, explainable confidence.
+
+    `evidence_for`/`evidence_against` are directional lists (Cycle 8);
+    `evidence_refs` stays the flat union older readers consume.
+    `verification_id` records the verification whose independent evidence
+    promoted the hypothesis to VERIFIED — it is never self-declared.
+    """
 
     hypothesis_id: str
     text: str
     confidence: ConfidenceClass = ConfidenceClass.OBSERVED
     evidence_refs: list[str] = Field(default_factory=list)
+    evidence_for: list[str] = Field(default_factory=list)
+    evidence_against: list[str] = Field(default_factory=list)
+    unknowns: list[str] = Field(default_factory=list)
+    verification_id: str | None = None
     note: str | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class VerificationRecord(FrozenModel):
+    """A persisted verification outcome on the incident (Cycle 8).
+
+    `receipts` are compact step summaries (tool, status, evidence refs) —
+    references, never payloads. VERIFIED hypotheses quote `verification_id`
+    from one of these records with verdict `VERIFIED`.
+    """
+
+    verification_id: str
+    hypothesis_id: str
+    verdict: str  # VERIFIED | REFUTED | INCONCLUSIVE
+    receipts: list[dict[str, str]] = Field(default_factory=list)
+    executor: str = "sentinel"
+    detail: str = ""
+    executed_at: datetime
 
 
 class IncidentAction(FrozenModel):
@@ -163,6 +192,7 @@ class Incident(FrozenModel):
     anomaly_ids: list[str] = Field(default_factory=list)
     evidence_refs: list[str] = Field(default_factory=list)
     hypotheses: list[Hypothesis] = Field(default_factory=list)
+    verifications: list[VerificationRecord] = Field(default_factory=list)
     change_refs: list[str] = Field(default_factory=list)
     actions: list[IncidentAction] = Field(default_factory=list)
     limitations: list[str] = Field(default_factory=list)

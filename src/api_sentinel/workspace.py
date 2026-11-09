@@ -39,6 +39,11 @@ class Workspace:
     def handoffs_dir(self) -> Path:
         return self.root / "handoffs"
 
+    @property
+    def agent_sessions_dir(self) -> Path:
+        """Governed session-request envelopes for the Agent Bridge (Cycle 8)."""
+        return self.root / "agent_sessions"
+
 
 def resolve_workspace(scope: Scope | None = None, explicit: Path | None = None) -> Workspace:
     """explicit path > explicit scope > API_SENTINEL_HOME > project > user."""
@@ -58,6 +63,7 @@ def ensure_workspace(ws: Workspace, *, profile: str = "local") -> Workspace:
     ws.blobs_dir.mkdir(exist_ok=True)
     ws.receipts_dir.mkdir(exist_ok=True)
     ws.handoffs_dir.mkdir(exist_ok=True)
+    ws.agent_sessions_dir.mkdir(exist_ok=True)
     if not ws.config_path.exists():
         ws.config_path.write_text(
             yaml.safe_dump({"scope": ws.scope, "profile": profile}, sort_keys=False),

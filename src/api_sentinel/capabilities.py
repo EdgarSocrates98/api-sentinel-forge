@@ -40,6 +40,20 @@ _CAPABILITIES: list[Capability] = [
         notes="Cycle 6 — local /v1 surface via `api-sentinel serve` (api extra)",
     ),
     Capability(_AWS_CAPABILITY_ID, CapabilityStatus.DECLARED, notes="Cycle 7"),
+    Capability(
+        "api.change-intelligence",
+        CapabilityStatus.AVAILABLE,
+        "0.2.5",
+        notes="Cycle 8 — change import/correlation with explicit "
+        "proximity≠cause honesty",
+    ),
+    Capability(
+        "api.agentic-investigation",
+        CapabilityStatus.DECLARED,
+        notes="Cycle 8 — bounded context packs + hypothesis lifecycle are "
+        "deterministic; agent sessions are Bridge-governed (ADR-010), so "
+        "the capability declares until the Bridge seam is live-proven",
+    ),
 ]
 
 
