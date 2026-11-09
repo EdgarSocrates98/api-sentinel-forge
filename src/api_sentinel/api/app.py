@@ -32,9 +32,11 @@ from api_sentinel.domain import (
     SentinelError,
     SystemClock,
     UlidIdFactory,
+    UnauthorizedError,
     ValidationError,
 )
 from api_sentinel.infrastructure.security import redact
+from api_sentinel.infrastructure.security.auth import ApiAuth, resolve_auth
 from api_sentinel.integrations.errors import (
     IntegrationRefused,
     IntegrationUnavailable,
@@ -49,6 +51,7 @@ from api_sentinel.workspace import (
 
 # Sentinel error family → HTTP status (typed problem+json, docs/04).
 _ERROR_STATUS: list[tuple[type[SentinelError], int]] = [
+    (UnauthorizedError, 401),
     (NotFoundError, 404),
     (ValidationError, 422),
     (ForbiddenError, 403),
@@ -58,6 +61,18 @@ _ERROR_STATUS: list[tuple[type[SentinelError], int]] = [
     (IntegrationUnavailable, 503),
     (IntegrationRefused, 409),
     (ContractError, 422),
+]
+
+#: CORS allow-headers — the credential channels plus content type.
+_CORS_ALLOW_HEADERS = [
+    "Authorization",
+    "Content-Type",
+    "X-Sentinel-Principal",
+    "X-Sentinel-Role",
+    "X-Sentinel-Workspace",
+    "X-Sentinel-Timestamp",
+    "X-Sentinel-Nonce",
+    "X-Sentinel-Signature",
 ]
 
 
@@ -76,6 +91,11 @@ def _problem(
         status_code=status,
         content=body.model_dump(mode="json"),
         media_type="application/problem+json",
+        headers=(
+            {"WWW-Authenticate": 'Bearer realm="api-sentinel"'}
+            if status == 401
+            else None
+        ),
     )
 
 
@@ -90,8 +110,20 @@ def _atlas_manifest(config: dict[str, Any], ws: Workspace) -> Path | None:
     return path if path.is_absolute() else ws.root / path
 
 
+def _cors_origins(config: dict[str, Any]) -> list[str]:
+    """Explicit CORS allow-list — default is *deny cross-origin* (no
+    middleware). `api.cors_origins` opts in; `*` is honored but never
+    paired with credentials (they are off, always)."""
+    api_raw = config.get("api")
+    api_cfg: dict[str, Any] = api_raw if isinstance(api_raw, dict) else {}
+    raw = api_cfg.get("cors_origins")
+    if not isinstance(raw, list):
+        return []
+    return sorted({str(o).strip() for o in raw if str(o).strip()})
+
+
 def _build_context(
-    ws: Workspace, *, clock: Clock, ids: IdFactory
+    ws: Workspace, *, clock: Clock, ids: IdFactory, auth: ApiAuth | None
 ) -> ApiContext:
     """Resolve collaborators once — an unusable Atlas export is a named
     `structural_reason`, never a fabricated structural graph."""
@@ -113,6 +145,12 @@ def _build_context(
             structural_reason = getattr(exc, "reason", exc.message)
     api_raw = config.get("api")
     api_cfg: dict[str, Any] = api_raw if isinstance(api_raw, dict) else {}
+    resolved_auth = auth
+    if resolved_auth is None:
+        # The served path always resolves a credential — in-process mode
+        # (`auth=None` on ApiContext) is only reachable by direct
+        # ApiContext injection, never through `serve`.
+        resolved_auth, _ = resolve_auth(ws, config)
     return ApiContext(
         workspace=ws,
         config=config,
@@ -124,6 +162,8 @@ def _build_context(
         atlas_manifest=manifest,
         default_role=str(api_cfg.get("default_role", "operator")),
         max_concurrent_jobs=int(api_cfg.get("max_concurrent_jobs", 2)),
+        auth=resolved_auth,
+        cors_origins=_cors_origins(config),
     )
 
 
@@ -133,12 +173,15 @@ def create_app(
     clock: Clock | None = None,
     ids: IdFactory | None = None,
     context: ApiContext | None = None,
+    auth: ApiAuth | None = None,
 ) -> FastAPI:
     """Build the /v1 app over a resolved workspace.
 
     `context` may inject a fully custom `ApiContext` (tests); otherwise one
     is built from `workspace` (which falls back to `API_SENTINEL_HOME` then
-    `./.api-sentinel`).
+    `./.api-sentinel`). `auth` lets `serve` inject the credential it
+    already resolved (env/stdin/file); absent it, the workspace token
+    file is resolved here — serving never runs credential-less.
     """
     if context is not None:
         ctx = context
@@ -146,7 +189,10 @@ def create_app(
         ws = resolve_workspace(explicit=workspace)
         ensure_workspace(ws)
         ctx = _build_context(
-            ws, clock=clock or SystemClock(), ids=ids or UlidIdFactory()
+            ws,
+            clock=clock or SystemClock(),
+            ids=ids or UlidIdFactory(),
+            auth=auth,
         )
 
     app = FastAPI(
@@ -157,6 +203,19 @@ def create_app(
         openapi_url=None,
     )
     app.state.ctx = ctx
+
+    if ctx.cors_origins:
+        # Explicit opt-in only; credentials stay off — a wildcard origin
+        # is therefore never a credentialed wildcard.
+        from fastapi.middleware.cors import CORSMiddleware
+
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=ctx.cors_origins,
+            allow_credentials=False,
+            allow_methods=["GET", "POST"],
+            allow_headers=_CORS_ALLOW_HEADERS,
+        )
 
     @app.exception_handler(SentinelError)
     async def _sentinel_error(

@@ -55,6 +55,7 @@ def start_ingestion_job(
 def ingestion_job(
     job_id: str,
     uow: Annotated[UnitOfWork, Depends(get_uow)],
+    actor: Annotated[str, Depends(require_scope("query"))],
 ) -> JobResponse:
     """The audited job row — status is a named state, never fabricated."""
     return JobResponse(job=GetIngestionJob(uow).execute(job_id=job_id))

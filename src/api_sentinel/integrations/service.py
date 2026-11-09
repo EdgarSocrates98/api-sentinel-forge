@@ -245,6 +245,7 @@ class DelegateToDoctor:
                 from_forge="api-sentinel-forge",
                 to_forge=DOCTOR_FORGE,
                 kind=kind,
+                correlation_id=handoff_id,
                 payload={
                     "service_id": service_id,
                     "service_name": service.service_name,

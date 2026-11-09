@@ -1,31 +1,63 @@
 {
   "schema": "api-sentinel/SecurityEvidence/v1",
-  "collected_at": "2026-11-09T12:10:00Z",
+  "collected_at": "2026-11-09T12:45:00Z",
   "finding": "C10-F007",
+  "status": "FIXED — Wave 1 (this repo)",
 
-  "role_trust": {
-    "site": "src/api_sentinel/api/deps.py:129",
-    "code": "raw = request.headers.get(\"x-sentinel-role\", \"\").strip().lower(); role = raw or ctx.default_role",
-    "verdict": "CONFIRMED — the effective role is read verbatim from the client-supplied X-Sentinel-Role header with no signature, token, or identity verification. ROLE_SCOPES (deps.py:68-77) then grants viewer/analyst/operator/admin scopes by self-declaration.",
-    "ungated_reads": "tests/integration/test_authz_matrix.py:225-229 asserts the placeholder explicitly: role 'intruder' gets HTTP 200 on GET /v1/services.",
-    "self_declared_admin": "any HTTP client can send X-Sentinel-Role: admin and receive the 'approve_changes' scope — verified by the authz matrix test design (roles parametrized as bare headers)."
+  "wave0_verdict": {
+    "verdict": "C10-F007 CONFIRMED at wave-0 audit: effective role read verbatim from client X-Sentinel-Role header, no credential of any kind; P1 bounded by loopback default (P0-equivalent under --allow-remote)."
   },
 
-  "bind_exposure": {
-    "site": "src/api_sentinel/cli/__init__.py:1689-1739 (serve command)",
-    "default": "host='127.0.0.1' — loopback only; non-loopback refused unless --allow-remote",
-    "remote_opt_in": "--allow-remote prints a warning (never silent) but proceeds; a remote bind then exposes the self-declared-role model to the network.",
-    "mitigation_in_place": "loopback default + explicit opt-in + loud warning; docs mark the model as Cycle-6 placeholder pending Cycle-9→10 authz."
+  "fix": {
+    "site": "src/api_sentinel/api/deps.py:121-160 (_authenticate); src/api_sentinel/infrastructure/security/auth.py",
+    "local_mode": "Authorization: Bearer <token> — secrets.token_urlsafe(32), hmac.compare_digest, TTL rotation via api.token_ttl_seconds (file tokens only). Resolution: API_SENTINEL_TOKEN > --token-stdin > <workspace>/token (generated+printed once, 0600 best-effort — Windows chmod maps to read-only attribute, NTFS-ACL equivalence not claimed).",
+    "integrated_mode": "X-Sentinel-Principal honored only with X-Sentinel-Signature = hex HMAC-SHA256 over 'principal\\nrole\\nworkspace\\ntimestamp\\nnonce' (API_SENTINEL_SHARED_SECRET / api.shared_secret / workspace token fallback). ±300 s skew, single-use nonce bounded by skew window, workspace-id equality, role validated against ROLE_SCOPES.",
+    "in_process_seam": "ApiContext(auth=None) keeps the Cycle-6 placeholder for direct TestClient injection ONLY; serve/create_app always resolve a real credential — verified by code path (_build_context -> resolve_auth; ensure_local_token never returns token=None) and by the live smoke below.",
+    "failure_contract": "401 + WWW-Authenticate: Bearer realm=\"api-sentinel\" + application/problem+json with details.reason (missing_credentials, bad_authorization_scheme, bad_token, token_expired, missing_*, bad_timestamp, stale_timestamp, bad_signature, replay, workspace_mismatch, unknown_role).",
+    "scope_enforcement": "ROLE_SCOPES viewer/analyst/operator/admin server-side; denial precedes resource lookup (no existence oracle); api.auth.denied + api.scope.denied audit rows best-effort, credential-free.",
+    "cors": "deny by default; api.cors_origins explicit opt-in; allow_credentials=False always.",
+    "forwarded_headers": "X-Forwarded-*/X-Real-IP never consulted for identity."
   },
 
-  "denial_audit": {
-    "evidence": "deps.py:94-114 — denied requests are audit-appended best-effort; 403s never leak existence (test_denial_never_leaks_existence, test_authz_matrix.py:201)."
+  "live_smoke_2026_11_09": {
+    "setup": "api-sentinel serve --workspace <tmp> --port 8471; generated token printed once to stderr, stored <ws>/token",
+    "results": [
+      {"request": "GET /v1/health (no auth)", "result": "200 — ungated by design"},
+      {"request": "GET /v1/services (no auth)", "result": "401, www-authenticate: Bearer realm=\"api-sentinel\", problem+json sentinel.unauthorized reason=missing_credentials"},
+      {"request": "GET /v1/services (X-Sentinel-Role: admin, no credential)", "result": "401 — the F007 self-declared-admin spoof is rejected"},
+      {"request": "GET /v1/services (Authorization: Bearer <workspace token>)", "result": "200"},
+      {"request": "GET /v1/capabilities (bearer)", "result": "200 — honest stage+status per capability"}
+    ]
   },
 
-  "comparison_productforge_portalapi": {
-    "site": "product-forge/src/product_forge/_forge_portal.py:40-41,627-674",
-    "contrast": "PortalApi uses X-Forge-Session header/forge_session cookie and returns PORTAL-SESSION on missing/invalid sessions — a real session concept; Sentinel's role header has none."
+  "negative_battery": {
+    "file": "tests/security/test_api_auth.py",
+    "cases": [
+      "no credential -> 401 missing_credentials",
+      "malformed Authorization scheme -> 401 bad_authorization_scheme",
+      "wrong token -> 401 bad_token",
+      "expired token (TTL) -> 401 token_expired; rotated file token -> new credential works",
+      "self-declared X-Sentinel-Role admin with no credential -> 401",
+      "viewer token + spoofed role header -> still viewer (403 on investigate)",
+      "signed principal: missing fields -> 401 missing_*; bad signature -> 401; stale timestamp -> 401 stale_timestamp; replayed nonce -> 401 replay; wrong workspace -> 401 workspace_mismatch; unknown role claim -> 401 unknown_role",
+      "precedence: env > stdin > file token verified",
+      "denial before lookup: 403 on missing incident, never 404 oracle",
+      "CORS: no headers emitted by default; configured origin echoes without credentials"
+    ]
   },
 
-  "verdict": "C10-F007 CONFIRMED. Authorization is client-declared only. Bounded by loopback default and documented as placeholder, so severity P1 (not P0): on the supported single-user loopback deployment a local attacker already has equal filesystem privilege to the sqlite store; the defect becomes critical only under --allow-remote exposure or multi-user deployment."
+  "handoff_boundary": {
+    "correlation_id": "InvestigationHandoffV1 + schema + every receipt",
+    "transport_vs_execution": "receipt.transport_state emitted/received; receipt.execution_state pending/completed/failed — emitted file never reported as executed",
+    "path_safety": "safe_child_name/safe_slot/resolve_under_root guard handoffs/, receipts/, agent_sessions/ — ../escape handoff ids refused; symlink escapes refused",
+    "bounded_reads": "read_text_bounded (32 MiB default) on doctor bundles, apiforge payloads, atlas exports, lens artifacts, change files",
+    "correlation_checks": "doctor bundle must match handoff id; provider response must echo request correlation; atlas duplicate service/edge ids rejected",
+    "tests": "tests/security/test_handoff_security.py"
+  },
+
+  "verification_tail": {
+    "pytest": "514 passed in ~50s (after fix; was 512+1 failed mid-wave)",
+    "ruff": "ruff check src tests lab — clean",
+    "mypy": "mypy src — clean, 115 files"
+  }
 }

@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import Any
 
 from api_sentinel.contracts.v1 import InvestigationHandoffV1
+from api_sentinel.infrastructure.security.paths import safe_slot
 from api_sentinel.integrations.errors import IntegrationRefused
 
 DATA_SENTINEL_FORGE = "data-sentinel-forge"
@@ -163,7 +164,7 @@ class DataSentinelACL:
                     "scopes": ["read:data-quality"],
                 },
             )
-            slot = self._dir / handoff_id
+            slot = safe_slot(self._dir, handoff_id, name="handoff_id")
             slot.mkdir(parents=True, exist_ok=True)
             path = slot / "stale_data_handoff.json"
             path.write_text(

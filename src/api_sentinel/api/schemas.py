@@ -54,6 +54,7 @@ class Envelope(FrozenModel):
 class CapabilityView(FrozenModel):
     capability_id: str
     status: str  # available | declared | unavailable — honest vocabulary
+    stage: str = ""  # implemented|tested|integrated|verified|production_validated
     since: str | None = None
     notes: str = ""
 

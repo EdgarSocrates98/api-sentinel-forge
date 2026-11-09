@@ -222,8 +222,20 @@ class TestAuthorizationMatrix:
             assert "not_found" not in text
             assert "not found" not in text
 
-    def test_reads_are_the_documented_placeholder(self, client: TestClient) -> None:
-        """Ungated reads are the placeholder model — asserted, not assumed."""
-        for role in ("viewer", "intruder"):
-            resp = client.get("/v1/services", headers={"X-Sentinel-Role": role})
-            assert resp.status_code == 200
+    def test_reads_require_query_scope_even_in_process(
+        self, client: TestClient
+    ) -> None:
+        """Cycle 10: reads are gated on `query` — an unknown role is
+        denied 403 even on a read route (the in-process seam exercises
+        the same scope model; HTTP auth itself is tested with real
+        credentials in tests/security/test_api_auth.py)."""
+        assert client.get(
+            "/v1/services", headers={"X-Sentinel-Role": "viewer"}
+        ).status_code == 200
+        denied = client.get(
+            "/v1/services", headers={"X-Sentinel-Role": "intruder"}
+        )
+        assert denied.status_code == 403
+        assert denied.json()["code"] == "sentinel.forbidden"
+        # no header → workspace default role (operator) → reads allowed
+        assert client.get("/v1/services").status_code == 200

@@ -34,6 +34,7 @@ router = APIRouter(tags=["incidents"])
 @router.get("/v1/incidents")
 def list_incidents(
     uow: Annotated[UnitOfWork, Depends(get_uow)],
+    actor: Annotated[str, Depends(require_scope("query"))],
     status: Annotated[str | None, Query()] = None,
     service_id: Annotated[str | None, Query()] = None,
 ) -> IncidentListResponse:
@@ -67,6 +68,7 @@ def list_incidents(
 def incident_detail(
     incident_id: str,
     uow: Annotated[UnitOfWork, Depends(get_uow)],
+    actor: Annotated[str, Depends(require_scope("query"))],
 ) -> IncidentDetailResponse:
     """Investigation view: row + journal + anomalies + resolvable evidence
     metadata — unresolved refs named under `evidence_unresolved`."""
@@ -87,6 +89,7 @@ def incident_detail(
 def incident_timeline(
     incident_id: str,
     uow: Annotated[UnitOfWork, Depends(get_uow)],
+    actor: Annotated[str, Depends(require_scope("query"))],
 ) -> IncidentTimelineResponse:
     """Journal events + related changes/observed edges since first
     observation — a clipped relation set is marked `truncated`."""

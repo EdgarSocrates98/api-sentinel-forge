@@ -33,6 +33,7 @@ from api_sentinel.domain.errors import (
 from api_sentinel.domain.identity import FrozenModel
 from api_sentinel.domain.models import ApiService, ChangeEvent, ChangeKind
 from api_sentinel.incidents.models import Incident
+from api_sentinel.infrastructure.security.paths import read_text_bounded
 from api_sentinel.integrations.service import RecordChange, _change_id
 
 #: The honesty field every correlation report carries — never omit it.
@@ -208,7 +209,9 @@ class ImportDeployManifest:
         source: str | None = None,
     ) -> ManifestImportReport:
         try:
-            data = json.loads(file.read_text(encoding="utf-8"))
+            data = json.loads(
+                read_text_bounded(file, name="deploy manifest")
+            )
         except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
             raise ValidationError(
                 f"deploy manifest unreadable: {file}",

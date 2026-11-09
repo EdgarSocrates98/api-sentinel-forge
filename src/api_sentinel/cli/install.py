@@ -46,6 +46,9 @@ def install_command(
     ensure_workspace(ws, profile=profile)
     with SqliteUnitOfWork(ws.db_path):  # applies migrations
         pass
+    from api_sentinel.infrastructure.security.auth import ensure_local_token
+
+    resolved = ensure_local_token(ws)
     if as_json:
         typer.echo(
             json.dumps(
@@ -54,12 +57,20 @@ def install_command(
                     "profile": profile,
                     "scope": scope,
                     "portal": _portal_present(),
+                    "token_created": resolved.created,
+                    "token_path": str(resolved.path) if resolved.path else None,
                 }
             )
         )
         return
     typer.echo(f"Workspace ready: {ws.root}")
     typer.echo(f"Profile: {profile}  Scope: {scope}")
+    if resolved.created:
+        typer.echo(
+            f"API token generated: {resolved.path}\n"
+            f"  Authorization: Bearer {resolved.token}\n"
+            "shown once — read the token file to retrieve it later"
+        )
     if _portal_present():
         typer.echo("Forge Portal detected")
     else:

@@ -24,7 +24,9 @@ from typing import Any
 
 from pydantic import Field
 
+from api_sentinel.domain import ValidationError
 from api_sentinel.domain.identity import FrozenModel
+from api_sentinel.infrastructure.security.paths import read_text_bounded
 from api_sentinel.integrations.errors import IntegrationUnavailable
 
 LENS_FORGE = "forge-lens"
@@ -75,8 +77,15 @@ class FileLensACL:
         incident_id: str | None = None,
     ) -> LensResult:
         try:
-            data = json.loads(self._manifest.read_text(encoding="utf-8"))
-        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            data = json.loads(
+                read_text_bounded(self._manifest, name="lens manifest")
+            )
+        except (
+            OSError,
+            UnicodeDecodeError,
+            json.JSONDecodeError,
+            ValidationError,
+        ) as exc:
             return LensResult(
                 status="unavailable",
                 detail=f"lens refs manifest unreadable: {type(exc).__name__}",

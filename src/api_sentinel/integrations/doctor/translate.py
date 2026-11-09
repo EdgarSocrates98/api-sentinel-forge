@@ -103,12 +103,16 @@ def handoff_to_doctor_request(
     return request.model_dump(mode="json", exclude_none=True)
 
 
-def ingest_doctor_bundle(data: dict[str, Any]) -> DoctorIngest:
+def ingest_doctor_bundle(
+    data: dict[str, Any], *, expected_handoff_id: str | None = None
+) -> DoctorIngest:
     """Parse a Doctor-emitted `ApiHandoffBundle`-shaped dict.
 
     Findings and unknowns are preserved verbatim — the Sentinel records
     them as evidence, never reclassified. A malformed payload raises
     `ContractError`; an unknown `handoff_version` is rejected explicitly.
+    When `expected_handoff_id` is given the bundle must echo it — a
+    mismatched correlation is refused, never silently ingested.
     """
     if not isinstance(data, dict):
         raise ContractError("doctor bundle is not a JSON object")
@@ -118,6 +122,17 @@ def ingest_doctor_bundle(data: dict[str, Any]) -> DoctorIngest:
             f"unsupported doctor handoff_version {version!r}",
             details={"supported": [1, 2]},
         )
+    if expected_handoff_id is not None:
+        echoed = data.get("handoff_id")
+        if echoed != expected_handoff_id:
+            raise ContractError(
+                "doctor bundle correlation mismatch — "
+                f"expected {expected_handoff_id!r}, got {echoed!r}",
+                details={
+                    "expected_handoff_id": expected_handoff_id,
+                    "handoff_id": echoed,
+                },
+            )
     try:
         return DoctorIngest(
             handoff_id=data.get("handoff_id") or None,
@@ -132,10 +147,12 @@ def ingest_doctor_bundle(data: dict[str, Any]) -> DoctorIngest:
         raise ContractError(f"doctor bundle malformed: {exc}") from exc
 
 
-def ingest_doctor_bundle_json(text: str) -> DoctorIngest:
+def ingest_doctor_bundle_json(
+    text: str, *, expected_handoff_id: str | None = None
+) -> DoctorIngest:
     """Parse a Doctor bundle from raw JSON text."""
     try:
         data = json.loads(text)
     except json.JSONDecodeError as exc:
         raise ContractError(f"doctor bundle is not valid JSON: {exc}") from exc
-    return ingest_doctor_bundle(data)
+    return ingest_doctor_bundle(data, expected_handoff_id=expected_handoff_id)

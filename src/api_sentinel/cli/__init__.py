@@ -216,6 +216,7 @@ def capabilities(as_json: _JSON = False) -> None:
         {
             "capability_id": c.capability_id,
             "status": c.status.value,
+            "stage": c.stage.value,
             "since": c.since,
             "notes": c.notes,
         }
@@ -1699,6 +1700,14 @@ def serve(
             help="Permit a non-loopback bind (docs/07 requires explicit opt-in)",
         ),
     ] = False,
+    token_stdin: Annotated[
+        bool,
+        typer.Option(
+            "--token-stdin",
+            help="Read the /v1 bearer token from stdin (one line) instead "
+            "of the workspace token file",
+        ),
+    ] = False,
     workspace: _WS = None,
     user_scope: _USER_SCOPE = False,
 ) -> None:
@@ -1707,6 +1716,11 @@ def serve(
     Localhost by default — a non-loopback bind is refused unless
     `--allow-remote` is passed, and even then it is warned, never silent
     (docs/07: no internet exposure by default).
+
+    Authentication (Cycle 10): every `/v1/*` route except `/v1/health`
+    requires `Authorization: Bearer <token>`. The token resolves from
+    `API_SENTINEL_TOKEN`, then `--token-stdin`, then `<workspace>/token`
+    (generated and printed once on first serve/install — never logged).
     """
     if not _is_loopback(host):
         if not allow_remote:
@@ -1716,9 +1730,9 @@ def serve(
                 details={"host": host},
             )
         typer.echo(
-            f"warning: binding {host} beyond loopback — the /v1 surface is "
-            "single-user local with a placeholder role model (Cycle 9 "
-            "authz); do not expose it to untrusted networks",
+            f"warning: binding {host} beyond loopback — clients still need "
+            "the workspace bearer token, but do not expose the /v1 surface "
+            "to untrusted networks",
             err=True,
         )
     try:
@@ -1729,14 +1743,66 @@ def serve(
             details={"install": "pip install api-sentinel-forge[api]"},
         ) from exc
     from api_sentinel.api import create_app
+    from api_sentinel.infrastructure.security.auth import resolve_auth
 
     ws = _ws(workspace, user_scope)
+    ensure_workspace(ws)
+    stdin_token = sys.stdin.readline().strip() if token_stdin else None
+    auth, resolved = resolve_auth(
+        ws, _load_cfg(ws), stdin_token=stdin_token
+    )
+    if resolved.created:
+        typer.echo(
+            f"generated workspace API token at {resolved.path} —\n"
+            f"  Authorization: Bearer {resolved.token}\n"
+            "shown once; read the token file to retrieve it later",
+            err=True,
+        )
+    elif resolved.rotated:
+        typer.echo(
+            f"workspace API token rotated (ttl expired) at {resolved.path} —\n"
+            f"  Authorization: Bearer {resolved.token}",
+            err=True,
+        )
     uvicorn.run(
-        create_app(workspace=ws.root),
+        create_app(workspace=ws.root, auth=auth),
         host=host,
         port=port,
         log_level="info",
     )
+
+
+mcp_app = typer.Typer(
+    name="mcp",
+    help="MCP server surface — read-only tools over stdio (mcp extra).",
+    no_args_is_help=True,
+)
+app.add_typer(mcp_app, name="mcp")
+
+
+@mcp_app.command("serve")
+def mcp_serve(
+    workspace: _WS = None,
+    user_scope: _USER_SCOPE = False,
+) -> None:
+    """Serve the read-only Sentinel MCP tools over stdio.
+
+    Exposes sentinel_list_services / sentinel_capabilities /
+    sentinel_health / sentinel_list_incidents to MCP-capable hosts —
+    the surface `forge.agentic.json` declares via `mcp_command`.
+    """
+    try:
+        import mcp  # noqa: F401
+    except ImportError as exc:
+        raise ValidationError(
+            "the 'mcp' extra is required for `api-sentinel mcp serve`",
+            details={"install": "pip install api-sentinel-forge[mcp]"},
+        ) from exc
+    from api_sentinel.mcp_server import serve_stdio
+
+    ws = _ws(workspace, user_scope)
+    ensure_workspace(ws)
+    serve_stdio(ws)
 
 
 def _dispatch() -> int:

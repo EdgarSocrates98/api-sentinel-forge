@@ -10,6 +10,7 @@
     "from_forge": { "const": "api-sentinel-forge" },
     "to_forge": { "type": "string" },
     "kind": { "type": "string", "description": "e.g. contract-analysis, structural-context, investigation" },
+    "correlation_id": { "type": "string", "description": "caller-chosen correlation id echoed on the matching receipt/response" },
     "payload": { "type": "object", "additionalProperties": true },
     "constraints": {
       "type": "object",

@@ -4,7 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 
-from api_sentinel.api.deps import get_uow
+from api_sentinel.api.deps import get_uow, require_scope
 from api_sentinel.api.schemas import AnomalyListResponse
 from api_sentinel.application.ports import UnitOfWork
 from api_sentinel.application.use_cases import ListAnomalies
@@ -15,6 +15,7 @@ router = APIRouter(tags=["anomalies"])
 @router.get("/v1/anomalies")
 def list_anomalies(
     uow: Annotated[UnitOfWork, Depends(get_uow)],
+    actor: Annotated[str, Depends(require_scope("query"))],
     service_id: Annotated[str | None, Query()] = None,
     status: Annotated[str | None, Query()] = None,
     limit: Annotated[int, Query(ge=1, le=1000)] = 200,

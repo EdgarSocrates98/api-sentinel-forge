@@ -120,6 +120,7 @@ class InvestigationHandoffV1(Envelope):
     kind: str
     payload: dict[str, Any] = Field(default_factory=dict)
     constraints: HandoffConstraints = Field(default_factory=HandoffConstraints)
+    correlation_id: str | None = None
 
 
 class AtlasExporter(BaseModel):
@@ -171,6 +172,25 @@ class AtlasExportV1(Envelope):
     exporter: AtlasExporter = Field(default_factory=AtlasExporter)
     services: list[AtlasService] = Field(default_factory=list)
     edges: list[AtlasEdge] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _check_unique_ids(self) -> AtlasExportV1:
+        """Duplicate entity ids are a contract violation, not a merge."""
+        service_ids = [s.atlas_id for s in self.services]
+        dup_services = sorted(
+            {i for i in service_ids if service_ids.count(i) > 1}
+        )
+        edge_ids = [e.edge_id for e in self.edges]
+        dup_edges = sorted({i for i in edge_ids if edge_ids.count(i) > 1})
+        if dup_services or dup_edges:
+            raise ContractError(
+                "atlas export carries duplicate ids",
+                details={
+                    "duplicate_service_ids": dup_services,
+                    "duplicate_edge_ids": dup_edges,
+                },
+            )
+        return self
 
 
 class TelemetrySourceV1(Envelope):
@@ -225,7 +245,9 @@ class EvidenceArtifactV1(Envelope):
     evidence_id: str
     kind: str
     created_at: datetime
-    hash: str
+    # Contract-tightened (Cycle 10): the wire schema pins this shape —
+    # the model enforces it too, so a bad digest never reaches storage.
+    hash: str = Field(pattern=r"^sha256:[a-f0-9]{64}$")
     size_bytes: int = 0
     truncated: bool = False
     loss_notes: str | None = None

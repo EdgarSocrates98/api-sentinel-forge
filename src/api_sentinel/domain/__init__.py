@@ -10,6 +10,7 @@ from api_sentinel.domain.errors import (
     NotFoundError,
     SentinelError,
     StorageError,
+    UnauthorizedError,
     ValidationError,
     WorkspaceError,
 )
@@ -79,6 +80,7 @@ __all__ = [
     "SystemClock",
     "TelemetrySource",
     "UlidIdFactory",
+    "UnauthorizedError",
     "ValidationError",
     "WorkspaceError",
     "new_ulid",

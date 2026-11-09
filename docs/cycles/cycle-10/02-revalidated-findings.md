@@ -155,7 +155,9 @@ remediation: either expose a PortalApi-shaped adapter over sentinel /v1, or
   teach the portal a second backend; wire health/services/incidents.
 negative_tests: envelope mismatch must fail visibly, never silently.
 compatibility: requires contract bridge — not a config change.
-status: CONFIRMED — no wiring; contracts incompatible.
+status: CONFIRMED — DEFERRED to Wave 3 (cross-repo contract bridge:
+  forge-portal + product-forge consumers; out of this repo's Wave-1
+  security scope).
 ```
 
 ## C10-F006 — Ingestion N+1 under dispersed windows
@@ -186,7 +188,8 @@ negative_tests: re-run instrumented bench; assert query counts drop
   (observations_get → 0 batched; overlapping_sources → ≤ #services).
 compatibility: internal only; results must stay identical (dedup + overlap
   semantics preserved).
-status: CONFIRMED — quantified, reproducible.
+status: CONFIRMED — DEFERRED to Wave 4 (P2 performance; needs a
+  benchmarked before/after run, not a Wave-1 drive-by).
 ```
 
 ## C10-F007 — X-Sentinel-Role trusted verbatim
@@ -216,7 +219,13 @@ negative_tests: forged/absent/unknown role → 401/403 on every scoped route;
   remote bind without token refused.
 compatibility: breaking change to the /v1 auth contract — version or dual-run
   required.
-status: CONFIRMED — real defect, documented placeholder.
+status: FIXED — Wave 1. Local bearer token (secrets.token_urlsafe(32),
+  compare_digest, env>stdin>file precedence, optional TTL rotation) +
+  HMAC-signed integrated principal (±300 s skew, single-use nonce,
+  workspace match). Self-declared role → 401; live smoke verified
+  (401/401-spoof/200). In-process ApiContext(auth=None) seam retained
+  for TestClient only, unreachable via serve. Evidence:
+  evidence/security-results.json; docs/07 §Cycle-10.
 ```
 
 ## C10-F008 — External homologations still BLOCKED
@@ -279,7 +288,9 @@ remediation: import ProjectContext from forge_doctor_api.core.context (or from
 negative_tests: run _run_doctor_typed against doctor 0.3.1 wheel → completed;
   assert no ImportError path.
 compatibility: doctor-side public path is core.context at 0.3.1.
-status: CONFIRMED — import-level incompatibility at current sibling HEAD.
+status: CONFIRMED — DEFERRED to Wave 2 (fix is a one-line import, but
+  the AC is a real in-process homologation against a doctor wheel —
+  needs the sibling env, not just the edit).
 ```
 
 ## C10-F010 — Boundary executor gap: 5 of 7 declared pairs refuse
@@ -313,7 +324,8 @@ remediation: implement executors for the remaining pairs (they map to existing
 negative_tests: each new executor returns a conformant ExecutionResult dict;
   unknown pairs still refuse.
 compatibility: additive — refusals become executions.
-status: CONFIRMED — declared surface ≠ executable surface.
+status: CONFIRMED — DEFERRED to Wave 2 (each executor maps to an
+  existing use case; refusals are honest named states meanwhile).
 ```
 
 ## C10-F011 — api-sentinel/AtlasExport/v1 has no producer
@@ -341,7 +353,9 @@ remediation: define the export on the Atlas side (or adopt an existing Atlas
 negative_tests: real code-atlas export feeds Correlate; stale fixture removed
   from the proof path.
 compatibility: producer-side new contract.
-status: CONFIRMED — orphan contract.
+status: CONFIRMED — DEFERRED to Wave 2 (the producer lives in
+  code-atlas-forge — cross-repo; sentinel side already hardened:
+  bounded read + duplicate-id rejection).
 ```
 
 ## C10-F012 — `mcp serve` declared in manifest, command absent
@@ -366,7 +380,12 @@ remediation: implement `api-sentinel mcp serve` (the mcp extra is already in
   the venv) or remove mcp_command from the manifest until Wave N delivers it.
 negative_tests: mcp serve starts stdio server; manifest-vs-CLI drift check.
 compatibility: additive if implemented; removing the key is honest.
-status: CONFIRMED — manifest/product divergence (sharper than F002 ever was).
+status: FIXED — Wave 1. src/api_sentinel/mcp_server.py exposes a
+  read-only stdio MCP server (installed `mcp` package, optional-import
+  guarded, no new required dep): sentinel_list_services,
+  sentinel_capabilities, sentinel_health, sentinel_list_incidents.
+  `api-sentinel mcp serve` resolves the manifest's mcp_command;
+  covered by tests/integration/test_mcp_server.py.
 ```
 
 ## C10-F013 — lint debt: 2 ruff errors in scripts/cov_core.py
@@ -390,6 +409,43 @@ compatibility: none.
 status: CONFIRMED — trivial.
 ```
 
+## C10-F014 — InvestigationHandoffV1: defaults vs required (asymmetric validation)
+
+```text
+id: C10-F014
+severity: P3
+repository: api-sentinel-forge
+file: src/api_sentinel/contracts/v1/models.py (InvestigationHandoffV1) vs
+      contracts/v1/investigation_handoff.schema.json "required"
+symbol: payload / constraints fields
+contract: api-sentinel/InvestigationHandoff/v1
+root_cause: the Pydantic model declares `payload` and `constraints` with
+  default factories (empty dict / default HandoffConstraints) while the
+  published JSON schema lists both in "required". The typed consumer
+  therefore accepts envelopes the schema gate refuses — asymmetric
+  validation surfaced by the Wave-1 truncated-object negative test.
+reproduction: strip payload+constraints from a valid handoff dict →
+  Draft202012Validator rejects, InvestigationHandoffV1.model_validate
+  accepts with synthesized defaults.
+impact: low — tolerant reader on the consumer side; but a handoff that
+  fails the schema gate can still be materialized in-process, so the
+  schema is not the single source of truth for requiredness.
+evidence: tests/contract/test_schema_compat.py truncated-object case
+  (adjusted to delete fields without defaults); model Field
+  declarations.
+owner: sentinel maintainer
+remediation: either drop the default factories (make schema+model
+  agree on required) or remove the fields from the schema's required
+  list — decide in Wave 2; making them required may break emitters
+  that rely on the defaults.
+negative_tests: truncated-object negative now asserts both layers
+  refuse when a no-default field is removed.
+compatibility: changing requiredness either way is a contract-visible
+  decision; needs the contract review lane, not a silent edit.
+status: CONFIRMED — recorded Wave 1; fix deferred to Wave 2 (contract
+  decision required).
+```
+
 ---
 
 ### Severity roll-up
@@ -397,10 +453,15 @@ status: CONFIRMED — trivial.
 | Severity | Count | Ids |
 |---|---|---|
 | P0 | 0 | — |
-| P1 | 9 | F003, F004, F005, F007, F008, F009, F010, F011, F012 |
+| P1 | 9 | F003, F004, F005, F007*, F008, F009, F010, F011, F012* |
 | P2 | 1 | F006 |
-| P3 | 2 | F001, F013 |
+| P3 | 3 | F001, F013, F014 |
 | Refuted | 1 | F002 (no defect) |
+
+*F007 and F012 FIXED in Wave 1 (status inline). Deferred with wave
+assignment: F009/F010/F011 → Wave 2, F005 → Wave 3, F006 → Wave 4.
+F014 (new, P3) recorded in Wave 1, contract decision deferred to
+Wave 2.
 
 No P0s: nothing in the audit corrupts data, executes unsanctioned code, or
 fails structurally under the supported deployment — the unavailable
