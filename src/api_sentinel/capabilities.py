@@ -50,8 +50,8 @@ _AWS_CAPABILITY_ID = "api.aws-readonly-observability"
 # Highest-proven-stage data — copied truthfully from the Wave-0 stage
 # matrix (docs/cycles/cycle-10/03-capability-ownership.md); nothing is
 # inflated: the four CLI-VERIFIED/forge-TESTED capabilities carry
-# `verified` for the capability itself while the forge-seam executor
-# gap stays named in notes (C10-F010).
+# `verified` for the capability itself; C10-F010 is closed in Wave 2 —
+# every advertised execute pair now has a real executor.
 _CAPABILITIES: list[Capability] = [
     Capability(
         "api.service-inventory",
@@ -88,36 +88,37 @@ _CAPABILITIES: list[Capability] = [
         CapabilityStatus.AVAILABLE,
         CapabilityStage.VERIFIED,
         "0.1.0",
-        notes="CLI verified; forge-seam execute pair refused — C10-F010",
+        notes="forge-seam execute pair implemented — Cycle 10 Wave 2",
     ),
     Capability(
         "api.anomaly-detection",
         CapabilityStatus.AVAILABLE,
         CapabilityStage.VERIFIED,
         "0.1.0",
-        notes="CLI verified; forge-seam execute pair refused — C10-F010",
+        notes="forge-seam execute pair implemented — Cycle 10 Wave 2",
     ),
     Capability(
         "api.incident-investigation",
         CapabilityStatus.AVAILABLE,
         CapabilityStage.VERIFIED,
         "0.1.0",
-        notes="CLI verified; forge-seam execute pair refused — C10-F010",
+        notes="forge-seam execute pair implemented — Cycle 10 Wave 2",
     ),
     Capability(
         "api.deployment-correlation",
         CapabilityStatus.AVAILABLE,
         CapabilityStage.VERIFIED,
         "0.2.5",
-        notes="CLI verified; forge-seam execute pair refused — C10-F010",
+        notes="forge-seam execute pair implemented — Cycle 10 Wave 2",
     ),
     Capability(
         "api.doctor-handoff",
         CapabilityStatus.AVAILABLE,
-        CapabilityStage.TESTED,
+        CapabilityStage.VERIFIED,
         "0.2.5",
-        notes="emit+ingest verified; no real Doctor run yet — "
-        "C10-F003/C10-F009",
+        notes="real in-process Doctor 0.3.1 run completed + routed via "
+        "the-forge (run 20261109T131316Z-e7974201) — C10-F009 closed, "
+        "Cycle 10 Wave 2",
     ),
     Capability(
         "api.portal-operations",

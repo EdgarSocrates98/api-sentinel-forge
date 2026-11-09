@@ -1,7 +1,29 @@
-# Cycle 10 — Executive summary (Wave 0 seed)
+# Cycle 10 — Executive summary (Wave 0 seed + Wave 2 results)
 
 > Seeded by Wave 0 (reality audit). Sections marked *pending* are filled by
 > later waves per `factory/specs/active/cycle-10-wave0-baseline.md`.
+
+## Wave 2 — real cross-Forge federation (executed)
+
+Per `factory/specs/active/cycle-10-wave2-federation.md` — Wave 2 moved the
+federation surface from audited-planned to executed-or-honestly-named:
+
+| Forge | Wave-2 state | Proof |
+|---|---|---|
+| forge-doctor-api | **INTEGRATED** — real in-process run | `evidence/doctor_inprocess_run.json` — completed, 10 findings/9 unknowns (F009) |
+| code-atlas-forge | **INTEGRATED** — real index-store seam | `evidence/atlas/` + `evidence/atlas_correlate_run.json` — 3 structural edges (F011) |
+| the-forge | **INTEGRATED** — registered, routed, receipted | `evidence/theforge/runs/` — 8/8 pairs + receipts (F010/F015/F018) |
+| forge-agent-bridge | NAMED `unverified\|file` | `09-agent-bridge-and-lens.md` |
+| forge-lens | NAMED `unavailable\|file` | same |
+| api-forge | NAMED `unverified\|handoff_file` | same |
+| data-sentinel-forge | NAMED `unverified\|handoff_file` | same (UNEXERCISED-OPTIONAL) |
+
+Findings closed: **C10-F009, F010, F011, F014, F015, F018**; new recorded:
+**C10-F016** (conformance probe/empty-workspace mismatch — peer-side),
+**C10-F017** (forge/v1 has no param channel — honest scoping rule).
+Test suite: **538 passed**; ruff clean; mypy clean (116 files).
+Commits: this repo `cycle-10` (adapter refresh `de5e9df` + wave-2 batch);
+peer `the-forge@cycle-10-apisentinel` = **`5aea039`**. Nothing pushed.
 
 ## What Cycle 10 is
 

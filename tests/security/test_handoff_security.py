@@ -40,6 +40,7 @@ def _handoff(handoff_id: str) -> InvestigationHandoffV1:
         to_forge="forge-doctor-api",
         kind="api-investigation",
         payload={"service_id": "svc_lab"},
+        constraints={},
     )
 
 

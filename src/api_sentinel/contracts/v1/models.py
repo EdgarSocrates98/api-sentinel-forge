@@ -118,8 +118,15 @@ class InvestigationHandoffV1(Envelope):
     from_forge: str = "api-sentinel-forge"
     to_forge: str
     kind: str
-    payload: dict[str, Any] = Field(default_factory=dict)
-    constraints: HandoffConstraints = Field(default_factory=HandoffConstraints)
+    # C10-F014 (Cycle 10, contract decision): `payload` and `constraints`
+    # are REQUIRED — the published JSON schema lists both in "required",
+    # and the schema is the single source of truth for requiredness.
+    # Emitters always serialized both anyway (defaults were included in
+    # model_dump), so wire output is unchanged; only the tolerant-reader
+    # asymmetry is closed — an envelope that fails the schema gate can no
+    # longer be materialized in-process.
+    payload: dict[str, Any]
+    constraints: HandoffConstraints
     correlation_id: str | None = None
 
 

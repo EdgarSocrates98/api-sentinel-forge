@@ -1,0 +1,55 @@
+{
+  "artifacts": [],
+  "assumptions": [],
+  "context_request": null,
+  "created_at": "2026-11-09T13:12:09Z",
+  "evidence": [
+    {
+      "claim": "observation aggregates: {'total': 8, 'by': [{'service_id': 'svc_01M706F8VPWGYJQ5JQ23E3Z757', 'source_id': 'src_01M706FPQV20XE288GPPSD3S8H', 'quality': 'STALE', 'kind': 'histogram', 'observations': 8}]}",
+      "derived_from": null,
+      "epistemic": "observed",
+      "hash": null,
+      "id": "obs-count",
+      "limitations": [],
+      "location": null,
+      "producer": {
+        "id": "api-sentinel-forge",
+        "version": "0.1.0"
+      },
+      "subject": "workspace"
+    }
+  ],
+  "findings": [
+    {
+      "evidence_ids": [],
+      "id": "observations",
+      "severity": "info",
+      "title": "8 observations (all services)"
+    }
+  ],
+  "limitations": [],
+  "metrics": {
+    "context_bytes": {
+      "kind": "measured",
+      "value": 0.0
+    },
+    "duration_ms": {
+      "kind": "measured",
+      "value": 570.759
+    },
+    "tokens": {
+      "kind": "unknown",
+      "value": null
+    }
+  },
+  "native_trace": null,
+  "producer": {
+    "id": "api-sentinel-forge",
+    "version": "0.1.0"
+  },
+  "provider_economy": null,
+  "provider_receipt": null,
+  "schema": "theforge/ExecutionResult/v1",
+  "status": "ok",
+  "unknowns": []
+}

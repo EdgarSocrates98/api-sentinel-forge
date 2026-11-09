@@ -76,3 +76,24 @@ EvidenceArtifact}/v1` — `contracts/v1/models.py:37-224`; plus
 | portal↔sentinel | PortalApi/1 vs problem+json | INCOMPATIBLE | F005 |
 | atlas export | api-sentinel/AtlasExport/v1 | ORPHAN | F011 |
 | mcp serve | manifest mcp_command | ABSENT | F012 |
+
+---
+
+## Wave-2 reconciliation (current state — supersedes verdicts above where noted)
+
+| Seam | Wave-2 verdict | Evidence |
+|---|---|---|
+| the-forge seam | **INTEGRATED — 8/8 declared pairs execute through the real runtime** (registry refresh state=ready; routed `ask` runs with receipts) | `evidence/theforge/runs/*/receipt.json` · `08-the-forge-routing.md` — F010/F015/F018 FIXED |
+| doctor handoff | **INTEGRATED — real in-process execution** (0.3.1 `core.context.ProjectContext`; 10 findings / 9 unknowns ingested) | `evidence/doctor_inprocess_run.json` · `06-doctor-integration.md` — F009 FIXED |
+| bridge session | **NAMED — `unverified | file`** (no session-import seam exists in forge-agent-bridge; delegated envelopes only) | `integrations` status · `09-agent-bridge-and-lens.md` |
+| portal↔sentinel | INCOMPATIBLE — unchanged, contract adapter required | F005 (Wave 3) |
+| atlas export | **INTEGRATED via real index store** (`integrations.atlas.db_path` → `DbStructuralContext`, read-only, READY-snapshot-gated; `AtlasExport/v1` file seam remains supported) | `evidence/atlas/` · `evidence/atlas_correlate_run.json` · `07-code-atlas-integration.md` — F011 FIXED |
+| mcp serve | IMPLEMENTED (Wave 1) | `src/api_sentinel/mcp_server.py` — F012 FIXED |
+| lens refs | **NAMED — `unavailable | file`** (no `forge_lens` import / `lens.refs` manifest in lab) | `09-agent-bridge-and-lens.md` |
+| apiforge handoff | **NAMED — `unverified | handoff_file`** | `09-agent-bridge-and-lens.md` |
+| data-sentinel handoff | **NAMED — `unverified | handoff_file`** (stale-data only; never generic telemetry) | `09-agent-bridge-and-lens.md` |
+| InvestigationHandoff requiredness | **ALIGNED — `payload`/`constraints` required in model = schema source of truth** | `contracts/v1/models.py` — F014 FIXED |
+| ForgeManifest default_action | **FIXED — manifest declares only executor-backed pairs** (was `default_action: null` → invalid) | `boundary.py` describe — F015 FIXED |
+| ExecutionResult evidence | **FIXED — sentinel refs re-emitted as declared Evidence** (was FORGE-RESULT-DANGLING-EVIDENCE) | `boundary.py` — F018 FIXED |
+| conformance execute probe | **NAMED — `APISENT-WORKSPACE-UNAVAILABLE` in scratch workspaces** (harness probes an empty dir; honest refusal by design) | `evidence/theforge/conformance_check.json` — F016 recorded |
+| forge/v1 param channel | **WORKED AROUND — explicit param → single-service → named ambiguity** (wire carries no task params) | `boundary.py` scoping — F017 recorded |

@@ -1,0 +1,19 @@
+{
+  "adjustments": [],
+  "context_bytes": 65536,
+  "created_at": "2026-11-09T13:12:00.586361Z",
+  "max_files": 16,
+  "max_parallelism": 1,
+  "negotiation_rounds": 0,
+  "producer": {
+    "id": "theforge",
+    "version": "0.7.4"
+  },
+  "profile": "economy",
+  "provider_calls": 1,
+  "run_id": "20261109T131200Z-7ad187f8",
+  "schema": "theforge/RunBudget/v1",
+  "semantic_calls": 0,
+  "verification_calls": 1,
+  "wall_time_s": 60.0
+}

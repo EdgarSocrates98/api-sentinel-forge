@@ -288,9 +288,13 @@ remediation: import ProjectContext from forge_doctor_api.core.context (or from
 negative_tests: run _run_doctor_typed against doctor 0.3.1 wheel → completed;
   assert no ImportError path.
 compatibility: doctor-side public path is core.context at 0.3.1.
-status: CONFIRMED — DEFERRED to Wave 2 (fix is a one-line import, but
-  the AC is a real in-process homologation against a doctor wheel —
-  needs the sibling env, not just the edit).
+status: FIXED — Wave 2. `adapter.py:_run_doctor_typed` now imports
+  `forge_doctor_api.core.context.ProjectContext` with a legacy
+  `handoff.context` try/except fallback. REAL in-process homologation
+  run against `lab/fixtures/doctor-project` (forge-doctor-api 0.3.1
+  installed editable in the Sentinel venv): status=completed, 10
+  findings / 9 unknowns, receipt rcpt_hnd_h_01M70777F9VS1TQ2XNJ8ZD5X8Q —
+  evidence/doctor_inprocess_run.json + doctor_inprocess_receipt.json.
 ```
 
 ## C10-F010 — Boundary executor gap: 5 of 7 declared pairs refuse
@@ -324,8 +328,16 @@ remediation: implement executors for the remaining pairs (they map to existing
 negative_tests: each new executor returns a conformant ExecutionResult dict;
   unknown pairs still refuse.
 compatibility: additive — refusals become executions.
-status: CONFIRMED — DEFERRED to Wave 2 (each executor maps to an
-  existing use case; refusals are honest named states meanwhile).
+status: FIXED — Wave 2. All 8 declared pairs now have real executors
+  wired to existing use cases (EvaluateSlo, RunDetection, ListIncidents,
+  ShowIncident, Correlate, DelegateToDoctor) — `incident-investigation`
+  gained the catalog-declared `show` action. Routed through the REAL
+  the-forge runtime (registry refresh → ask → ExecutionResult →
+  receipt): run ids 20261109T131310Z-34446ffc (anomaly-detection),
+  -21329c86 (incident list), -e7974201 (doctor-handoff),
+  -0e57520c (slo unpinned selection), -004a614a (correlate) —
+  evidence/theforge/runs/*/receipt.json.
+  Real contract gates surfaced en route — C10-F015/F016/F018.
 ```
 
 ## C10-F011 — api-sentinel/AtlasExport/v1 has no producer
@@ -353,9 +365,23 @@ remediation: define the export on the Atlas side (or adopt an existing Atlas
 negative_tests: real code-atlas export feeds Correlate; stale fixture removed
   from the proof path.
 compatibility: producer-side new contract.
-status: CONFIRMED — DEFERRED to Wave 2 (the producer lives in
-  code-atlas-forge — cross-repo; sentinel side already hardened:
-  bounded read + duplicate-id rejection).
+status: FIXED — Wave 2 (Sentinel-side seam, no Atlas change needed).
+  Code Atlas 1.1.1's real export surface is its SQLite index
+  (`atlas.db`: domain_entities / domain_entity_occurrences /
+  domain_relations / evidence / snapshots / repositories — CLI commands
+  wrap it; no CLI emits a Sentinel contract). New
+  `integrations/atlas/store_adapter.py::DbStructuralContext` consumes
+  the store READ-ONLY (`mode=ro`) selected via
+  `integrations.atlas.db_path` + `repository`/`snapshot_id` —
+  resolution by exact identity_key/qualified_name (never name-only);
+  edges keep Atlas's own type/resolution_status/confidence_class/
+  resolver/evidence_ids verbatim. Real run: `code-atlas index
+  lab/fixtures/atlas-repo --domains api` → snapshot 11 (4 entities,
+  9 domain relations incl. 2 external + 1 unresolved CALLS_ENDPOINT);
+  `correlate` resolved service.app#app → 3 structural CONTAINS edges —
+  evidence/atlas_correlate_run.json + evidence/atlas/. The
+  AtlasExport/v1 FILE seam remains supported for pre-exported
+  manifests; the fixture stays a fixture (tests), not the proof path.
 ```
 
 ## C10-F012 — `mcp serve` declared in manifest, command absent
@@ -442,8 +468,119 @@ negative_tests: truncated-object negative now asserts both layers
   refuse when a no-default field is removed.
 compatibility: changing requiredness either way is a contract-visible
   decision; needs the contract review lane, not a silent edit.
-status: CONFIRMED — recorded Wave 1; fix deferred to Wave 2 (contract
-  decision required).
+status: FIXED — Wave 2, decision recorded: `payload` and `constraints`
+  are REQUIRED in the Pydantic model (the published JSON schema lists
+  both in "required" — the schema is the single source of truth for
+  requiredness). Wire output is unchanged (emitters always serialized
+  both); only the tolerant-reader asymmetry is closed. Tests:
+  tests/integration/test_doctor_negative.py::test_missing_contract_
+  field_rejected + schema-compat truncated-object cases.
+```
+
+---
+
+## Wave-2 findings (surfaced by the real-integration work)
+
+## C10-F015 — Sentinel manifest emitted `default_action: null`
+
+```text
+id: C10-F015
+severity: P1
+repository: api-sentinel-forge
+file: src/api_sentinel/integrations/the_forge/boundary.py:82-94
+symbol: describe() capability table
+contract: theforge/ForgeManifest/v1 — `default_action: str`, member of
+  `actions`
+root_cause: describe() listed EVERY catalog capability, emitting
+  `actions: []` + `default_action: null` for CLI-scoped capabilities
+  (telemetry-source-registration, evidence-storage,
+  persistence-recovery, portal-operations, aws-readonly-observability,
+  change-intelligence). the-forge's live manifest validation rejected
+  the handshake: `$.payload.capabilities[1].default_action: expected
+  string, got NoneType`.
+reproduction: register api-sentinel-forge in the-forge and run
+  `theforge registry refresh` → provider state=invalid with the exact
+  field path.
+impact: the provider could not register at all — the advertised
+  surface violated the consumer's schema, not just honesty rules.
+status: FIXED — Wave 2. describe() declares ONLY pairs with real
+  executors (a capability without a routable pair stays visible via
+  the `capabilities` op, never padded with a fake action); manifest
+  limitation records the rule. Live registry refresh now reports
+  state=ready with 7 capabilities.
+```
+
+## C10-F016 — the-forge `provider check` probes empty workspaces
+
+```text
+id: C10-F016
+severity: P2
+repository: the-forge (harness behavior) · api-sentinel-forge (reporting)
+file: the-forge/src/theforge/conformance.py:_execute_payload
+contract: conformance execute probes always run with
+  task.workspace_root = a fresh TemporaryDirectory
+root_cause: the conformance battery intentionally probes every declared
+  pair against an empty scratch workspace. A workspace-backed provider
+  (the Sentinel requires an initialized `.api-sentinel` store) cannot
+  open its db there and — correctly — refuses APISENT-WORKSPACE-
+  UNAVAILABLE rather than fabricating an empty result or silently
+  creating state in a probe dir.
+impact: `theforge provider check` reports execute/handoff as FAIL for
+  any storage-backed provider even when every protocol gate passes
+  (describe/features/health/refusals/malformed-protocol/replay-
+  determinism/timeout/producer-identity all green). The honest named
+  refusal is the correct behavior; real execution is proven by the
+  routed `ask` runs against an initialized workspace
+  (evidence/theforge/runs/).
+status: CONFIRMED — recorded, no code change: auto-creating a
+  workspace inside a read probe would be a worse side effect than the
+  named refusal. Recommendation to the-forge: an execute probe tier
+  that accepts a provider-supplied fixture root (deferred, peer-side).
+```
+
+## C10-F017 — forge/v1 has no parameter channel
+
+```text
+id: C10-F017
+severity: P2
+repository: the-forge (wire contract) · api-sentinel-forge (adaptation)
+file: the-forge/src/theforge/forger/orchestrator.py:369-381
+contract: TaskSpec.constraints carries only plan-node metadata on a
+  plain `ask` — service_id / window bounds cannot travel to a provider.
+root_cause: AskRequest → TaskSpec populates constraints={} for direct
+  asks; only plan nodes receive {plan:{run,node}}.
+impact: service-scoped execute pairs (anomaly-detection,
+  deployment-correlation, doctor-handoff) cannot receive their natural
+  scope via the wire.
+status: WORKED AROUND — Wave 2, honest rule documented in boundary:
+  explicit param > single-service workspace scope > named ambiguity
+  ("service_id required: N services registered — never guessed").
+  Zero-service scope refuses APISENT-MISSING-PARAM. No name matching,
+  no intent-string parsing, no target-path abuse.
+```
+
+## C10-F018 — Sentinel evidence refs dangle under ExecutionResult validation
+
+```text
+id: C10-F018
+severity: P1
+repository: api-sentinel-forge
+file: src/api_sentinel/integrations/the_forge/boundary.py executors
+contract: theforge/ExecutionResult/v1 — every finding.evidence_ids
+  entry must reference an Evidence record declared in the same result.
+root_cause: anomaly/incident findings carried Sentinel-side refs
+  (obs:…, src:…, last_window_end:…) verbatim but the result emitted no
+  matching Evidence records → real transport validation rejected:
+  FORGE-RESULT-DANGLING-EVIDENCE findings[0].evidence_ids[0].
+reproduction: `theforge ask --capability api.anomaly-detection
+  --action run` → status=provider_failure with the exact field path.
+impact: two pairs could not return results through the real transport
+  until closed.
+status: FIXED — Wave 2. `_ref_evidence()` re-emits each Sentinel ref
+  as a declared Evidence record (epistemic=observed, verbatim id,
+  producer=api-sentinel-forge). Routed anomaly/incident/doctor-handoff
+  asks now pass result-integrity verification
+  (evidence/theforge/runs/*/verification.json status=passed).
 ```
 
 ---
@@ -453,15 +590,15 @@ status: CONFIRMED — recorded Wave 1; fix deferred to Wave 2 (contract
 | Severity | Count | Ids |
 |---|---|---|
 | P0 | 0 | — |
-| P1 | 9 | F003, F004, F005, F007*, F008, F009, F010, F011, F012* |
-| P2 | 1 | F006 |
-| P3 | 3 | F001, F013, F014 |
+| P1 | 11 | F003, F004, F005, F007*, F008, F009*, F010*, F011*, F012*, F015*, F018* |
+| P2 | 3 | F006, F016, F017 |
+| P3 | 3 | F001, F013, F014* |
 | Refuted | 1 | F002 (no defect) |
 
-*F007 and F012 FIXED in Wave 1 (status inline). Deferred with wave
-assignment: F009/F010/F011 → Wave 2, F005 → Wave 3, F006 → Wave 4.
-F014 (new, P3) recorded in Wave 1, contract decision deferred to
-Wave 2.
+*F007 and F012 FIXED in Wave 1 (status inline). F009, F010, F011, F014,
+F015 and F018 FIXED in Wave 2 (status inline); F016/F017 recorded as
+peer-side / wire-contract limitations with honest workarounds.
+Deferred: F005 → Wave 3, F006 → Wave 4.
 
 No P0s: nothing in the audit corrupts data, executes unsanctioned code, or
 fails structurally under the supported deployment — the unavailable

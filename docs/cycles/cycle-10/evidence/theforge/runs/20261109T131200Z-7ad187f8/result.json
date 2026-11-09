@@ -1,0 +1,57 @@
+{
+  "artifacts": [],
+  "assumptions": [],
+  "context_request": null,
+  "created_at": "2026-11-09T13:12:01Z",
+  "evidence": [
+    {
+      "claim": "persisted service row checkout-api env=env_01M706F8VPFNSSQ1WJ2GEQH6P3",
+      "derived_from": null,
+      "epistemic": "observed",
+      "hash": null,
+      "id": "svc-row:svc_01M706F8VPWGYJQ5JQ23E3Z757",
+      "limitations": [],
+      "location": null,
+      "producer": {
+        "id": "api-sentinel-forge",
+        "version": "0.1.0"
+      },
+      "subject": "svc_01M706F8VPWGYJQ5JQ23E3Z757"
+    }
+  ],
+  "findings": [
+    {
+      "evidence_ids": [
+        "svc-row:svc_01M706F8VPWGYJQ5JQ23E3Z757"
+      ],
+      "id": "svc_01M706F8VPWGYJQ5JQ23E3Z757",
+      "severity": "info",
+      "title": "service checkout-api"
+    }
+  ],
+  "limitations": [],
+  "metrics": {
+    "context_bytes": {
+      "kind": "measured",
+      "value": 0.0
+    },
+    "duration_ms": {
+      "kind": "measured",
+      "value": 681.504
+    },
+    "tokens": {
+      "kind": "unknown",
+      "value": null
+    }
+  },
+  "native_trace": null,
+  "producer": {
+    "id": "api-sentinel-forge",
+    "version": "0.1.0"
+  },
+  "provider_economy": null,
+  "provider_receipt": null,
+  "schema": "theforge/ExecutionResult/v1",
+  "status": "ok",
+  "unknowns": []
+}

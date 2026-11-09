@@ -446,6 +446,12 @@ def load_structural(
     `integrations.atlas.export` names the exported manifest (workspace-
     relative or absolute); a missing/invalid file raises
     `IntegrationUnavailable` — never a fabricated empty graph.
+
+    C10-F011 (Wave 2): `integrations.atlas.db_path` selects the REAL Code
+    Atlas index store directly (`code-atlas index --domains api` output),
+    with optional `repository` (identity_key) and `snapshot_id` selectors.
+    The db seam takes precedence when present; the file export remains
+    supported for pre-exported manifests.
     """
     integrations = config.get("integrations") if isinstance(config, dict) else None
     if not isinstance(integrations, dict):
@@ -453,6 +459,23 @@ def load_structural(
     atlas = integrations.get("atlas")
     if not isinstance(atlas, dict):
         return None
+    db_path = atlas.get("db_path")
+    if db_path:
+        from api_sentinel.integrations.atlas.store_adapter import (
+            DbStructuralContext,
+        )
+
+        path = Path(str(db_path))
+        if not path.is_absolute():
+            path = workspace_root / path
+        snapshot = atlas.get("snapshot_id")
+        return DbStructuralContext.load(
+            path,
+            repository=(
+                str(atlas["repository"]) if atlas.get("repository") else None
+            ),
+            snapshot_id=int(snapshot) if snapshot else None,
+        )
     export = atlas.get("export")
     if not export:
         return None

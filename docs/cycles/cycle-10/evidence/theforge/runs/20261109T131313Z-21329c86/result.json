@@ -1,0 +1,200 @@
+{
+  "artifacts": [],
+  "assumptions": [],
+  "context_request": null,
+  "created_at": "2026-11-09T13:13:14Z",
+  "evidence": [
+    {
+      "claim": "incident evidence row persisted in the workspace (ref last_window_end:2026-01-01T00:08:00+00:00)",
+      "derived_from": null,
+      "epistemic": "observed",
+      "hash": null,
+      "id": "last_window_end:2026-01-01T00:08:00+00:00",
+      "limitations": [],
+      "location": null,
+      "producer": {
+        "id": "api-sentinel-forge",
+        "version": "0.1.0"
+      },
+      "subject": "workspace"
+    },
+    {
+      "claim": "incident evidence row persisted in the workspace (ref src:src_01M706FPQV20XE288GPPSD3S8H)",
+      "derived_from": null,
+      "epistemic": "observed",
+      "hash": null,
+      "id": "src:src_01M706FPQV20XE288GPPSD3S8H",
+      "limitations": [],
+      "location": null,
+      "producer": {
+        "id": "api-sentinel-forge",
+        "version": "0.1.0"
+      },
+      "subject": "workspace"
+    },
+    {
+      "claim": "incident evidence row persisted in the workspace (ref obs:obs_0001)",
+      "derived_from": null,
+      "epistemic": "observed",
+      "hash": null,
+      "id": "obs:obs_0001",
+      "limitations": [],
+      "location": null,
+      "producer": {
+        "id": "api-sentinel-forge",
+        "version": "0.1.0"
+      },
+      "subject": "workspace"
+    },
+    {
+      "claim": "incident evidence row persisted in the workspace (ref obs:obs_0002)",
+      "derived_from": null,
+      "epistemic": "observed",
+      "hash": null,
+      "id": "obs:obs_0002",
+      "limitations": [],
+      "location": null,
+      "producer": {
+        "id": "api-sentinel-forge",
+        "version": "0.1.0"
+      },
+      "subject": "workspace"
+    },
+    {
+      "claim": "incident evidence row persisted in the workspace (ref obs:obs_0003)",
+      "derived_from": null,
+      "epistemic": "observed",
+      "hash": null,
+      "id": "obs:obs_0003",
+      "limitations": [],
+      "location": null,
+      "producer": {
+        "id": "api-sentinel-forge",
+        "version": "0.1.0"
+      },
+      "subject": "workspace"
+    },
+    {
+      "claim": "incident evidence row persisted in the workspace (ref obs:obs_0004)",
+      "derived_from": null,
+      "epistemic": "observed",
+      "hash": null,
+      "id": "obs:obs_0004",
+      "limitations": [],
+      "location": null,
+      "producer": {
+        "id": "api-sentinel-forge",
+        "version": "0.1.0"
+      },
+      "subject": "workspace"
+    },
+    {
+      "claim": "incident evidence row persisted in the workspace (ref obs:obs_0005)",
+      "derived_from": null,
+      "epistemic": "observed",
+      "hash": null,
+      "id": "obs:obs_0005",
+      "limitations": [],
+      "location": null,
+      "producer": {
+        "id": "api-sentinel-forge",
+        "version": "0.1.0"
+      },
+      "subject": "workspace"
+    },
+    {
+      "claim": "incident evidence row persisted in the workspace (ref obs:obs_0006)",
+      "derived_from": null,
+      "epistemic": "observed",
+      "hash": null,
+      "id": "obs:obs_0006",
+      "limitations": [],
+      "location": null,
+      "producer": {
+        "id": "api-sentinel-forge",
+        "version": "0.1.0"
+      },
+      "subject": "workspace"
+    },
+    {
+      "claim": "incident evidence row persisted in the workspace (ref obs:obs_0007)",
+      "derived_from": null,
+      "epistemic": "observed",
+      "hash": null,
+      "id": "obs:obs_0007",
+      "limitations": [],
+      "location": null,
+      "producer": {
+        "id": "api-sentinel-forge",
+        "version": "0.1.0"
+      },
+      "subject": "workspace"
+    },
+    {
+      "claim": "incident evidence row persisted in the workspace (ref obs:obs_0008)",
+      "derived_from": null,
+      "epistemic": "observed",
+      "hash": null,
+      "id": "obs:obs_0008",
+      "limitations": [],
+      "location": null,
+      "producer": {
+        "id": "api-sentinel-forge",
+        "version": "0.1.0"
+      },
+      "subject": "workspace"
+    }
+  ],
+  "findings": [
+    {
+      "evidence_ids": [
+        "last_window_end:2026-01-01T00:08:00+00:00",
+        "src:src_01M706FPQV20XE288GPPSD3S8H"
+      ],
+      "id": "inc_ca0f8ca1524f796c9ee96ed4",
+      "severity": "info",
+      "title": "source_silence on checkout-api [DETECTED]"
+    },
+    {
+      "evidence_ids": [
+        "obs:obs_0001",
+        "obs:obs_0002",
+        "obs:obs_0003",
+        "obs:obs_0004",
+        "obs:obs_0005",
+        "obs:obs_0006",
+        "obs:obs_0007",
+        "obs:obs_0008",
+        "src:src_01M706FPQV20XE288GPPSD3S8H"
+      ],
+      "id": "inc_0143e25e3480b3c44b972c0e",
+      "severity": "medium",
+      "title": "p95_over_latency_target on checkout-api (/payments/{payment_id}) [DETECTED]"
+    }
+  ],
+  "limitations": [],
+  "metrics": {
+    "context_bytes": {
+      "kind": "measured",
+      "value": 0.0
+    },
+    "duration_ms": {
+      "kind": "measured",
+      "value": 803.32
+    },
+    "tokens": {
+      "kind": "unknown",
+      "value": null
+    }
+  },
+  "native_trace": null,
+  "producer": {
+    "id": "api-sentinel-forge",
+    "version": "0.1.0"
+  },
+  "provider_economy": null,
+  "provider_receipt": null,
+  "schema": "theforge/ExecutionResult/v1",
+  "status": "ok",
+  "unknowns": []
+}

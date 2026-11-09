@@ -220,24 +220,30 @@ class DoctorACL:
         `doctor_importable()`); mypy stubs are absent by design — the
         package is consumed through its public seam, never vendored.
         """
-        from forge_doctor_api.handoff.boundary import (  # type: ignore[import-not-found]
-            DoctorBoundary,
-        )
-        from forge_doctor_api.handoff.context import (  # type: ignore[import-not-found]
-            ProjectContext,
-        )
-        from forge_doctor_api.handoff.protocol import (  # type: ignore[import-not-found]
-            ForgeRequest,
-        )
+        from forge_doctor_api.handoff.boundary import DoctorBoundary
+
+        # C10-F009: `ProjectContext` lives at `core.context` since Doctor
+        # 0.3.x; `handoff.context` is the legacy location kept as a fallback
+        # for older installs. Prefer the canonical path; never guess. The
+        # legacy path resolves dynamically — the module exists but carries
+        # no `ProjectContext` at 0.3.x, so a static import would type-error.
+        try:
+            from forge_doctor_api.core.context import ProjectContext
+
+            make_context = ProjectContext.from_root
+        except ImportError:  # legacy <0.3 layout
+            _legacy_ctx = importlib.import_module(
+                "forge_doctor_api.handoff.context"
+            )
+            make_context = _legacy_ctx.ProjectContext.from_root
+        from forge_doctor_api.handoff.protocol import ForgeRequest
 
         request = ForgeRequest.parse(request_dict)
-        boundary = DoctorBoundary(context=ProjectContext.from_root(context_root))
+        boundary = DoctorBoundary(context=make_context(context_root))
         with ThreadPoolExecutor(max_workers=1) as pool:
             future = pool.submit(boundary.handle, request)
             bundle = future.result(timeout=self._timeout)
-        raw: dict[str, Any] = (
-            bundle.to_dict() if hasattr(bundle, "to_dict") else dict(bundle)
-        )
+        raw: dict[str, Any] = bundle.to_dict()
         ingest = ingest_doctor_bundle_json(json.dumps(raw))
         return DoctorResult(
             handoff_id=handoff.handoff_id,

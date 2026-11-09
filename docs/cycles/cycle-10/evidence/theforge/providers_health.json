@@ -1,0 +1,90 @@
+{
+  "providers": [
+    {
+      "error": {
+        "code": "FORGE-PROVIDER-NOT-READY",
+        "detail": "api-forge is unreachable: FORGE-PROTO-SPAWN: cannot start 'E:/projetos/the-forger/.venv-api/Scripts/python.exe': [WinError 2] O sistema não pode encontrar o arquivo especificado",
+        "field": null,
+        "unlock": null
+      },
+      "id": "api-forge",
+      "status": "error",
+      "surface_fingerprint": null,
+      "trust": "local"
+    },
+    {
+      "error": null,
+      "id": "api-sentinel-forge",
+      "status": "degraded",
+      "surface_fingerprint": "8c39124b02aac34b9ac9761de0fa75c59245bc22dbba682c3919e9eaa18b5d8c",
+      "trust": "local"
+    },
+    {
+      "error": null,
+      "id": "echo-forge",
+      "status": "ok",
+      "surface_fingerprint": "0a07cd12ff003c749a86a066c1a153ad565a9fe8f82d811fd80c6fc65c112bc3",
+      "trust": "builtin"
+    },
+    {
+      "error": {
+        "code": "FORGE-PROVIDER-NOT-READY",
+        "detail": "forge-doctor-api is unreachable: FORGE-PROTO-SPAWN: cannot start 'E:/projetos/the-forger/.venv-da/Scripts/python.exe': [WinError 2] O sistema não pode encontrar o arquivo especificado",
+        "field": null,
+        "unlock": null
+      },
+      "id": "forge-doctor-api",
+      "status": "error",
+      "surface_fingerprint": null,
+      "trust": "local"
+    },
+    {
+      "error": {
+        "code": "FORGE-PROVIDER-NOT-READY",
+        "detail": "forge-doctor-data is unreachable: FORGE-PROTO-SPAWN: cannot start 'E:/projetos/the-forger/.venv-dd/Scripts/python.exe': [WinError 2] O sistema não pode encontrar o arquivo especificado",
+        "field": null,
+        "unlock": null
+      },
+      "id": "forge-doctor-data",
+      "status": "error",
+      "surface_fingerprint": null,
+      "trust": "local"
+    },
+    {
+      "error": {
+        "code": "FORGE-PROVIDER-NOT-READY",
+        "detail": "platform-forge is unreachable: FORGE-PROTO-SPAWN: cannot start 'E:/projetos/the-forger/.venv-platform/Scripts/python.exe': [WinError 2] O sistema não pode encontrar o arquivo especificado",
+        "field": null,
+        "unlock": null
+      },
+      "id": "platform-forge",
+      "status": "error",
+      "surface_fingerprint": null,
+      "trust": "local"
+    },
+    {
+      "error": {
+        "code": "FORGE-PROVIDER-NOT-READY",
+        "detail": "spark-forge-aws is unreachable: FORGE-PROTO-SPAWN: cannot start 'E:/projetos/the-forger/.venv-spark-aws/Scripts/python.exe': [WinError 2] O sistema não pode encontrar o arquivo especificado",
+        "field": null,
+        "unlock": null
+      },
+      "id": "spark-forge-aws",
+      "status": "error",
+      "surface_fingerprint": null,
+      "trust": "local"
+    },
+    {
+      "error": {
+        "code": "FORGE-PROVIDER-NOT-READY",
+        "detail": "spark-forge-azure is unreachable: FORGE-PROTO-SPAWN: cannot start 'E:/projetos/the-forger/.venv-spark-azure/Scripts/python.exe': [WinError 2] O sistema não pode encontrar o arquivo especificado",
+        "field": null,
+        "unlock": null
+      },
+      "id": "spark-forge-azure",
+      "status": "error",
+      "surface_fingerprint": null,
+      "trust": "local"
+    }
+  ]
+}

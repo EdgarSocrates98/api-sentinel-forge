@@ -1,0 +1,47 @@
+{
+  "candidates": [
+    {
+      "capability": "api.slo-assessment",
+      "matched": {
+        "dependencies": [],
+        "file_globs": [],
+        "keywords": []
+      },
+      "provider": "api-sentinel-forge",
+      "rank_key": [
+        2
+      ],
+      "state": "supported"
+    }
+  ],
+  "confidence": {
+    "level": "high",
+    "measured_signals": [
+      "requested_capability"
+    ],
+    "unresolved": []
+  },
+  "created_at": "2026-11-09T13:12:10.198595Z",
+  "fallbacks_used": [],
+  "limitations": [],
+  "negotiation": [],
+  "pattern": "route",
+  "producer": {
+    "id": "theforge",
+    "version": "0.7.4"
+  },
+  "reason": "requested capability api.slo-assessment; pinned provider api-sentinel-forge",
+  "schema": "theforge/RoutingDecision/v1",
+  "selected": [
+    {
+      "action": "evaluate",
+      "capability": "api.slo-assessment",
+      "provider": "api-sentinel-forge",
+      "role": "primary"
+    }
+  ],
+  "shadow": null,
+  "status": "routed",
+  "task_id": "20261109T131210Z-79bbfa88",
+  "unknowns": []
+}

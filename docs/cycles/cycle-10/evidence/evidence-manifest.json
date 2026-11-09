@@ -1,10 +1,10 @@
 {
   "schema": "api-sentinel/EvidenceManifest/v1",
   "cycle": "cycle-10",
-  "wave": "wave0-baseline",
-  "collected_at": "2026-11-09T12:20:00Z",
+  "wave": "wave2-federation",
+  "collected_at": "2026-11-09T14:30:00Z",
   "branch": "cycle-10",
-  "head_sha": "29375e3ffda764757991997933e177301ff721bb",
+  "head_sha": "de5e9df",
   "files": [
     {
       "path": "evidence/baseline.json",
@@ -40,6 +40,36 @@
       "path": "evidence/evidence-manifest.json",
       "kind": "this index",
       "contains": "manifest"
+    },
+    {
+      "path": "evidence/doctor_inprocess_run.json",
+      "kind": "real in-process DoctorBoundary run vs lab/fixtures/doctor-project \u2014 completed, 10 findings/9 unknowns (F009 proof)",
+      "contains": "verbatim DelegationOutcome dump"
+    },
+    {
+      "path": "evidence/doctor_inprocess_receipt.json",
+      "kind": "persisted handoff receipt rcpt_hnd_h_01M70777F9VS1TQ2XNJ8ZD5X8Q",
+      "contains": "transport_state=delivered / execution_state=completed"
+    },
+    {
+      "path": "evidence/atlas/index_run.json + entities + status",
+      "kind": "real `code-atlas index lab/fixtures/atlas-repo --domains api` \u2192 snapshot 11 READY (4 entities, 9 relations)",
+      "contains": "CLI output + entities dump"
+    },
+    {
+      "path": "evidence/atlas_correlate_run.json",
+      "kind": "real DbStructuralContext correlate \u2014 service.app#app \u2192 3 structural CONTAINS edges",
+      "contains": "CorrelationReport, observed/structural separation"
+    },
+    {
+      "path": "evidence/theforge/",
+      "kind": "the-forge runtime transcript: registry refresh/show, provider check, 5 routed ask runs with task\u2192routing\u2192result\u2192verification\u2192receipt",
+      "contains": "run ids 20261109T131310Z-34446ffc, -21329c86, -e7974201, -0e57520c, 20261109T132216Z-004a614a"
+    },
+    {
+      "path": "evidence/contract-conformance.json#wave2_updates",
+      "kind": "per-seam wave-2 verdicts appended to the wave-0 audit",
+      "contains": "INTEGRATED/NAMED states + run evidence"
     }
   ],
   "pending_wave_files": [
@@ -49,7 +79,7 @@
     "evidence/contract-conformance.json (extended)"
   ],
   "aux_artifacts": {
-    "bench_dispersed_instrumented_harness": "%TEMP%/bench_dispersed.py (not committed — wraps repositories._ObservationRepo counters read-only)",
+    "bench_dispersed_instrumented_harness": "%TEMP%/bench_dispersed.py (not committed \u00e2\u20ac\u201d wraps repositories._ObservationRepo counters read-only)",
     "wheel_output": "%TEMP%/sentinel-wheel/",
     "install_venv": "%TEMP%/sentinel-install-test/",
     "e2e_transcript": "%TEMP%/sentinel-e2e-ynlpk_m7/e2e-transcript.txt"

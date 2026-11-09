@@ -163,6 +163,34 @@ def _atlas_path(config: dict[str, object], ws: Workspace) -> Path | None:
     return path if path.is_absolute() else ws.root / path
 
 
+def _atlas_db_path(config: dict[str, object], ws: Workspace) -> Path | None:
+    atlas = _atlas_cfg(config)
+    if not atlas.get("db_path"):
+        return None
+    path = Path(str(atlas["db_path"]))
+    return path if path.is_absolute() else ws.root / path
+
+
+def _atlas_cfg(config: dict[str, object]) -> dict[str, object]:
+    integrations = config.get("integrations")
+    if not isinstance(integrations, dict):
+        return {}
+    atlas = integrations.get("atlas")
+    return atlas if isinstance(atlas, dict) else {}
+
+
+def _atlas_selectors(config: dict[str, object]) -> tuple[str | None, int | None]:
+    """(repository, snapshot_id) selectors for the status probe — mirrors
+    `load_structural` so the reported state matches what correlate loads."""
+    atlas = _atlas_cfg(config)
+    snap = atlas.get("snapshot_id")
+    repo = atlas.get("repository")
+    return (
+        str(repo) if repo else None,
+        int(str(snap)) if snap else None,
+    )
+
+
 @app.callback()
 def _main() -> None:
     pass
@@ -190,8 +218,12 @@ def doctor(
     report["version"] = __version__
     if ws.root.exists():
         config = _load_cfg(ws)
+        repo, snap = _atlas_selectors(config)
         report["integrations"] = integration_status(
-            atlas_manifest=_atlas_path(config, ws)
+            atlas_manifest=_atlas_path(config, ws),
+            atlas_db=_atlas_db_path(config, ws),
+            atlas_repository=repo,
+            atlas_snapshot_id=snap,
         )
     from api_sentinel.operations.health import sentinel_health
 
@@ -678,8 +710,14 @@ def integrations_cmd(
     """Every sibling Forge's honest state: available | unverified | unavailable."""
     ws = _ws(workspace, user_scope)
     config = _load_cfg(ws) if ws.root.exists() else {}
+    repo, snap = _atlas_selectors(config)
     _emit(
-        integration_status(atlas_manifest=_atlas_path(config, ws)),
+        integration_status(
+            atlas_manifest=_atlas_path(config, ws),
+            atlas_db=_atlas_db_path(config, ws),
+            atlas_repository=repo,
+            atlas_snapshot_id=snap,
+        ),
         as_json,
     )
 
