@@ -29,8 +29,8 @@ _CAPABILITIES: list[Capability] = [
     Capability("api.slo-assessment", CapabilityStatus.AVAILABLE, "0.1.0"),
     Capability("api.anomaly-detection", CapabilityStatus.AVAILABLE, "0.1.0"),
     Capability("api.incident-investigation", CapabilityStatus.AVAILABLE, "0.1.0"),
-    Capability("api.deployment-correlation", CapabilityStatus.DECLARED, notes="Cycle 5"),
-    Capability("api.doctor-handoff", CapabilityStatus.DECLARED, notes="Cycle 5"),
+    Capability("api.deployment-correlation", CapabilityStatus.AVAILABLE, "0.2.5"),
+    Capability("api.doctor-handoff", CapabilityStatus.AVAILABLE, "0.2.5"),
     Capability("api.portal-operations", CapabilityStatus.DECLARED, notes="Cycle 6"),
     Capability("api.aws-readonly-observability", CapabilityStatus.DECLARED, notes="Cycle 7"),
 ]

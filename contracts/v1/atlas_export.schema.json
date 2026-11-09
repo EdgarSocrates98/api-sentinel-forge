@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://api-sentinel-forge.local/schemas/api-sentinel/AtlasExport/v1",
+  "title": "api-sentinel/AtlasExport/v1",
+  "type": "object",
+  "required": ["schema", "exported_at", "services", "edges"],
+  "properties": {
+    "schema": { "const": "api-sentinel/AtlasExport/v1" },
+    "exported_at": { "type": "string", "format": "date-time" },
+    "snapshot_ref": { "type": ["string", "null"] },
+    "exporter": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "version": { "type": ["string", "null"] }
+      }
+    },
+    "services": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["atlas_id", "name"],
+        "properties": {
+          "atlas_id": { "type": "string" },
+          "name": { "type": "string" },
+          "kind": { "type": "string", "description": "api_service | datastore | queue | external" },
+          "repo": { "type": ["string", "null"] },
+          "evidence_refs": { "type": "array", "items": { "type": "string" } }
+        },
+        "additionalProperties": false
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["edge_id", "from", "to", "kind"],
+        "properties": {
+          "edge_id": { "type": "string" },
+          "from": { "type": "string", "description": "atlas_id of the source entity" },
+          "to": { "type": "string", "description": "atlas_id of the target entity" },
+          "kind": { "type": "string", "description": "structural relation kind (e.g. CALLS_ENDPOINT, REFERENCES); never an observed call" },
+          "confidence": { "type": "string", "description": "resolved | syntactic | heuristic | inferred" },
+          "resolution": { "type": "string", "description": "resolved | ambiguous | unresolved | external" },
+          "resolver": { "type": "string", "description": "producing analyzer id/version (provenance)" },
+          "evidence_refs": { "type": "array", "items": { "type": "string" } }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

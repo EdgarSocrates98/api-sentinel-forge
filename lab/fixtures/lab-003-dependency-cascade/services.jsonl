@@ -1,0 +1,3 @@
+{"service_name":"checkout-api","namespace":"shop","external_refs":{"code_atlas_identity":"atlas:svc:checkout-api"}}
+{"service_name":"orders","namespace":"shop","external_refs":{"code_atlas_identity":"atlas:svc:orders"}}
+{"service_name":"payments","namespace":"shop","external_refs":{"code_atlas_identity":"atlas:svc:payments"}}

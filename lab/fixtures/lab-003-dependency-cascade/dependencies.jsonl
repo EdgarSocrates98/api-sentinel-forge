@@ -1,0 +1,3 @@
+{"service_id":"svc_checkout","target":"orders","target_kind":"service","window_start":"2026-01-01T00:00:00Z","window_end":"2026-01-01T00:10:00Z","calls":240,"errors":8,"timeouts":0,"evidence_refs":["ev:trace-checkout-orders"]}
+{"service_id":"svc_orders","target":"payments","target_kind":"service","window_start":"2026-01-01T00:00:00Z","window_end":"2026-01-01T00:10:00Z","calls":236,"errors":30,"timeouts":0,"evidence_refs":["ev:trace-orders-payments"]}
+{"service_id":"svc_payments","target":"payments-db","target_kind":"datastore","window_start":"2026-01-01T00:00:00Z","window_end":"2026-01-01T00:10:00Z","calls":180,"errors":0,"timeouts":96,"evidence_refs":["ev:payments-db-timeout-log"]}

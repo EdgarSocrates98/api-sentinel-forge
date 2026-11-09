@@ -122,6 +122,57 @@ class InvestigationHandoffV1(Envelope):
     constraints: HandoffConstraints = Field(default_factory=HandoffConstraints)
 
 
+class AtlasExporter(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id: str = "code-atlas-forge"
+    version: str | None = None
+
+
+class AtlasService(BaseModel):
+    """A structural entity owned by Code Atlas — never an observed service."""
+
+    model_config = ConfigDict(extra="forbid")
+    atlas_id: str
+    name: str
+    kind: str = "api_service"  # api_service | datastore | queue | external
+    repo: str | None = None
+    evidence_refs: list[str] = Field(default_factory=list)
+
+
+class AtlasEdge(BaseModel):
+    """A structural relation — vocabulary mirrors Atlas EdgeKind/CALLS_ENDPOINT.
+
+    `confidence` mirrors Atlas ConfidenceClass (resolved|syntactic|heuristic|
+    inferred); `resolution` mirrors ResolutionStatus (resolved|ambiguous|
+    unresolved|external); `resolver` is the producing analyzer's provenance.
+    """
+
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
+    edge_id: str
+    from_ref: str = Field(alias="from")
+    to_ref: str = Field(alias="to")
+    kind: str
+    confidence: str = "syntactic"
+    resolution: str = "resolved"
+    resolver: str = ""
+    evidence_refs: list[str] = Field(default_factory=list)
+
+
+class AtlasExportV1(Envelope):
+    """The versioned import contract the Atlas adapter accepts.
+
+    Produced by `code-atlas` export tooling toward this documented shape;
+    unknown versions are rejected, never defaulted (ADR-006).
+    """
+
+    expected_schema: ClassVar[str] = "api-sentinel/AtlasExport/v1"
+    exported_at: datetime
+    snapshot_ref: str | None = None
+    exporter: AtlasExporter = Field(default_factory=AtlasExporter)
+    services: list[AtlasService] = Field(default_factory=list)
+    edges: list[AtlasEdge] = Field(default_factory=list)
+
+
 class TelemetrySourceV1(Envelope):
     expected_schema: ClassVar[str] = "api-sentinel/TelemetrySource/v1"
     source_id: str
@@ -159,6 +210,7 @@ ENVELOPES: dict[str, type[Envelope]] = {
         RuntimeObservationV1,
         AnomalyV1,
         InvestigationHandoffV1,
+        AtlasExportV1,
         TelemetrySourceV1,
         EvidenceArtifactV1,
     )

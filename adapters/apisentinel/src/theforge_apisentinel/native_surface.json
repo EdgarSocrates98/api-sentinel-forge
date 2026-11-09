@@ -1,0 +1,39 @@
+{
+  "protocol_version": 1,
+  "provenance": "recorded",
+  "recorded_at": "2026-11-09T00:07:26Z",
+  "seams": [
+    {
+      "callable": "SentinelBoundary",
+      "methods": [
+        "capabilities",
+        "describe",
+        "execute",
+        "handle",
+        "health"
+      ],
+      "module": "api_sentinel.integrations.the_forge.boundary",
+      "name": "sentinel_boundary",
+      "present": true
+    },
+    {
+      "callable": "handoff_to_forge_request",
+      "module": "api_sentinel.integrations.the_forge.handoff",
+      "name": "handoff_translate",
+      "parameters": [
+        "handoff"
+      ],
+      "present": true
+    },
+    {
+      "callable": "response_to_result",
+      "module": "api_sentinel.integrations.the_forge.handoff",
+      "name": "handoff_response",
+      "parameters": [
+        "response"
+      ],
+      "present": true
+    }
+  ],
+  "specialist_version": "0.1.0"
+}

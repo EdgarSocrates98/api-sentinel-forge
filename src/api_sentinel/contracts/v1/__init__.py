@@ -3,6 +3,7 @@
 from api_sentinel.contracts.v1.models import (
     ENVELOPES,
     AnomalyV1,
+    AtlasExportV1,
     Envelope,
     EvidenceArtifactV1,
     InvestigationHandoffV1,
@@ -15,6 +16,7 @@ from api_sentinel.contracts.v1.models import (
 __all__ = [
     "ENVELOPES",
     "AnomalyV1",
+    "AtlasExportV1",
     "Envelope",
     "EvidenceArtifactV1",
     "InvestigationHandoffV1",

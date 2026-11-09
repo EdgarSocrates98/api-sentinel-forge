@@ -27,45 +27,45 @@ correlation)._
 
 # Acceptance Criteria
 
-- [ ] Doctor adapter: the Sentinel selects a bounded evidence package,
+- [x] Doctor adapter: the Sentinel selects a bounded evidence package,
   resolves authorized refs, creates a versioned handoff and delegates;
   returned findings and unknowns are recorded as investigation evidence —
   never reclassified, never stripped of provenance.
-- [ ] Atlas adapter: structural entities/relations are consumed through the
+- [x] Atlas adapter: structural entities/relations are consumed through the
   Atlas public contract; the structural graph (Atlas-owned) and the
   operational graph (Sentinel-owned `DependencyObservation`s) stay
   conceptually distinct — a structural edge never proves a call happened and
   an observed call never proves a code path.
-- [ ] Identity translation: canonical `service_id`/`operation_id` ↔
+- [x] Identity translation: canonical `service_id`/`operation_id` ↔
   `external_refs` mapped with provenance (ADR-012); unresolved identities
   stay `UNKNOWN` rather than name-matched guesses (LAB-006).
-- [ ] Versioned handoffs: `InvestigationHandoff/v1` is translated by the
+- [x] Versioned handoffs: `InvestigationHandoff/v1` is translated by the
   adapter to the effective `ForgeRequest`/`ForgeHandoff` contract of the
   target; unknown envelope versions are rejected explicitly.
-- [ ] Results carry unknowns end-to-end; unknowns are never silently
+- [x] Results carry unknowns end-to-end; unknowns are never silently
   converted into default values.
-- [ ] Every handoff produces a receipt; receipts contain no secrets and
+- [x] Every handoff produces a receipt; receipts contain no secrets and
   preserve the original errors and limitations of the response.
-- [ ] Per-integration timeouts are configured and bounded; a timeout yields a
+- [x] Per-integration timeouts are configured and bounded; a timeout yields a
   named terminal state, not a hang.
-- [ ] Unavailability handling: each integration is optional — absence
+- [x] Unavailability handling: each integration is optional — absence
   produces a named refusal/degraded state (LAB-011), never a simulated
   execution or fabricated success.
-- [ ] Consumer/provider contract tests exist for the Doctor and Atlas seams
+- [x] Consumer/provider contract tests exist for the Doctor and Atlas seams
   on both sides of the envelope.
-- [ ] Correlated-diagnosis proof: the LAB-003 checkout cascade identifies the
+- [x] Correlated-diagnosis proof: the LAB-003 checkout cascade identifies the
   observed dependency correctly while avoiding unevidenced causal certainty;
   LAB-005 shows Doctor identifying the relevant contract change.
-- [ ] The-forge adapter (`adapters/apisentinel`, in the the-forge repo)
+- [x] The-forge adapter (`adapters/apisentinel`, in the the-forge repo)
   declares `CapabilitySpec`s mapping Sentinel public seams to
   `api.runtime-observation`, `api.slo-assessment`, `api.anomaly-detection`,
   `api.incident-investigation`, `api.deployment-correlation` — with the
   verification of those ids against the live capability catalog recorded in
   the run evidence.
-- [ ] `forge-knowledge/api-sentinel-forge.json` ships a bootstrap package
+- [x] `forge-knowledge/api-sentinel-forge.json` ships a bootstrap package
   declaring operational facts only (`capabilities_source =
   "runtime_discovery"` — never runtime capabilities).
-- [ ] The Sentinel public seam is a typed boundary module (e.g.,
+- [x] The Sentinel public seam is a typed boundary module (e.g.,
   `integrations/the_forge/boundary.py`) exposing `describe`, `health`,
   `capabilities` and `execute` over versioned envelopes; a discovered
   provider is never automatically considered executable

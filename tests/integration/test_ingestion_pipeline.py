@@ -260,7 +260,7 @@ def test_migrations_apply_once(tmp_path: Path) -> None:
     conn = connect(tmp_path / "s.db")
     from api_sentinel.infrastructure.storage.migrations import migrate
 
-    assert migrate(conn) == [1, 2, 3, 4]
+    assert migrate(conn) == [1, 2, 3, 4, 5]
     assert migrate(conn) == []
     tables = {r["name"] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     expected = {
@@ -272,6 +272,9 @@ def test_migrations_apply_once(tmp_path: Path) -> None:
         "anomalies",
         "incidents",
         "incident_events",
+        "change_events",
+        "handoff_records",
+        "dependency_observations",
     }
     assert expected <= tables
     conn.close()

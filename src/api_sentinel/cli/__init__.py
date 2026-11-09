@@ -37,6 +37,17 @@ from api_sentinel.incidents import IncidentStatus
 from api_sentinel.infrastructure.security import redact
 from api_sentinel.infrastructure.storage import SqliteUnitOfWork
 from api_sentinel.ingestion import IngestionPipeline
+from api_sentinel.integrations.service import (
+    Correlate,
+    DelegateToDoctor,
+    ListChanges,
+    ListDependencies,
+    RecordChange,
+    RecordDependency,
+    doctor_acl_from_config,
+    load_structural,
+)
+from api_sentinel.integrations.status import integration_status
 from api_sentinel.metrics import ErrorClassification, parse_duration_seconds
 from api_sentinel.reliability import SliKind
 from api_sentinel.workspace import Workspace, ensure_workspace, resolve_workspace
@@ -59,6 +70,12 @@ incident_app = typer.Typer(
     no_args_is_help=True,
 )
 app.add_typer(incident_app, name="incident")
+handoff_app = typer.Typer(
+    name="handoff",
+    help="Cross-Forge handoffs: delegate, ingest, audit.",
+    no_args_is_help=True,
+)
+app.add_typer(handoff_app, name="handoff")
 
 _JSON = Annotated[bool, typer.Option("--json", help="Emit machine-readable JSON")]
 _WS = Annotated[str | None, typer.Option("--workspace", help="Explicit workspace root")]
@@ -98,6 +115,26 @@ def _uow(ws: Workspace) -> SqliteUnitOfWork:
     return SqliteUnitOfWork(ws.db_path)
 
 
+def _load_cfg(ws: Workspace) -> dict[str, object]:
+    from api_sentinel.workspace import load_config
+
+    try:
+        return load_config(ws)
+    except Exception:  # workspace without config → no integrations
+        return {}
+
+
+def _atlas_path(config: dict[str, object], ws: Workspace) -> Path | None:
+    integrations = config.get("integrations")
+    if not isinstance(integrations, dict):
+        return None
+    atlas = integrations.get("atlas")
+    if not isinstance(atlas, dict) or not atlas.get("export"):
+        return None
+    path = Path(str(atlas["export"]))
+    return path if path.is_absolute() else ws.root / path
+
+
 @app.callback()
 def _main() -> None:
     pass
@@ -115,7 +152,7 @@ def doctor(
     workspace: _WS = None,
     user_scope: _USER_SCOPE = False,
 ) -> None:
-    """Self-check: workspace, database, capabilities."""
+    """Self-check: workspace, database, capabilities, integrations."""
     ws = _ws(workspace, user_scope)
     report = status_report(
         workspace_initialized=ws.root.exists(),
@@ -123,6 +160,11 @@ def doctor(
     )
     report["workspace_root"] = str(ws.root)
     report["version"] = __version__
+    if ws.root.exists():
+        config = _load_cfg(ws)
+        report["integrations"] = integration_status(
+            atlas_manifest=_atlas_path(config, ws)
+        )
     _emit(report, as_json)
 
 
@@ -578,6 +620,231 @@ def incident_reopen(
         workspace=workspace,
         user_scope=user_scope,
     )
+
+
+@app.command("integrations")
+def integrations_cmd(
+    as_json: _JSON = False,
+    workspace: _WS = None,
+    user_scope: _USER_SCOPE = False,
+) -> None:
+    """Every sibling Forge's honest state: available | unverified | unavailable."""
+    ws = _ws(workspace, user_scope)
+    config = _load_cfg(ws) if ws.root.exists() else {}
+    _emit(
+        integration_status(atlas_manifest=_atlas_path(config, ws)),
+        as_json,
+    )
+
+
+@handoff_app.command("doctor")
+def handoff_doctor(
+    service_id: Annotated[str, typer.Option("--service-id")],
+    target: Annotated[
+        str | None,
+        typer.Option("--target", help="Doctor scan root / context ref"),
+    ] = None,
+    capability: Annotated[
+        str | None,
+        typer.Option("--capability", help="Requested capability ids (CSV)"),
+    ] = None,
+    context_root: Annotated[
+        str | None,
+        typer.Option("--context-root", help="Doctor ProjectContext root (in_process)"),
+    ] = None,
+    mode: Annotated[
+        str | None,
+        typer.Option("--mode", help="in_process | handoff_file"),
+    ] = None,
+    timeout: Annotated[
+        float, typer.Option("--timeout", help="Delegation budget in seconds")
+    ] = 30.0,
+    now: Annotated[
+        str | None, typer.Option("--now", help="ISO-8601 injected clock")
+    ] = None,
+    as_json: _JSON = False,
+    workspace: _WS = None,
+    user_scope: _USER_SCOPE = False,
+) -> None:
+    """Delegate an investigation to Forge Doctor API; audit + receipt.
+
+    Emits the versioned `api-sentinel/InvestigationHandoff/v1` plus a
+    ForgeRequest-shaped request under `handoffs/` (handoff_file) or calls
+    DoctorBoundary in-process when `forge_doctor_api` is importable. The
+    result is a named status — delegated | completed | refused | timed_out
+    | unavailable — never a fabricated success.
+    """
+    from api_sentinel.integrations.doctor.adapter import DoctorACL, DoctorMode
+
+    ws = _ws(workspace, user_scope)
+    ensure_workspace(ws)
+    uow = _uow(ws)
+    config = _load_cfg(ws)
+    acl = (
+        DoctorACL(mode=DoctorMode(mode), timeout_seconds=timeout)
+        if mode
+        else doctor_acl_from_config(config)
+    )
+    if timeout != 30.0 and not mode:
+        acl = DoctorACL(mode=acl.mode, timeout_seconds=timeout)
+    caps = (
+        [c.strip() for c in capability.split(",") if c.strip()]
+        if capability else None
+    )
+    outcome = DelegateToDoctor(
+        uow, SystemClock(), UlidIdFactory(), acl, workspace_root=ws.root
+    ).execute(
+        service_id=service_id,
+        target=target or service_id,
+        capabilities=caps,
+        context_root=Path(context_root) if context_root else None,
+        clock_iso=now,
+    )
+    _emit(outcome.model_dump(mode="json"), as_json)
+
+
+@handoff_app.command("ingest")
+def handoff_ingest(
+    bundle: Annotated[
+        Path, typer.Option("--bundle", help="Doctor-emitted bundle path")
+    ],
+    as_json: _JSON = False,
+    workspace: _WS = None,
+    user_scope: _USER_SCOPE = False,
+) -> None:
+    """Ingest a Doctor-emitted findings bundle back as verbatim evidence."""
+    from api_sentinel.integrations.doctor.adapter import DoctorACL
+
+    ingest = DoctorACL(mode="handoff_file").ingest(bundle)
+    _emit(ingest.model_dump(mode="json"), as_json)
+
+
+@app.command("changes")
+def changes_cmd(
+    service_id: Annotated[str, typer.Option("--service-id")],
+    record: Annotated[
+        str | None,
+        typer.Option("--record", help="Change kind to record (deploy|config|…)"),
+    ] = None,
+    at: Annotated[
+        str | None, typer.Option("--at", help="ISO-8601 event time")
+    ] = None,
+    ref: Annotated[str | None, typer.Option("--ref")] = None,
+    source: Annotated[str, typer.Option("--source")] = "cli",
+    at_start: Annotated[str | None, typer.Option("--at-start")] = None,
+    at_end: Annotated[str | None, typer.Option("--at-end")] = None,
+    as_json: _JSON = False,
+    workspace: _WS = None,
+    user_scope: _USER_SCOPE = False,
+) -> None:
+    """List change events for a service, or record one with --record."""
+    ws = _ws(workspace, user_scope)
+    uow = _uow(ws)
+    if record is not None:
+        if at is None:
+            typer.echo("error: --at is required with --record", err=True)
+            raise typer.Exit(EXIT_USAGE)
+        event = RecordChange(uow, SystemClock()).execute(
+            service_id=service_id,
+            kind=record,
+            at=_parse_dt(at, "--at"),
+            source=source,
+            ref=ref,
+        )
+        _emit(event.model_dump(mode="json"), as_json)
+        return
+    events = ListChanges(uow).execute(
+        service_id=service_id,
+        at_start=_parse_dt(at_start, "--at-start") if at_start else None,
+        at_end=_parse_dt(at_end, "--at-end") if at_end else None,
+    )
+    _emit([e.model_dump(mode="json") for e in events], as_json)
+
+
+@app.command("deps")
+def deps_cmd(
+    service_id: Annotated[str, typer.Option("--service-id")],
+    record: Annotated[
+        str | None,
+        typer.Option("--record", help="Observed target to record an edge for"),
+    ] = None,
+    window_start: Annotated[
+        str | None, typer.Option("--window-start", help="ISO-8601")
+    ] = None,
+    window_end: Annotated[
+        str | None, typer.Option("--window-end", help="ISO-8601")
+    ] = None,
+    target_kind: Annotated[str, typer.Option("--target-kind")] = "service",
+    calls: Annotated[int, typer.Option("--calls")] = 0,
+    errors: Annotated[int, typer.Option("--errors")] = 0,
+    timeouts: Annotated[int, typer.Option("--timeouts")] = 0,
+    as_json: _JSON = False,
+    workspace: _WS = None,
+    user_scope: _USER_SCOPE = False,
+) -> None:
+    """List observed dependency edges, or record one with --record TARGET."""
+    ws = _ws(workspace, user_scope)
+    uow = _uow(ws)
+    if record is not None:
+        if window_start is None or window_end is None:
+            typer.echo(
+                "error: --window-start and --window-end are required with "
+                "--record", err=True,
+            )
+            raise typer.Exit(EXIT_USAGE)
+        edge = RecordDependency(uow, SystemClock()).execute(
+            service_id=service_id,
+            target=record,
+            target_kind=target_kind,
+            window_start=_parse_dt(window_start, "--window-start"),
+            window_end=_parse_dt(window_end, "--window-end"),
+            calls=calls,
+            errors=errors,
+            timeouts=timeouts,
+        )
+        _emit(edge.model_dump(mode="json"), as_json)
+        return
+    edges = ListDependencies(uow).execute(
+        service_id=service_id,
+        window_start=_parse_dt(window_start, "--window-start")
+        if window_start else None,
+        window_end=_parse_dt(window_end, "--window-end")
+        if window_end else None,
+    )
+    _emit([e.model_dump(mode="json") for e in edges], as_json)
+
+
+@app.command()
+def correlate(
+    service_id: Annotated[str, typer.Option("--service-id")],
+    window_start: Annotated[
+        str | None, typer.Option("--window-start", help="ISO-8601")
+    ] = None,
+    window_end: Annotated[
+        str | None, typer.Option("--window-end", help="ISO-8601")
+    ] = None,
+    as_json: _JSON = False,
+    workspace: _WS = None,
+    user_scope: _USER_SCOPE = False,
+) -> None:
+    """Correlation report: observed + structural edges, honest unknowns.
+
+    LAB-003: identifies the observed dependency and lists the structural
+    context (Atlas, when configured) — hypotheses stay HYPOTHESIZED;
+    temporal proximity is never root cause.
+    """
+    ws = _ws(workspace, user_scope)
+    uow = _uow(ws)
+    config = _load_cfg(ws)
+    structural = load_structural(config, ws.root)
+    report = Correlate(uow, structural=structural).execute(
+        service_id=service_id,
+        window_start=_parse_dt(window_start, "--window-start")
+        if window_start else None,
+        window_end=_parse_dt(window_end, "--window-end")
+        if window_end else None,
+    )
+    _emit(report.model_dump(mode="json"), as_json)
 
 
 def _dispatch() -> int:

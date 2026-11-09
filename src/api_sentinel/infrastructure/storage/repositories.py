@@ -13,10 +13,13 @@ from api_sentinel.application.ports import (
     AnomalyRepository,
     AuditRepository,
     BatchRepository,
+    ChangeEventRepository,
     CheckpointRepository,
+    DependencyObservationRepository,
     DetectionRuleRepository,
     EnvironmentRepository,
     EvidenceRepository,
+    HandoffRecordRepository,
     IncidentEventRepository,
     IncidentRepository,
     ObservationRepository,
@@ -32,9 +35,13 @@ from api_sentinel.detection.registry import DetectionRule
 from api_sentinel.domain import (
     ApiService,
     AuditEvent,
+    ChangeEvent,
     ConflictError,
+    DependencyObservation,
     EvidenceArtifact,
+    ExternalHandoff,
     ExternalRef,
+    HandoffStatus,
     IngestionCheckpoint,
     ObservationBatch,
     Provenance,
@@ -880,6 +887,212 @@ class _IncidentEventRepo:
         )
 
 
+class _ChangeEventRepo:
+    """Deterministic change ids — INSERT OR IGNORE makes re-imports idempotent."""
+
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._c = conn
+
+    def _row(self, r: sqlite3.Row) -> ChangeEvent:
+        return ChangeEvent(
+            change_id=r["change_id"],
+            service_id=r["service_id"],
+            kind=r["kind"],
+            at=datetime.fromisoformat(r["at"]),
+            source=r["source"],
+            ref=r["ref"],
+            details=json.loads(r["details"]),
+            created_at=datetime.fromisoformat(r["created_at"]),
+        )
+
+    def get(self, change_id: str) -> ChangeEvent | None:
+        r = self._c.execute(
+            "SELECT * FROM change_events WHERE change_id=?", (change_id,)
+        ).fetchone()
+        return self._row(r) if r else None
+
+    def put(self, event: ChangeEvent) -> None:
+        self._c.execute(
+            "INSERT OR IGNORE INTO change_events"
+            " (change_id, service_id, kind, at, source, ref, details, created_at)"
+            " VALUES (?,?,?,?,?,?,?,?)",
+            (
+                event.change_id, event.service_id, event.kind.value,
+                event.at.isoformat(), event.source, event.ref,
+                json.dumps(event.details), event.created_at.isoformat(),
+            ),
+        )
+
+    def list_for_service(
+        self,
+        service_id: str,
+        at_start: datetime | None = None,
+        at_end: datetime | None = None,
+    ) -> list[ChangeEvent]:
+        sql = "SELECT * FROM change_events WHERE service_id=?"
+        args: list[Any] = [service_id]
+        if at_start is not None:
+            sql += " AND at >= ?"
+            args.append(at_start.isoformat())
+        if at_end is not None:
+            sql += " AND at <= ?"
+            args.append(at_end.isoformat())
+        sql += " ORDER BY at, change_id"
+        rows = self._c.execute(sql, args).fetchall()
+        return [self._row(r) for r in rows]
+
+
+class _DependencyObservationRepo:
+    """The operational graph — deterministic edge ids, re-ingest accumulates
+    counters in place rather than duplicating rows."""
+
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._c = conn
+
+    def _row(self, r: sqlite3.Row) -> DependencyObservation:
+        return DependencyObservation(
+            edge_id=r["edge_id"],
+            service_id=r["service_id"],
+            target=r["target"],
+            target_kind=r["target_kind"],
+            operation_id=r["operation_id"],
+            window_start=datetime.fromisoformat(r["window_start"]),
+            window_end=datetime.fromisoformat(r["window_end"]),
+            calls=int(r["calls"]),
+            errors=int(r["errors"]),
+            timeouts=int(r["timeouts"]),
+            evidence_refs=json.loads(r["evidence_refs"]),
+            provenance=r["provenance"],
+            created_at=datetime.fromisoformat(r["created_at"]),
+        )
+
+    def get(self, edge_id: str) -> DependencyObservation | None:
+        r = self._c.execute(
+            "SELECT * FROM dependency_observations WHERE edge_id=?",
+            (edge_id,),
+        ).fetchone()
+        return self._row(r) if r else None
+
+    def put(self, edge: DependencyObservation) -> None:
+        self._c.execute(
+            "INSERT INTO dependency_observations"
+            " (edge_id, service_id, target, target_kind, operation_id,"
+            "  window_start, window_end, calls, errors, timeouts,"
+            "  evidence_refs, provenance, created_at)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)"
+            " ON CONFLICT(edge_id) DO UPDATE SET"
+            "   calls=calls+excluded.calls,"
+            "   errors=errors+excluded.errors,"
+            "   timeouts=timeouts+excluded.timeouts",
+            (
+                edge.edge_id, edge.service_id, edge.target, edge.target_kind,
+                edge.operation_id, edge.window_start.isoformat(),
+                edge.window_end.isoformat(), edge.calls, edge.errors,
+                edge.timeouts, json.dumps(edge.evidence_refs),
+                edge.provenance, edge.created_at.isoformat(),
+            ),
+        )
+
+    def _list(
+        self,
+        column: str,
+        args: list[Any],
+        window_start: datetime | None,
+        window_end: datetime | None,
+    ) -> list[DependencyObservation]:
+        # `column` is an internal literal — 'service_id' or 'target' — never
+        # user input; the value goes through `args` as a bound parameter.
+        if column not in ("service_id", "target"):
+            raise StorageError(f"unexpected dep-observation column {column!r}")
+        sql = f"SELECT * FROM dependency_observations WHERE {column}=?"  # noqa: S608
+        if window_start is not None:
+            sql += " AND window_end >= ?"
+            args.append(window_start.isoformat())
+        if window_end is not None:
+            sql += " AND window_start <= ?"
+            args.append(window_end.isoformat())
+        sql += " ORDER BY window_start, edge_id"
+        return [self._row(r) for r in self._c.execute(sql, args).fetchall()]
+
+    def list_for_service(
+        self,
+        service_id: str,
+        window_start: datetime | None = None,
+        window_end: datetime | None = None,
+    ) -> list[DependencyObservation]:
+        return self._list("service_id", [service_id], window_start, window_end)
+
+    def list_involving(
+        self,
+        target: str,
+        window_start: datetime | None = None,
+        window_end: datetime | None = None,
+    ) -> list[DependencyObservation]:
+        return self._list("target", [target], window_start, window_end)
+
+
+class _HandoffRecordRepo:
+    """One row per handoff; status updates keep the original request_ref."""
+
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._c = conn
+
+    def _row(self, r: sqlite3.Row) -> ExternalHandoff:
+        return ExternalHandoff(
+            handoff_id=r["handoff_id"],
+            to_forge=r["to_forge"],
+            kind=r["kind"],
+            status=HandoffStatus(r["status"]),
+            request_ref=r["request_ref"],
+            response_ref=r["response_ref"],
+            detail=r["detail"],
+            created_at=datetime.fromisoformat(r["created_at"]),
+        )
+
+    def get(self, handoff_id: str) -> ExternalHandoff | None:
+        r = self._c.execute(
+            "SELECT * FROM handoff_records WHERE handoff_id=?", (handoff_id,)
+        ).fetchone()
+        return self._row(r) if r else None
+
+    def put(self, record: ExternalHandoff) -> None:
+        self._c.execute(
+            "INSERT INTO handoff_records"
+            " (handoff_id, to_forge, kind, status, request_ref, response_ref,"
+            "  detail, created_at) VALUES (?,?,?,?,?,?,?,?)"
+            " ON CONFLICT(handoff_id) DO UPDATE SET"
+            "   status=excluded.status,"
+            "   response_ref=excluded.response_ref,"
+            "   detail=excluded.detail",
+            (
+                record.handoff_id, record.to_forge, record.kind,
+                record.status.value, record.request_ref, record.response_ref,
+                record.detail, record.created_at.isoformat(),
+            ),
+        )
+
+    def list(
+        self,
+        to_forge: str | None = None,
+        status: HandoffStatus | None = None,
+    ) -> list[ExternalHandoff]:
+        sql = "SELECT * FROM handoff_records"
+        args: list[Any] = []
+        clauses: list[str] = []
+        if to_forge is not None:
+            clauses.append("to_forge=?")
+            args.append(to_forge)
+        if status is not None:
+            clauses.append("status=?")
+            args.append(status.value)
+        if clauses:
+            sql += " WHERE " + " AND ".join(clauses)
+        rows = self._c.execute(
+            sql + " ORDER BY created_at, handoff_id", args
+        ).fetchall()
+        return [self._row(r) for r in rows]
+
+
 class SqliteUnitOfWork:
     """One connection, explicit commit/rollback; repos share the transaction."""
 
@@ -899,6 +1112,9 @@ class SqliteUnitOfWork:
     anomalies: AnomalyRepository
     incidents: IncidentRepository
     incident_events: IncidentEventRepository
+    change_events: ChangeEventRepository
+    dependency_observations: DependencyObservationRepository
+    handoff_records: HandoffRecordRepository
 
     def __init__(self, db_path: Path | str) -> None:
         self._db_path = db_path
@@ -928,6 +1144,9 @@ class SqliteUnitOfWork:
         self.anomalies = _AnomalyRepo(conn)
         self.incidents = _IncidentRepo(conn)
         self.incident_events = _IncidentEventRepo(conn)
+        self.change_events = _ChangeEventRepo(conn)
+        self.dependency_observations = _DependencyObservationRepo(conn)
+        self.handoff_records = _HandoffRecordRepo(conn)
         conn.execute("BEGIN")
         return self
 

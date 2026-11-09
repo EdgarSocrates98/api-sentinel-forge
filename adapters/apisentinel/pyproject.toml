@@ -1,0 +1,15 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "theforge-apisentinel-adapter"
+version = "0.1.0"
+description = "forge/v1 adapter exposing API Sentinel's public boundary to The Forge"
+requires-python = ">=3.10"
+# Stdlib-only by adapter invariant: the adapter imports `api_sentinel` (the
+# specialist's public surface) and never `theforge`.
+dependencies = []
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/theforge_apisentinel"]

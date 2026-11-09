@@ -11,7 +11,11 @@ from api_sentinel.detection.registry import DetectionRule
 from api_sentinel.domain import (
     ApiService,
     AuditEvent,
+    ChangeEvent,
+    DependencyObservation,
     EvidenceArtifact,
+    ExternalHandoff,
+    HandoffStatus,
     IngestionCheckpoint,
     ObservationBatch,
     ServiceEnvironment,
@@ -173,6 +177,53 @@ class IncidentEventRepository(Protocol):
 
 
 @runtime_checkable
+class ChangeEventRepository(Protocol):
+    """Change events — deterministic ids make re-imports idempotent."""
+
+    def get(self, change_id: str) -> ChangeEvent | None: ...
+    def put(self, event: ChangeEvent) -> None: ...
+    def list_for_service(
+        self,
+        service_id: str,
+        at_start: datetime | None = None,
+        at_end: datetime | None = None,
+    ) -> list[ChangeEvent]: ...
+
+
+@runtime_checkable
+class DependencyObservationRepository(Protocol):
+    """The Sentinel-owned operational graph — append-only, idempotent."""
+
+    def get(self, edge_id: str) -> DependencyObservation | None: ...
+    def put(self, edge: DependencyObservation) -> None: ...
+    def list_for_service(
+        self,
+        service_id: str,
+        window_start: datetime | None = None,
+        window_end: datetime | None = None,
+    ) -> list[DependencyObservation]: ...
+    def list_involving(
+        self,
+        target: str,
+        window_start: datetime | None = None,
+        window_end: datetime | None = None,
+    ) -> list[DependencyObservation]: ...
+
+
+@runtime_checkable
+class HandoffRecordRepository(Protocol):
+    """Delegation audit — one row per handoff attempt, status transitions kept."""
+
+    def get(self, handoff_id: str) -> ExternalHandoff | None: ...
+    def put(self, record: ExternalHandoff) -> None: ...
+    def list(
+        self,
+        to_forge: str | None = None,
+        status: HandoffStatus | None = None,
+    ) -> list[ExternalHandoff]: ...
+
+
+@runtime_checkable
 class UnitOfWork(Protocol):
     services: ServiceRepository
     environments: EnvironmentRepository
@@ -190,6 +241,9 @@ class UnitOfWork(Protocol):
     anomalies: AnomalyRepository
     incidents: IncidentRepository
     incident_events: IncidentEventRepository
+    change_events: ChangeEventRepository
+    dependency_observations: DependencyObservationRepository
+    handoff_records: HandoffRecordRepository
 
     def __enter__(self) -> UnitOfWork: ...
     def __exit__(self, exc_type: object, exc_val: object, exc_tb: object) -> None: ...

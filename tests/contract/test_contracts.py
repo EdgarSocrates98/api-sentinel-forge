@@ -11,7 +11,7 @@ SCHEMA_DIR = Path(__file__).resolve().parents[2] / "contracts" / "v1"
 
 def test_every_python_envelope_has_a_json_schema() -> None:
     schema_files = {p.stem.replace(".schema", "") for p in SCHEMA_DIR.glob("*.schema.json")}
-    assert len(schema_files) == len(ENVELOPES) == 6
+    assert len(schema_files) == len(ENVELOPES) == 7
     for p in SCHEMA_DIR.glob("*.schema.json"):
         doc = json.loads(p.read_text(encoding="utf-8"))
         assert doc["$id"].endswith(doc["title"])

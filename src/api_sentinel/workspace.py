@@ -35,6 +35,10 @@ class Workspace:
     def receipts_dir(self) -> Path:
         return self.root / "receipts"
 
+    @property
+    def handoffs_dir(self) -> Path:
+        return self.root / "handoffs"
+
 
 def resolve_workspace(scope: Scope | None = None, explicit: Path | None = None) -> Workspace:
     """explicit path > explicit scope > API_SENTINEL_HOME > project > user."""
@@ -53,6 +57,7 @@ def ensure_workspace(ws: Workspace, *, profile: str = "local") -> Workspace:
     ws.root.mkdir(parents=True, exist_ok=True)
     ws.blobs_dir.mkdir(exist_ok=True)
     ws.receipts_dir.mkdir(exist_ok=True)
+    ws.handoffs_dir.mkdir(exist_ok=True)
     if not ws.config_path.exists():
         ws.config_path.write_text(
             yaml.safe_dump({"scope": ws.scope, "profile": profile}, sort_keys=False),

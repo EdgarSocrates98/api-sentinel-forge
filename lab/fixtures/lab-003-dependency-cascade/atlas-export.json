@@ -1,0 +1,68 @@
+{
+  "schema": "api-sentinel/AtlasExport/v1",
+  "exported_at": "2026-01-01T00:00:00Z",
+  "snapshot_ref": "atlas-snap-lab003-2026-01-01",
+  "exporter": { "id": "code-atlas-forge", "version": "0.1.0" },
+  "services": [
+    {
+      "atlas_id": "atlas:svc:checkout-api",
+      "name": "checkout-api",
+      "kind": "api_service",
+      "repo": "platform/checkout-api",
+      "evidence_refs": ["atlas-ev:checkout-src"]
+    },
+    {
+      "atlas_id": "atlas:svc:orders",
+      "name": "orders",
+      "kind": "api_service",
+      "repo": "platform/orders",
+      "evidence_refs": ["atlas-ev:orders-src"]
+    },
+    {
+      "atlas_id": "atlas:svc:payments",
+      "name": "payments",
+      "kind": "api_service",
+      "repo": "platform/payments",
+      "evidence_refs": ["atlas-ev:payments-src"]
+    },
+    {
+      "atlas_id": "atlas:db:payments-db",
+      "name": "payments-db",
+      "kind": "datastore",
+      "repo": null,
+      "evidence_refs": ["atlas-ev:db-terraform"]
+    }
+  ],
+  "edges": [
+    {
+      "edge_id": "atlas:edge:checkout-calls-orders",
+      "from": "atlas:svc:checkout-api",
+      "to": "atlas:svc:orders",
+      "kind": "CALLS_ENDPOINT",
+      "confidence": "resolved",
+      "resolution": "resolved",
+      "resolver": "openapi-imports/1.4",
+      "evidence_refs": ["atlas-ev:checkout-orders-call"]
+    },
+    {
+      "edge_id": "atlas:edge:orders-calls-payments",
+      "from": "atlas:svc:orders",
+      "to": "atlas:svc:payments",
+      "kind": "CALLS_ENDPOINT",
+      "confidence": "resolved",
+      "resolution": "resolved",
+      "resolver": "openapi-imports/1.4",
+      "evidence_refs": ["atlas-ev:orders-payments-call"]
+    },
+    {
+      "edge_id": "atlas:edge:payments-uses-db",
+      "from": "atlas:svc:payments",
+      "to": "atlas:db:payments-db",
+      "kind": "DEPENDS_ON",
+      "confidence": "resolved",
+      "resolution": "resolved",
+      "resolver": "terraform-refs/2.1",
+      "evidence_refs": ["atlas-ev:payments-db-ref"]
+    }
+  ]
+}
