@@ -1,0 +1,43 @@
+{
+  "schema": "api-sentinel/InstallationEvidence/v1",
+  "collected_at": "2026-11-09T12:10:00Z",
+  "finding": "C10-F002",
+
+  "wheel_build": {
+    "command": "uv build --out-dir %TEMP%/sentinel-wheel",
+    "artifacts": [
+      "api_sentinel_forge-0.1.0.tar.gz",
+      "api_sentinel_forge-0.1.0-py3-none-any.whl"
+    ],
+    "result": "success"
+  },
+
+  "fresh_venv_install": {
+    "venv": "%TEMP%/sentinel-install-test (uv venv, Python 3.12)",
+    "install": "uv pip install api_sentinel_forge-0.1.0-py3-none-any.whl -> ok (pydantic, typer, pyyaml, rich, ... resolved)"
+  },
+
+  "entry_points": {
+    "console_script": {
+      "declared": "pyproject.toml [project.scripts]: api-sentinel = \"api_sentinel.cli:main\"",
+      "probe": "$TEMP/sentinel-install-test/Scripts/api-sentinel.exe doctor --json",
+      "result": "works — full JSON status (workspace_initialized, 13 capabilities available/1 declared, integration states)"
+    },
+    "cli_entry_manifest": {
+      "declared": "forge.agentic.json cli_entry = \"api_sentinel.cli:app\"",
+      "probe": "python -c \"from api_sentinel.cli import app\"",
+      "result": "OK — <class 'typer.main.Typer'>"
+    },
+    "cli_main_object": {
+      "probe": "python -c \"from api_sentinel.cli import main\"",
+      "result": "OK — <function main> (cli/__init__.py:1754; reconfigures utf-8 streams then sys.exit(_dispatch()) -> app())"
+    },
+    "verdict": "C10-F002 REFUTED as a defect. Both objects exist, are importable from a clean wheel, and work. `cli:main` is the console-script dispatcher (install-wizard routing on TTY per pyproject comment); `cli:app` is the Typer object a host imports. No execution divergence."
+  },
+
+  "mcp_command_gap": {
+    "declared": "forge.agentic.json mcp_command = [\"{cli}\", \"mcp\", \"serve\"]",
+    "probe": ".venv/Scripts/api-sentinel.exe mcp serve",
+    "result": "FAIL — 'No such command mcp'; no MCP server implementation in src/ (grep -i mcp -> 0 hits in cli). New finding C10-F012."
+  }
+}

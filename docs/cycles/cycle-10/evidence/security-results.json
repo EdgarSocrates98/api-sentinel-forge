@@ -1,0 +1,31 @@
+{
+  "schema": "api-sentinel/SecurityEvidence/v1",
+  "collected_at": "2026-11-09T12:10:00Z",
+  "finding": "C10-F007",
+
+  "role_trust": {
+    "site": "src/api_sentinel/api/deps.py:129",
+    "code": "raw = request.headers.get(\"x-sentinel-role\", \"\").strip().lower(); role = raw or ctx.default_role",
+    "verdict": "CONFIRMED — the effective role is read verbatim from the client-supplied X-Sentinel-Role header with no signature, token, or identity verification. ROLE_SCOPES (deps.py:68-77) then grants viewer/analyst/operator/admin scopes by self-declaration.",
+    "ungated_reads": "tests/integration/test_authz_matrix.py:225-229 asserts the placeholder explicitly: role 'intruder' gets HTTP 200 on GET /v1/services.",
+    "self_declared_admin": "any HTTP client can send X-Sentinel-Role: admin and receive the 'approve_changes' scope — verified by the authz matrix test design (roles parametrized as bare headers)."
+  },
+
+  "bind_exposure": {
+    "site": "src/api_sentinel/cli/__init__.py:1689-1739 (serve command)",
+    "default": "host='127.0.0.1' — loopback only; non-loopback refused unless --allow-remote",
+    "remote_opt_in": "--allow-remote prints a warning (never silent) but proceeds; a remote bind then exposes the self-declared-role model to the network.",
+    "mitigation_in_place": "loopback default + explicit opt-in + loud warning; docs mark the model as Cycle-6 placeholder pending Cycle-9→10 authz."
+  },
+
+  "denial_audit": {
+    "evidence": "deps.py:94-114 — denied requests are audit-appended best-effort; 403s never leak existence (test_denial_never_leaks_existence, test_authz_matrix.py:201)."
+  },
+
+  "comparison_productforge_portalapi": {
+    "site": "product-forge/src/product_forge/_forge_portal.py:40-41,627-674",
+    "contrast": "PortalApi uses X-Forge-Session header/forge_session cookie and returns PORTAL-SESSION on missing/invalid sessions — a real session concept; Sentinel's role header has none."
+  },
+
+  "verdict": "C10-F007 CONFIRMED. Authorization is client-declared only. Bounded by loopback default and documented as placeholder, so severity P1 (not P0): on the supported single-user loopback deployment a local attacker already has equal filesystem privilege to the sqlite store; the defect becomes critical only under --allow-remote exposure or multi-user deployment."
+}

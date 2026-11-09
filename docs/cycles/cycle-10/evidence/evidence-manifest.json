@@ -1,0 +1,62 @@
+{
+  "schema": "api-sentinel/EvidenceManifest/v1",
+  "cycle": "cycle-10",
+  "wave": "wave0-baseline",
+  "collected_at": "2026-11-09T12:20:00Z",
+  "branch": "cycle-10",
+  "head_sha": "29375e3ffda764757991997933e177301ff721bb",
+  "files": [
+    {
+      "path": "evidence/baseline.json",
+      "kind": "repo baseline (10 repos: branch/HEAD/version/contracts/dirty/PRs/env)",
+      "contains": "real git/gh output"
+    },
+    {
+      "path": "evidence/baseline-tests.txt",
+      "kind": "pytest 440-pass tail + ruff 2-error tail + mypy clean + e2e 15/15 + mcp probe",
+      "contains": "verbatim command output"
+    },
+    {
+      "path": "evidence/performance-before.json",
+      "kind": "bench_ingest 10k sequential + instrumented dispersed-1440 with repo-level query counters",
+      "contains": "C10-F006 numbers (1075.6 vs 934.9 obs/s; 10000+2880 queries)"
+    },
+    {
+      "path": "evidence/installation-results.json",
+      "kind": "uv build + fresh-venv install + cli:main/cli:app probes + mcp probe",
+      "contains": "C10-F002 refutation, C10-F012 discovery"
+    },
+    {
+      "path": "evidence/security-results.json",
+      "kind": "X-Sentinel-Role trust analysis + bind exposure + authz test pointers",
+      "contains": "C10-F007 confirmation"
+    },
+    {
+      "path": "evidence/contract-conformance.json",
+      "kind": "per-seam contract inventory with file:line refs + live import probes",
+      "contains": "COMPATIBLE/BROKEN/ORPHAN/UNVERIFIED verdicts"
+    },
+    {
+      "path": "evidence/evidence-manifest.json",
+      "kind": "this index",
+      "contains": "manifest"
+    }
+  ],
+  "pending_wave_files": [
+    "evidence/federated-e2e-receipt.json",
+    "evidence/portal-e2e-results.json",
+    "evidence/performance-after.json",
+    "evidence/contract-conformance.json (extended)"
+  ],
+  "aux_artifacts": {
+    "bench_dispersed_instrumented_harness": "%TEMP%/bench_dispersed.py (not committed — wraps repositories._ObservationRepo counters read-only)",
+    "wheel_output": "%TEMP%/sentinel-wheel/",
+    "install_venv": "%TEMP%/sentinel-install-test/",
+    "e2e_transcript": "%TEMP%/sentinel-e2e-ynlpk_m7/e2e-transcript.txt"
+  },
+  "notes": [
+    "All evidence is real command output at the SHAs in baseline.json.",
+    "No product code modified this wave; no sibling repo modified; no sibling env installed.",
+    "Sentinel .api-sentinel workspace accidentally created during a doctor probe was removed (gitignored anyway)."
+  ]
+}

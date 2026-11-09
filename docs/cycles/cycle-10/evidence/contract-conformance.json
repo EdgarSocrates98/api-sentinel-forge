@@ -1,0 +1,43 @@
+{
+  "schema": "api-sentinel/ContractConformance/v1",
+  "collected_at": "2026-11-09T12:15:00Z",
+  "method": "source inspection + live import probes against sibling .venvs (read-only)",
+
+  "forge_protocol_theforge": {
+    "wire": "forge/v1 Request/Response JSON over subprocess stdio",
+    "request": "the-forge/src/theforge/contracts/envelope.py:40-46 — {protocol='forge/v1', kind='Request', op, request_id, payload}",
+    "response": "envelope.py:49-58 — {protocol, kind='Response', request_id, op, producer, status, payload, error?, limitations, unknowns}",
+    "execution_result": "the-forge/src/theforge/contracts/result.py:38 RESULT_SCHEMA='theforge/ExecutionResult/v1'; class at line 139 (frozen dataclass, schema-checked in __post_init__)",
+    "sentinel_side": "src/api_sentinel/integrations/the_forge/boundary.py:200-271 — handle() emits the same Response dict shape; EXECUTION_RESULT_SCHEMA='theforge/ExecutionResult/v1' (handoff.py:24); adapter __main__.py reads stdin Request -> prints Response",
+    "conformance": "COMPATIBLE at dict level (field-for-field); _EXECUTORS covers only 2 of 7 declared capability/action pairs (boundary.py:44-52 vs 379-382) — see C10-F010"
+  },
+
+  "doctor_handoff": {
+    "request": "forge-doctor-api/src/forge_doctor_api/handoff/protocol.py:124-167 ForgeRequest — {protocol_version=2, request_id, target*, capabilities, context_refs, delta, clock}; parse() rejects unknown keys; v1 'requested_capabilities' alias honored",
+    "boundary": "forge-doctor-api/src/forge_doctor_api/handoff/boundary.py:50-116 DoctorBoundary(context: ProjectContext, clock?) .handle(request) -> ApiHandoffBundle",
+    "bundle": "handoff/model.py:107-195 ApiHandoffBundle — handoff_version 1|2, handoff_id, analysis_rev, findings/unknowns verbatim; to_dict() exists (probed)",
+    "project_context": "forge-doctor-api/src/forge_doctor_api/core/context.py:29-35 ProjectContext.from_root",
+    "sentinel_emission": "src/api_sentinel/integrations/doctor/translate.py:32-46 ForgeRequestV2 — field-for-field mirror of ForgeRequest v2; model_dump(exclude_none=True) — COMPATIBLE",
+    "sentinel_import_break": "src/api_sentinel/integrations/doctor/adapter.py:219-221 imports ProjectContext from 'forge_doctor_api.handoff.context' — INCOMPATIBLE: symbol lives in forge_doctor_api.core.context since doctor restructure; live probe in the doctor venv raised ImportError; in-process path would end as status='failed' (adapter.py:195-201)",
+    "file_transport_consumer": "no forge-doctor-api CLI/SDK entrypoint reads a doctor_request.json file — consumption paths are DoctorBoundary in-process or handoff/mcp_server.py stdio MCP"
+  },
+
+  "portal_api": {
+    "envelope": "product-forge/src/product_forge/_forge_portal.py:38 SCHEMA='forge/PortalApi/1'; API_PREFIX='/api/v1'; envelope {schema, correlation_id, data|error}; typed PORTAL-* error codes (_forge_portal.py:627-810)",
+    "session": "X-Forge-Session header / forge_session cookie; PORTAL-SESSION on missing/invalid (lines 40-41, 674)",
+    "sentinel_api_envelope": "src/api_sentinel/api/app.py:64-79 + schemas.py ProblemDetails — application/problem+json {type,title,status,detail,code,details} — STRUCTURALLY INCOMPATIBLE with forge/PortalApi/1",
+    "conformance": "INCOMPATIBLE — Portal cannot consume the sentinel /v1 surface without an adapter (different envelope, different auth model, different error taxonomy)"
+  },
+
+  "atlas_export": {
+    "consumer": "src/api_sentinel/integrations/atlas/file_adapter.py — requires api-sentinel/AtlasExportV1 (contracts/v1/models.py:168 expected_schema)",
+    "producer": "NONE — code-atlas-forge src has zero references to 'AtlasExport' or 'api-sentinel' (grep verified); Code Atlas emits forge/CodeAtlasInstallReceipt/v1 + theforge/KnowledgeContextPack/v1 but no sentinel-consumable export",
+    "conformance": "CONTRACT ORPHAN — Sentinel defines and consumes a contract that its intended producer does not emit"
+  },
+
+  "bridge_session": {
+    "sentinel_emit": "src/api_sentinel/investigation/agent_session.py AgentSessionRequest -> agent_sessions/<id>/session_request.json (bridge/adapter.py:52-82)",
+    "bridge_side": "forge-agent-bridge 0.2.1 declares forge/AgentBridgeContract/v1, forge/ProductAgentSessionContext/v2 — no file-ingest consumer for session_request.json verified in this audit",
+    "conformance": "UNVERIFIED — emit-only transport, no proven consumer"
+  }
+}

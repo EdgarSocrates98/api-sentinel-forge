@@ -1,0 +1,62 @@
+{
+  "schema": "api-sentinel/PerformanceEvidence/v1",
+  "collected_at": "2026-11-09T12:15:00Z",
+  "branch": "cycle-10",
+  "head_sha": "29375e3ffda764757991997933e177301ff721bb",
+  "platform": "win32",
+  "python": "3.12.13",
+  "finding": "C10-F006",
+
+  "runs": [
+    {
+      "id": "bench-10k-sequential",
+      "command": ".venv/Scripts/python.exe lab/bench/bench_ingest.py --n 10000",
+      "window_shape": "contiguous per-chunk time slices (chunk//100 distinct windows; ~50/chunk at chunk=5000)",
+      "result": {
+        "n": 10000, "chunk": 5000, "accepted": 10000, "stored": 10000,
+        "elapsed_seconds": 9.297,
+        "observations_per_second": 1075.6,
+        "chunk_seconds": [3.796, 4.398],
+        "tracemalloc_peak_mib": 47.8,
+        "db_size_mib": 8.88
+      }
+    },
+    {
+      "id": "bench-10k-dispersed-instrumented",
+      "command": ".venv/Scripts/python.exe %TEMP%/bench_dispersed.py",
+      "window_shape": "dispersed — each 5000-item chunk cycles across 1440 distinct 1-minute windows (documented worst case, lab/bench/bench_ingest.py:147-151)",
+      "instrumentation": "repository-level counters wrapping _ObservationRepo.get and _ObservationRepo.overlapping_sources (read-only monkeypatch in the bench harness; no product code touched)",
+      "result": {
+        "n": 10000, "chunk": 5000, "accepted": 10000,
+        "dispersed_windows_per_chunk": 1440,
+        "elapsed_seconds": 10.696,
+        "observations_per_second": 934.9,
+        "chunk_seconds": [3.87, 5.684],
+        "tracemalloc_peak_mib": 48.03,
+        "query_counts": {
+          "observations_get": 10000,
+          "overlapping_sources": 2880
+        },
+        "queries_per_observation": 1.0,
+        "overlap_queries_per_chunk": 1440.0
+      }
+    }
+  ],
+
+  "n_plus_one_evidence": {
+    "per_item_dedup_lookup": {
+      "site": "src/api_sentinel/ingestion/pipeline.py:150 — uow.observations.get(obs.observation_id) inside the per-item loop",
+      "query": "SELECT * FROM runtime_observations WHERE observation_id=? (repositories.py:425-429)",
+      "count_10k": 10000,
+      "index": "observation_id TEXT PRIMARY KEY (migrations/0002_ingestion.sql:6) — point lookups, still 1 round-trip per item"
+    },
+    "per_window_overlap_check": {
+      "site": "src/api_sentinel/ingestion/pipeline.py:178-186 — uow.observations.overlapping_sources(service_id,w_start,w_end) once per distinct (service,window) in the batch",
+      "query": "SELECT DISTINCT source_id FROM runtime_observations WHERE service_id=? AND source_id!=? AND window_start < ? AND window_end > ? (repositories.py:487-497)",
+      "count_10k_dispersed": 2880,
+      "index": "idx_observations_service_window(service_id, window_start) (migrations/0002_ingestion.sql:31-32); window_end is not indexed — range predicate scans index range then filters"
+    }
+  },
+
+  "verdict": "C10-F006 CONFIRMED and quantified. Sequential 1075.6 obs/s -> dispersed-1440 934.9 obs/s (-13.1% at n=10k; cycle-09 report documents ~200 obs/s at the same worst-case shape on the older harness). Two N+1 query patterns measured: 1 SELECT/observation (dedup get) + 1 SELECT/distinct-window (overlap sources). Degradation grows with distinct windows per chunk and table size."
+}
