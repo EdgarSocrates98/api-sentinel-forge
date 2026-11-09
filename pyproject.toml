@@ -90,6 +90,10 @@ select = [
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101"]
 "scripts/**" = ["T20"]
+# lab fixtures are deliberately plain sample service code that Code Atlas
+# indexes — they are not shipped product code, so security rules do not
+# apply to them.
+"lab/fixtures/**" = ["S"]
 # the the-forge adapter is a forge/v1 stdio bridge: print() is the wire.
 "adapters/**" = ["T20"]
 
@@ -105,6 +109,13 @@ plugins = ["pydantic.mypy"]
 # (import-untyped vs import-not-found) — ignore_missing_imports covers
 # both, keeping `mypy src` portable in the Windows/Linux CI matrix.
 module = ["boto3", "boto3.*", "botocore", "botocore.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# forge_doctor_api is an optional peer integration (editable install
+# only where the real seam is exercised); imports stay inside guarded
+# methods — absent in CI by design, same pattern as boto3 above.
+module = ["forge_doctor_api", "forge_doctor_api.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

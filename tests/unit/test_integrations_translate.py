@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from api_sentinel.contracts.v1 import InvestigationHandoffV1
@@ -91,6 +93,19 @@ class TestIngestDoctorBundle:
     def test_unknown_handoff_version_rejected(self) -> None:
         with pytest.raises(ContractError):
             ingest_doctor_bundle({"handoff_version": 99})
+
+    def test_bundle_without_version_marker_rejected(self) -> None:
+        """C10-F022: an arbitrary object with a `findings` key is not a
+        Doctor bundle — the handoff marker is required, never assumed."""
+        with pytest.raises(ContractError, match="handoff_version"):
+            ingest_doctor_bundle(
+                {"schema": "wrong/schema",
+                 "findings": [{"forged": True}]}
+            )
+        with pytest.raises(ContractError, match="handoff_version"):
+            ingest_doctor_bundle_json(
+                json.dumps({"findings": []})
+            )
 
     def test_malformed_rejected(self) -> None:
         with pytest.raises(ContractError):

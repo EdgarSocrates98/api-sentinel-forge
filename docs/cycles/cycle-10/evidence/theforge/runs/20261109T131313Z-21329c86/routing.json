@@ -1,0 +1,47 @@
+{
+  "candidates": [
+    {
+      "capability": "api.incident-investigation",
+      "matched": {
+        "dependencies": [],
+        "file_globs": [],
+        "keywords": []
+      },
+      "provider": "api-sentinel-forge",
+      "rank_key": [
+        2
+      ],
+      "state": "supported"
+    }
+  ],
+  "confidence": {
+    "level": "high",
+    "measured_signals": [
+      "requested_capability"
+    ],
+    "unresolved": []
+  },
+  "created_at": "2026-11-09T13:13:13.226283Z",
+  "fallbacks_used": [],
+  "limitations": [],
+  "negotiation": [],
+  "pattern": "route",
+  "producer": {
+    "id": "theforge",
+    "version": "0.7.4"
+  },
+  "reason": "requested capability api.incident-investigation; pinned provider api-sentinel-forge",
+  "schema": "theforge/RoutingDecision/v1",
+  "selected": [
+    {
+      "action": "list",
+      "capability": "api.incident-investigation",
+      "provider": "api-sentinel-forge",
+      "role": "primary"
+    }
+  ],
+  "shadow": null,
+  "status": "routed",
+  "task_id": "20261109T131313Z-21329c86",
+  "unknowns": []
+}

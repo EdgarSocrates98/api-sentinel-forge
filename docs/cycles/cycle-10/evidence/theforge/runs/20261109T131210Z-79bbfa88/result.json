@@ -1,0 +1,57 @@
+{
+  "artifacts": [],
+  "assumptions": [],
+  "context_request": null,
+  "created_at": "2026-11-09T13:12:11Z",
+  "evidence": [
+    {
+      "claim": "persisted assessment asmt_76b0355149ee22829483decc rule=slo.evaluate@1 quality=STALE",
+      "derived_from": null,
+      "epistemic": "observed",
+      "hash": null,
+      "id": "slo-assessment:asmt_76b0355149ee22829483decc",
+      "limitations": [],
+      "location": null,
+      "producer": {
+        "id": "api-sentinel-forge",
+        "version": "0.1.0"
+      },
+      "subject": "slo_01M706G1SV46S9NTWGA1HJ8NY9"
+    }
+  ],
+  "findings": [
+    {
+      "evidence_ids": [
+        "slo-assessment:asmt_76b0355149ee22829483decc"
+      ],
+      "id": "slo_01M706G1SV46S9NTWGA1HJ8NY9@1",
+      "severity": "info",
+      "title": "SLO slo_01M706G1SV46S9NTWGA1HJ8NY9 rev 1: MET (sli=1.0000 target=0.99)"
+    }
+  ],
+  "limitations": [],
+  "metrics": {
+    "context_bytes": {
+      "kind": "measured",
+      "value": 0.0
+    },
+    "duration_ms": {
+      "kind": "measured",
+      "value": 666.864
+    },
+    "tokens": {
+      "kind": "unknown",
+      "value": null
+    }
+  },
+  "native_trace": null,
+  "producer": {
+    "id": "api-sentinel-forge",
+    "version": "0.1.0"
+  },
+  "provider_economy": null,
+  "provider_receipt": null,
+  "schema": "theforge/ExecutionResult/v1",
+  "status": "ok",
+  "unknowns": []
+}

@@ -437,16 +437,22 @@ def main() -> int:
         st.emit(f"leaks: {leaks}")
 
     # ------------------------------------------------------------------
-    st = Step("S11 serve + httpx /v1 surface")
+    st = Step("S11 serve + httpx /v1 surface (token auth)")
     STEPS.append(st)
     print("\n== S11 serve ==")
     port = free_port()
+    # Cycle-10 auth: a fixed env token keeps it out of the transcript —
+    # the generated-token path prints the secret once on stderr.
+    lab_token = "lab-e2e-token-" + "0" * 32
+    serve_env = _env()
+    serve_env["API_SENTINEL_TOKEN"] = lab_token
     proc = subprocess.Popen(
         [str(CLI), "serve", "--host", "127.0.0.1", "--port", str(port),
          "--workspace", str(ws)],
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=_env(),
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=serve_env,
     )
     base = f"http://127.0.0.1:{port}"
+    authz = {"Authorization": f"Bearer {lab_token}"}
     up = False
     try:
         with httpx.Client(base_url=base, timeout=5.0) as http:
@@ -461,29 +467,44 @@ def main() -> int:
                     time.sleep(0.25)
             st.check(up, f"server up on {base}")
             if up:
+                # unauthenticated reads must refuse — the C10-F007 contract
+                r = http.get("/v1/services")
+                st.emit(f"GET /v1/services (no token) -> {r.status_code}")
+                st.check(r.status_code == 401, "no token -> 401")
+                st.check(
+                    r.headers.get("www-authenticate", "").startswith("Bearer"),
+                    "401 carries WWW-Authenticate: Bearer",
+                )
+                r = http.get("/v1/services", headers={
+                    "X-Sentinel-Role": "admin"})
+                st.emit(f"GET /v1/services (self-declared admin) -> {r.status_code}")
+                st.check(r.status_code == 401, "role spoof without credentials -> 401")
                 for path in (
                     "/v1/health", "/v1/capabilities", "/v1/services",
                     f"/v1/services/{svc['payments-api']}", "/v1/incidents",
                     f"/v1/incidents/{inc_id}/timeline", "/v1/integrations/status",
                 ):
-                    r = http.get(path)
+                    r = http.get(path, headers=authz)
                     st.emit(f"GET {path} -> {r.status_code} "
                             f"{r.headers.get('content-type', '')} ({len(r.content)}B)")
                     st.check(r.status_code == 200, f"GET {path} == 200")
                 r = http.post(
                     f"/v1/incidents/{inc_id}/investigations",
                     json={"idempotency_key": "e2e-inv-1", "note": "e2e http"},
+                    headers=authz,
                 )
                 st.emit(f"POST /v1/incidents/{inc_id}/investigations -> {r.status_code}")
                 st.check(r.status_code in (200, 201), f"POST investigations 2xx ({r.status_code})")
                 r2 = http.post(
                     f"/v1/incidents/{inc_id}/investigations",
                     json={"idempotency_key": "e2e-inv-1"},
+                    headers=authz,
                 )
                 st.emit(f"POST replay -> {r2.status_code} replayed="
                         f"{(r2.json() or {}).get('replayed') if r2.content else '?'}")
                 st.check(r2.status_code in (200, 201), "idempotent replay accepted")
-                r3 = http.post(f"/v1/incidents/{inc_id}/execute", json={})
+                r3 = http.post(f"/v1/incidents/{inc_id}/execute", json={},
+                               headers=authz)
                 ctype = r3.headers.get("content-type", "")
                 st.emit(f"POST /v1/incidents/{inc_id}/execute -> {r3.status_code} {ctype}")
                 st.check(r3.status_code == 404, "POST /execute -> 404")

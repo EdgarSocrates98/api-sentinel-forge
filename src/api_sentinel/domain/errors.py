@@ -49,6 +49,14 @@ class StorageError(SentinelError):
     code = "sentinel.storage"
 
 
+class UnauthorizedError(SentinelError):
+    """Authentication failure — missing, bad, expired or untrusted
+    credentials. Raised before any scope check or resource lookup; the
+    `reason` detail names the failure class, never the credential."""
+
+    code = "sentinel.unauthorized"
+
+
 class ForbiddenError(SentinelError):
     """Scope/role denial — raised before resource lookup, never leaks existence."""
 

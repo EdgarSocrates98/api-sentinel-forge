@@ -29,6 +29,10 @@ from typing import Any
 
 from api_sentinel.contracts.v1 import InvestigationHandoffV1
 from api_sentinel.domain import ContractError, ValidationError
+from api_sentinel.infrastructure.security.paths import (
+    read_text_bounded,
+    safe_slot,
+)
 from api_sentinel.integrations.doctor.translate import (
     DOCTOR_FORGE,
     DoctorIngest,
@@ -41,6 +45,7 @@ from api_sentinel.integrations.errors import (
 )
 from api_sentinel.integrations.receipts import (
     DelegationReceipt,
+    split_outcome,
     write_receipt,
 )
 
@@ -69,6 +74,7 @@ class DoctorResult:
     ingest: DoctorIngest | None = None
     detail: str = ""
     duration_ms: float | None = None
+    correlation_id: str | None = None
 
 
 class DoctorACL:
@@ -131,6 +137,7 @@ class DoctorACL:
             ingest=result.ingest,
             detail=result.detail,
             duration_ms=duration_ms,
+            correlation_id=handoff.correlation_id or handoff.handoff_id,
         )
         if receipts_dir is not None:
             self._write_receipt(receipts_dir, result, now_iso)
@@ -213,24 +220,30 @@ class DoctorACL:
         `doctor_importable()`); mypy stubs are absent by design — the
         package is consumed through its public seam, never vendored.
         """
-        from forge_doctor_api.handoff.boundary import (  # type: ignore[import-not-found]
-            DoctorBoundary,
-        )
-        from forge_doctor_api.handoff.context import (  # type: ignore[import-not-found]
-            ProjectContext,
-        )
-        from forge_doctor_api.handoff.protocol import (  # type: ignore[import-not-found]
-            ForgeRequest,
-        )
+        from forge_doctor_api.handoff.boundary import DoctorBoundary
+
+        # C10-F009: `ProjectContext` lives at `core.context` since Doctor
+        # 0.3.x; `handoff.context` is the legacy location kept as a fallback
+        # for older installs. Prefer the canonical path; never guess. The
+        # legacy path resolves dynamically — the module exists but carries
+        # no `ProjectContext` at 0.3.x, so a static import would type-error.
+        try:
+            from forge_doctor_api.core.context import ProjectContext
+
+            make_context = ProjectContext.from_root
+        except ImportError:  # legacy <0.3 layout
+            _legacy_ctx = importlib.import_module(
+                "forge_doctor_api.handoff.context"
+            )
+            make_context = _legacy_ctx.ProjectContext.from_root
+        from forge_doctor_api.handoff.protocol import ForgeRequest
 
         request = ForgeRequest.parse(request_dict)
-        boundary = DoctorBoundary(context=ProjectContext.from_root(context_root))
+        boundary = DoctorBoundary(context=make_context(context_root))
         with ThreadPoolExecutor(max_workers=1) as pool:
             future = pool.submit(boundary.handle, request)
             bundle = future.result(timeout=self._timeout)
-        raw: dict[str, Any] = (
-            bundle.to_dict() if hasattr(bundle, "to_dict") else dict(bundle)
-        )
+        raw: dict[str, Any] = bundle.to_dict()
         ingest = ingest_doctor_bundle_json(json.dumps(raw))
         return DoctorResult(
             handoff_id=handoff.handoff_id,
@@ -255,7 +268,9 @@ class DoctorACL:
                 detail="handoff_file mode requires a workspace handoffs dir",
             )
         handoffs_dir.mkdir(parents=True, exist_ok=True)
-        slot = handoffs_dir / handoff.handoff_id
+        # The slot id comes from the envelope — it must resolve under the
+        # handoffs root, never outside it (../ or symlink escapes refused).
+        slot = safe_slot(handoffs_dir, handoff.handoff_id, name="handoff_id")
         slot.mkdir(exist_ok=True)
         envelope_path = slot / "investigation_handoff.json"
         envelope_path.write_text(
@@ -279,15 +294,28 @@ class DoctorACL:
 
     # -- ingest ---------------------------------------------------------
 
-    def ingest(self, bundle_path: Path) -> DoctorIngest:
-        """Read a Doctor-emitted bundle back as verbatim evidence."""
+    def ingest(
+        self,
+        bundle_path: Path,
+        *,
+        expected_handoff_id: str | None = None,
+    ) -> DoctorIngest:
+        """Read a Doctor-emitted bundle back as verbatim evidence.
+
+        The read is bounded (`MAX_INBOUND_BYTES`); when
+        `expected_handoff_id` is given a bundle that names a different
+        handoff is a `ContractError` — response correlation is checked,
+        never assumed.
+        """
         if not bundle_path.is_file():
             raise ValidationError(f"doctor bundle not found: {bundle_path}")
         try:
-            text = bundle_path.read_text(encoding="utf-8")
-        except (OSError, UnicodeDecodeError) as exc:
+            text = read_text_bounded(bundle_path, name="doctor bundle")
+        except UnicodeDecodeError as exc:
             raise ContractError(f"doctor bundle unreadable: {exc}") from exc
-        return ingest_doctor_bundle_json(text)
+        return ingest_doctor_bundle_json(
+            text, expected_handoff_id=expected_handoff_id
+        )
 
     # -- receipts -------------------------------------------------------
 
@@ -309,6 +337,7 @@ class DoctorACL:
             evidence_refs.append(result.request_ref)
         if result.response_ref:
             evidence_refs.append(result.response_ref)
+        transport_state, execution_state = split_outcome(result.status)
         receipt = DelegationReceipt(
             receipt_id=f"rcpt_{result.handoff_id}",
             to_forge=DOCTOR_FORGE,
@@ -317,6 +346,9 @@ class DoctorACL:
             at=at,
             handoff_id=result.handoff_id,
             request_id=result.handoff_id,
+            correlation_id=result.correlation_id or result.handoff_id,
+            transport_state=transport_state,
+            execution_state=execution_state,
             duration_ms=result.duration_ms,
             evidence_refs=evidence_refs,
             detail=result.detail,

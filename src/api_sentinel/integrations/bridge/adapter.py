@@ -19,6 +19,7 @@ import importlib.util
 from pathlib import Path
 from typing import Any
 
+from api_sentinel.infrastructure.security.paths import safe_slot
 from api_sentinel.infrastructure.security.redact import redact
 from api_sentinel.investigation.agent_session import (
     STATUS_DELEGATED,
@@ -53,7 +54,11 @@ class FileAgentSession:
         self, request: AgentSessionRequest
     ) -> AgentSessionResult:
         try:
-            slot = self._dir / request.session_request_id
+            slot = safe_slot(
+                self._dir,
+                request.session_request_id,
+                name="session_request_id",
+            )
             slot.mkdir(parents=True, exist_ok=True)
             path = slot / "session_request.json"
             replayed = path.is_file()

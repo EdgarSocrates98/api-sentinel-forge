@@ -1,0 +1,50 @@
+{
+  "method": "interleaved A/B on identical datasets (lab/bench/datasets sha256-pinned); median of 3 runs per side",
+  "shapes": {
+    "dispersed": {
+      "after_median": 8.274,
+      "after_seconds": [
+        7.782,
+        8.274,
+        8.466
+      ],
+      "before_median": 11.976,
+      "before_seconds": [
+        10.867,
+        11.976,
+        12.526
+      ],
+      "speedup": 1.45
+    },
+    "multi_source": {
+      "after_median": 8.053,
+      "after_seconds": [
+        7.808,
+        8.053,
+        13.774
+      ],
+      "before_median": 8.353,
+      "before_seconds": [
+        8.208,
+        8.353,
+        13.446
+      ],
+      "speedup": 1.04
+    },
+    "sequential": {
+      "after_median": 7.834,
+      "after_seconds": [
+        7.763,
+        7.834,
+        8.223
+      ],
+      "before_median": 8.294,
+      "before_seconds": [
+        8.044,
+        8.294,
+        9.619
+      ],
+      "speedup": 1.06
+    }
+  }
+}

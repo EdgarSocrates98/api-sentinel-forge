@@ -9,7 +9,9 @@
     "api.deployment-correlation"
   ],
   "extra_live_ids": [
+    "api.agentic-investigation",
     "api.aws-readonly-observability",
+    "api.change-intelligence",
     "api.doctor-handoff",
     "api.evidence-storage",
     "api.persistence-recovery",
@@ -25,5 +27,5 @@
     "api.slo-assessment": "supported"
   },
   "provider": "api-sentinel-forge",
-  "verified_at": "2026-11-09T00:07:26Z"
+  "verified_at": "2026-11-09T13:08:53Z"
 }

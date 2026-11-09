@@ -1,0 +1,117 @@
+{
+  "confidence": 0.8485,
+  "config_source": "default",
+  "created_at": "2026-11-09T13:12:08.149082Z",
+  "dimensions": [
+    {
+      "name": "repositories",
+      "score": null,
+      "value": "unknown: no workspace descriptor",
+      "weight": 1.0
+    },
+    {
+      "name": "technologies",
+      "score": null,
+      "value": "unknown: no workspace descriptor",
+      "weight": 1.0
+    },
+    {
+      "name": "candidate_providers",
+      "score": 0.0,
+      "value": "1",
+      "weight": 1.0
+    },
+    {
+      "name": "capabilities_matched",
+      "score": 0.0,
+      "value": "1",
+      "weight": 0.5
+    },
+    {
+      "name": "file_impact",
+      "score": 0.0625,
+      "value": "12 files, 1 targets",
+      "weight": 1.0
+    },
+    {
+      "name": "dependency_depth",
+      "score": 0.0,
+      "value": "0 upstream nodes",
+      "weight": 1.0
+    },
+    {
+      "name": "cross_domain",
+      "score": 0.0,
+      "value": "1 families",
+      "weight": 1.0
+    },
+    {
+      "name": "mutation_level",
+      "score": 0.0,
+      "value": "read_only",
+      "weight": 2.0
+    },
+    {
+      "name": "external_systems",
+      "score": 0.0,
+      "value": "no",
+      "weight": 1.5
+    },
+    {
+      "name": "security_sensitivity",
+      "score": 0.3,
+      "value": "unknown",
+      "weight": 2.0
+    },
+    {
+      "name": "cross_account",
+      "score": 0.3,
+      "value": "unknown",
+      "weight": 1.5
+    },
+    {
+      "name": "ambiguity",
+      "score": 0.1,
+      "value": "high confidence, 0 unresolved, 0 ties",
+      "weight": 1.0
+    },
+    {
+      "name": "required_verification",
+      "score": 0.1,
+      "value": "derived from read_only",
+      "weight": 1.0
+    },
+    {
+      "name": "estimated_context",
+      "score": null,
+      "value": "unknown: context bytes not estimated pre-broker",
+      "weight": 0.5
+    },
+    {
+      "name": "execution_cost",
+      "score": 0.1484375,
+      "value": "12 files, 1 providers, 0 handoff items",
+      "weight": 0.5
+    }
+  ],
+  "level": "trivial",
+  "limitations": [
+    "repositories: unknown: no workspace descriptor",
+    "technologies: unknown: no workspace descriptor",
+    "estimated_context: unknown: context bytes not estimated pre-broker"
+  ],
+  "producer": {
+    "id": "theforge",
+    "version": "0.7.4"
+  },
+  "profile_reason": "level trivial -> economy",
+  "requested_profile": "auto",
+  "schema": "theforge/ComplexityAssessment/v1",
+  "score": 0.0991,
+  "selected_profile": "economy",
+  "signals": [
+    "cross_account=unknown",
+    "security_sensitivity=unknown"
+  ],
+  "task_id": "20261109T131207Z-197362b3"
+}

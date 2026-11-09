@@ -42,13 +42,18 @@ class TestDescribe:
 
         m = SentinelBoundary().describe()
         states = {c["id"]: c["state"] for c in m["capabilities"]}
-        # Cycle 7: AVAILABLE ⇔ mechanical read-only proof passed (boto3
-        # installed + allowlist enforced); otherwise stays heuristic.
-        passed, _detail = prove_read_only()
-        expected = "supported" if passed else "heuristic"
-        assert states["api.aws-readonly-observability"] == expected
-        assert states["api.portal-operations"] == "supported"
+        # Cycle 10 W2: the manifest declares only pairs with real executors
+        # (theforge/ForgeManifest/v1 requires a default_action) — AWS and
+        # portal have none, so they are absent here and visible via
+        # `capabilities()` instead.
+        _passed, _detail = prove_read_only()
+        assert "api.aws-readonly-observability" not in states
+        assert "api.portal-operations" not in states
         assert states["api.runtime-observation"] == "supported"
+        caps = SentinelBoundary().capabilities()
+        cap_states = {f["id"] for f in caps["findings"]}
+        assert "api.aws-readonly-observability" in cap_states
+        assert "api.portal-operations" in cap_states
 
 
 class TestHealth:

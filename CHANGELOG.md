@@ -6,6 +6,69 @@ this project uses Semantic Versioning.
 
 ## [Unreleased]
 
+### Cycle 10 — cross-forge integration, operational UX & production readiness
+
+Wave-closed homologation loop (specs: `factory/specs/archive/cycle-10-*`;
+evidence: `docs/cycles/cycle-10/`). Package version stays `0.1.0`; the
+planned tag after merge is `v0.1.0-rc.2` (rc line per the versioning
+policy — see `docs/cycles/cycle-10/18-release-readiness.md`).
+
+#### Added
+
+- `/v1` real authentication: workspace bearer token
+  (`secrets.token_urlsafe(32)`, `hmac.compare_digest`, env → stdin →
+  file precedence, optional TTL rotation) + HMAC-signed integrated
+  principal (±300 s skew, single-use nonce, workspace match). Serving
+  is never credential-less (F007).
+- `api-sentinel mcp serve` — read-only stdio MCP server (`mcp` extra):
+  `sentinel_list_services`, `sentinel_capabilities`, `sentinel_health`,
+  `sentinel_list_incidents` (F012).
+- `integrations/atlas/store_adapter.py` — `DbStructuralContext`
+  consumes a real Code Atlas SQLite index read-only, READY-snapshot
+  gated, exact-identity resolution only (F011).
+- `adapters/apisentinel` — stdlib-only `forge/v1` provider adapter for
+  the-forge; all 8 declared capability/action pairs execute
+  (F010/F015/F018).
+- Ingestion batching: `get_many` / `idempotency_keys` /
+  `overlapping_sources_in_ranges` repository ports — dedup/service/
+  overlap point queries collapsed to constant-size batches (F006).
+
+#### Fixed
+
+- Stale `ProjectContext` import in the Doctor ACL (moved to
+  `forge_doctor_api.core.context` at doctor 0.3.1); real in-process
+  delegation proven — 10 findings / 9 unknowns (F009, F003).
+- `InvestigationHandoffV1` requiredness aligned with the published
+  schema — `payload`/`constraints` required in the model (F014).
+- `handoff ingest` requires explicit `handoff_version` — arbitrary JSON
+  no longer ingests as a Doctor bundle (F022).
+- ForgeManifest declares only executor-backed pairs (F015);
+  ExecutionResult findings re-emit evidence refs as declared Evidence
+  records (F018).
+- Lint debt in `scripts/cov_core.py` (F013); README Cycle-1 staleness
+  (F001); demo exporter's contract-illegal `measurement.temporality`
+  (F023).
+
+#### Security
+
+- Self-declared `X-Sentinel-Role` is dead: every `/v1/*` route except
+  `/v1/health` requires a verified credential; `401` + problem+json on
+  failure; CORS deny-by-default; forwarded headers never consulted.
+- Handoff/file boundary hardened: correlation ids end-to-end,
+  transport_state ≠ execution_state, path-traversal guards
+  (`resolve_under_root`), bounded reads (32 MiB), ingest correlation
+  checks.
+- §12 battery: 40/40 controls held — `evidence/security-results.json`.
+
+#### Documentation
+
+- `docs/cycles/cycle-10/` — full wave record (00–18) + consolidated
+  evidence manifest; findings ledger F001–F024 final states;
+  release-readiness gates A–G scored; final report A–K.
+- `docs/16-compatibility-matrix.md` refreshed with verified versions.
+- Portal counterpart: `forge-portal@cycle-10-sentinel` proves
+  `/api-operations` on live Sentinel `/v1` data (19/19 browser steps).
+
 ## [0.1.0-rc] - 2026-11-09
 
 Release candidate — cycles 0–9 consolidated. `0.1.0` stays the package

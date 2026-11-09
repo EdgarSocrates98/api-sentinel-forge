@@ -5,7 +5,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends
 
 from api_sentinel import __version__
-from api_sentinel.api.deps import ApiContext, get_ctx
+from api_sentinel.api.deps import ApiContext, get_ctx, require_scope
 from api_sentinel.api.schemas import (
     CapabilitiesResponse,
     CapabilityView,
@@ -52,13 +52,16 @@ def health(ctx: Annotated[ApiContext, Depends(get_ctx)]) -> HealthResponse:
 @router.get("/v1/capabilities")
 def capabilities(
     ctx: Annotated[ApiContext, Depends(get_ctx)],
+    actor: Annotated[str, Depends(require_scope("query"))],
 ) -> CapabilitiesResponse:
-    """The real capability surface — `available` vs `declared` states."""
+    """The real capability surface — `status` (available/declared) plus
+    `stage` (highest proven maturity), never presence alone."""
     return CapabilitiesResponse(
         capabilities=[
             CapabilityView(
                 capability_id=c.capability_id,
                 status=c.status.value,
+                stage=c.stage.value,
                 since=c.since,
                 notes=c.notes,
             )

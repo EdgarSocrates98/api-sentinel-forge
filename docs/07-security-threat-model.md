@@ -93,7 +93,7 @@ not rewritten into history.
 
 | Surface | Entry point | Mitigations in place | Residual risk |
 | --- | --- | --- | --- |
-| `api-sentinel serve` (FastAPI) | local HTTP on loopback | binds `127.0.0.1` by default; `--allow-remote` is explicit and audited; every request requires a declared `X-Sentinel-Role` | **medium**: the role header is a documented placeholder — bearer-less, no signature. Acceptable on loopback with a local trusted operator; NOT sufficient if `--allow-remote` is used on a hostile network. Recorded: real authn/z is deferred to a post-RC cycle with an explicit design decision. |
+| `api-sentinel serve` (FastAPI) | local HTTP on loopback | binds `127.0.0.1` by default; `--allow-remote` is explicit and audited; **Cycle 10**: every `/v1/*` route except `/v1/health` requires a credential — `Authorization: Bearer` (workspace token, `secrets.token_urlsafe(32)`, `hmac.compare_digest`, optional TTL rotation) or a signed `X-Sentinel-Principal` (HMAC-SHA256 over principal+role+workspace+timestamp+nonce, ±300 s skew, single-use nonce). Self-declared `X-Sentinel-Role` is rejected `401`, never trusted (C10-F007) | **low–medium**: real credentials gate the surface; residual = `--allow-remote` still places a shared-secret surface on the network, and the workspace token file's `0600` is best-effort under Windows ACLs (documented). Integrated mode requires deployers to protect the shared secret like any credential. |
 | AWS connector (Cycle 7) | cloud egress + credentials | credentials held by environment only, never by the Sentinel; read-only scope documented; egress declared in tests via the socket guard; simulated path egress-free | **low–medium**: `--allow-remote`-style misuse is impossible (connector egress is scoped to AWS endpoints), but real-account homologation is still pending — least-privilege IAM guidance is written, not yet exercised against a live account. |
 | `agent_sessions/` handoff dir | Bridge session envelopes | workspace-local files; peer never writes into the Sentinel; requests are approval-gated before any action | **low**: an envelope is data, not instruction — the instruction/data firewall assumption now has a concrete carrier; adapters must keep it that way. |
 | `backup` / `restore` / `retention` CLI | file-system writes + deletes | restore refuses live overwrite without `--force` and moves replaced files aside; retention is dry-run by default; evidence protection (ADR-015) proven by test; receipts + `operations.*` audit rows journal every applied operation | **low**: `--force` and `--apply` are operator foot-guns by design (explicit flags), audited but not interactive-confirmed. |
@@ -112,12 +112,82 @@ not rewritten into history.
 
 ### Residual risks accepted for the RC
 
-1. `X-Sentinel-Role` placeholder auth — loopback-only trust model;
-   `--allow-remote` shifts the burden to the deployer. Tracked for a
-   dedicated authz cycle.
+1. ~~`X-Sentinel-Role` placeholder auth~~ — **resolved Cycle 10 Wave 1**
+   (C10-F007): bearer token + HMAC-signed principal; see the Cycle-10
+   delta below and `docs/cycles/cycle-10/05-security-hardening.md`.
 2. Real AWS-account homologation not executed (no credentials in dev) —
    checklist in `docs/cycles/cycle-07-report.md`.
 3. Live Bridge/Doctor/Lens peer round-trips unverified — handoff-file
    transport emits envelopes; peer consumption is out of local scope.
+   Cycle 10 hardened the emission/ingest boundary (correlation ids,
+   canonical-path + symlink guards, bounded reads, transport≠execution
+   receipts) — the peer side remains unproven.
 4. Binary-version downgrade is intentionally unsupported — restore
    from backup is the rollback path (docs/15).
+
+## Cycle-10 delta — real authentication replaces the placeholder
+
+Cycle 10 Wave 1 retired the self-declared-role model (C10-F007) and
+hardened the file/handoff boundaries. Auth mechanics live in
+`infrastructure/security/` — domain code stays credential-free.
+
+### API authentication model (as built)
+
+- **Local mode** — `Authorization: Bearer <token>`. Resolution order:
+  `API_SENTINEL_TOKEN` env → `--token-stdin` → `<workspace>/token`
+  (generated via `secrets.token_urlsafe(32)` on first serve/install,
+  written `0600` best-effort — Windows maps `os.chmod` to the read-only
+  attribute only, so NTFS-ACL equivalence is *not* claimed). Comparison
+  is `hmac.compare_digest`. `api.token_ttl_seconds` config enables
+  file-token rotation; env/stdin tokens are TTL-exempt (their lifetime
+  is the deployer's). The token grants the configured `token_role`
+  (default `operator`).
+- **Integrated mode** — `X-Sentinel-Principal` honored *only* with a
+  valid `X-Sentinel-Signature`: hex HMAC-SHA256 over
+  `principal\nrole\nworkspace\ntimestamp\nnonce` keyed by
+  `API_SENTINEL_SHARED_SECRET` / `api.shared_secret` (fallback: the
+  workspace token). Timestamp ±300 s, nonce single-use (bounded by the
+  skew window), workspace id must match. A missing/forged/stale/
+  replayed signature is a typed `401` — the role in the signed claim is
+  then mapped through `ROLE_SCOPES`; unknown roles are refused.
+- **In-process mode** — `ApiContext(auth=None)` keeps the Cycle-6
+  placeholder *for direct injection only* (TestClient/tests). `serve`
+  and `create_app()` without an injected context always resolve a real
+  credential — the placeholder is unreachable on a served path.
+- Every `401` carries `WWW-Authenticate: Bearer realm="api-sentinel"`
+  and a `application/problem+json` body with a machine-readable
+  `details.reason`. Authn failures and scope denials are audit-journaled
+  best-effort (`api.auth.denied` / `api.scope.denied`); credential
+  material never lands in audit rows. Scope denial precedes any
+  resource lookup — a `403` never reveals existence.
+- CORS is deny-by-default: `api.cors_origins` opt-in only,
+  `allow_credentials=False` — a wildcard origin is never credentialed.
+  Forwarded/proxy headers are never consulted for identity.
+
+### Handoff / file-boundary hardening
+
+- `correlation_id` on every `InvestigationHandoff/v1` and receipt —
+  request, receipt, and response are correlatable.
+- Receipts separate `transport_state` (`emitted`/`received`) from
+  `execution_state` (`pending`/`completed`/`failed`) — an emitted file
+  is never reported as executed remote work.
+- All handoff/session/receipt paths canonicalize under the workspace
+  root (`safe_child_name`, `safe_slot`) — `..` segments and symlink
+  escapes are refused before any write/read.
+- Peer-supplied files are read through `read_text_bounded`
+  (default 32 MiB) — hostile bundles can't exhaust memory; doctor
+  bundles are correlation-checked against the handoff id; Atlas exports
+  reject duplicate service/edge ids.
+- Evidence hashes enforce `sha256:<64 lower-hex>` in both the Pydantic
+  model and the JSON schema; provider-response correlation must match
+  the request.
+
+### Verified this wave
+
+- Live smoke: unauthenticated `/v1/services` → `401` +
+  `WWW-Authenticate`; `X-Sentinel-Role: admin` alone → `401`; valid
+  bearer → `200`; `/v1/health` stays ungated.
+- Negative battery: `tests/security/test_api_auth.py` (spoof, replay,
+  stale timestamp, wrong workspace, bad scheme, expiry, precedence);
+  `test_handoff_security.py`; `test_storage_recovery.py`; extended
+  `tests/contract/test_schema_compat.py` — all green at 513 tests.

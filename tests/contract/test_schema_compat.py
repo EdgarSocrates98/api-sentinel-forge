@@ -169,7 +169,8 @@ _OPTIONAL_ENRICHMENTS: dict[str, dict[str, Any]] = {
         "blob_ref": "sha256:" + "b" * 64,
     },
     "investigation_handoff": {
-        "constraints": {"budget_seconds": 30.0, "scopes": ["read"]}
+        "correlation_id": "cor_1",
+        "constraints": {"budget_seconds": 30.0, "scopes": ["read"]},
     },
     "runtime_observation": {
         "operation_id": "op_1",
@@ -306,3 +307,115 @@ class TestExtensionZones:
     def test_envelope_catalog_matches_schemas(self) -> None:
         """ENVELOPES covers every schema file — no unmapped contract."""
         assert len(ENVELOPES) == len(_VALID)
+
+
+class TestCycleTenNegatives:
+    """The Wave-1 negative battery — every refusal is a typed error,
+    never a default, a silent repair or a silent wrong-shape accept."""
+
+    def test_duplicate_ids_rejected(self) -> None:
+        """Atlas export: duplicate service or edge ids are a contract
+        violation — a merge would fabricate structure."""
+        payload = copy.deepcopy(_VALID["atlas_export"][1])
+        payload["services"].append(
+            {"atlas_id": "a1", "name": "dup"}
+        )
+        with pytest.raises(ContractError):
+            AtlasExportV1.model_validate(payload)
+        payload = copy.deepcopy(_VALID["atlas_export"][1])
+        payload["edges"].append(copy.deepcopy(payload["edges"][0]))
+        with pytest.raises(ContractError):
+            AtlasExportV1.model_validate(payload)
+
+    def test_invalid_timestamp_rejected(self) -> None:
+        payload = copy.deepcopy(_VALID["runtime_observation"][1])
+        payload["window"]["start"] = "not-a-date"
+        with pytest.raises(ValidationError):
+            RuntimeObservationV1.model_validate(payload)
+
+    def test_invalid_dimension_type_rejected(self) -> None:
+        """A non-string measurement unit is a shape violation — typed
+        consumer refuses, never coerces."""
+        payload = copy.deepcopy(_VALID["runtime_observation"][1])
+        payload["measurement"]["unit"] = 5
+        with pytest.raises(ValidationError):
+            RuntimeObservationV1.model_validate(payload)
+
+    def test_hash_pattern_enforced(self) -> None:
+        """EvidenceArtifact.hash must be `sha256:<64-lower-hex>` — the
+        wire schema and the typed envelope agree."""
+        schema = _load_schema("evidence_artifact")
+        validator = Draft202012Validator(schema)
+        for bad in ("deadbeef", "md5:" + "a" * 32,
+                    "sha256:" + "A" * 64, "sha256:" + "a" * 63):
+            payload = copy.deepcopy(_VALID["evidence_artifact"][1])
+            payload["hash"] = bad
+            assert not validator.is_valid(payload), bad
+            with pytest.raises(ValidationError):
+                EvidenceArtifactV1.model_validate(payload)
+
+    def test_truncated_payload_rejected(self) -> None:
+        """A truncated envelope is a validation failure at both layers —
+        the JSON never parses as the real contract."""
+        raw = json.dumps(_VALID["investigation_handoff"][1])
+        truncated = raw[: len(raw) // 2]
+        with pytest.raises(json.JSONDecodeError):
+            json.loads(truncated)
+        # truncated object — required fields without defaults gone —
+        # both layers refuse
+        payload = copy.deepcopy(_VALID["investigation_handoff"][1])
+        del payload["handoff_id"], payload["kind"]
+        assert not Draft202012Validator(
+            _load_schema("investigation_handoff")
+        ).is_valid(payload)
+        with pytest.raises(ValidationError):
+            InvestigationHandoffV1.model_validate(payload)
+
+    def test_broken_envelope_reference_rejected(self) -> None:
+        """A payload naming no known `schema` is a `ContractError` —
+        an unknown contract is never defaulted."""
+        with pytest.raises(ContractError):
+            parse_envelope({"handoff_id": "hf_1"})
+        with pytest.raises(ContractError):
+            parse_envelope({"schema": "api-sentinel/Handoff/v0"})
+
+    def test_inconsistent_correlation_rejected(self) -> None:
+        """A Doctor bundle echoing a different handoff id is refused —
+        response correlation is verified, never assumed."""
+        from api_sentinel.integrations.doctor.translate import (
+            ingest_doctor_bundle,
+        )
+
+        bundle = {"handoff_version": 2, "handoff_id": "hnd_other",
+                  "findings": []}
+        with pytest.raises(ContractError, match="correlation"):
+            ingest_doctor_bundle(
+                bundle, expected_handoff_id="hnd_mine"
+            )
+        # matching correlation passes
+        ok = ingest_doctor_bundle(
+            {**bundle, "handoff_id": "hnd_mine"},
+            expected_handoff_id="hnd_mine",
+        )
+        assert ok.handoff_id == "hnd_mine"
+
+    def test_incomplete_provider_result_refused(self) -> None:
+        """A forge/v1 response missing status/kind/protocol is a typed
+        refusal — the adapter never guesses a result."""
+        from api_sentinel.integrations.errors import (
+            IntegrationRefused,
+            IntegrationUnavailable,
+        )
+        from api_sentinel.integrations.the_forge.handoff import (
+            response_to_result,
+        )
+
+        with pytest.raises(IntegrationUnavailable):
+            response_to_result("not-a-dict")  # type: ignore[arg-type]
+        with pytest.raises(IntegrationRefused):
+            response_to_result({})  # missing protocol
+        with pytest.raises(IntegrationRefused):
+            response_to_result(
+                {"protocol": "forge/v1", "kind": "Response"}
+                | {"status": "half-done"}
+            )

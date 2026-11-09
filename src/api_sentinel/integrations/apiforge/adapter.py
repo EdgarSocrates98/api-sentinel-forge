@@ -36,6 +36,10 @@ from api_sentinel.incidents.models import (
     Hypothesis,
     Incident,
 )
+from api_sentinel.infrastructure.security.paths import (
+    read_text_bounded,
+    safe_slot,
+)
 from api_sentinel.integrations.errors import IntegrationRefused
 
 APIFORGE_FORGE = "api-forge"
@@ -158,7 +162,7 @@ class ApiForgeACL:
                     "scopes": ["propose:implementation"],
                 },
             )
-            slot = self._dir / handoff_id
+            slot = safe_slot(self._dir, handoff_id, name="handoff_id")
             slot.mkdir(parents=True, exist_ok=True)
             path = slot / "implementation_request.json"
             path.write_text(
@@ -189,7 +193,9 @@ class ApiForgeACL:
                 f"api-forge response not found: {response_path}"
             )
         try:
-            data = json.loads(response_path.read_text(encoding="utf-8"))
+            data = json.loads(
+                read_text_bounded(response_path, name="api-forge response")
+            )
         except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
             raise ContractError(
                 f"api-forge response unreadable: {exc}"

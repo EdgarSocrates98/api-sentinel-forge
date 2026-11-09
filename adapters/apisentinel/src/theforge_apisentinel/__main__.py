@@ -18,7 +18,7 @@ from theforge_apisentinel import PROVIDER_ID, VERSION
 OPS = ("describe", "health", "capabilities", "execute")
 
 
-def _error_reply(code: str, detail: str) -> dict:
+def _error_reply(code: str, detail: str) -> dict[str, object]:
     return {
         "protocol": "forge/v1",
         "kind": "Response",

@@ -1,0 +1,22 @@
+{
+  "budget_profile": "auto",
+  "constraints": {},
+  "created_at": "2026-11-09T13:14:42.624973Z",
+  "id": "20261109T131442Z-0e57520c",
+  "intent": "check SLO breach and error budget for the lab service",
+  "limitations": [],
+  "producer": {
+    "id": "theforge",
+    "version": "0.7.4"
+  },
+  "requested_action": "evaluate",
+  "requested_capability": "api.slo-assessment",
+  "requirement": null,
+  "schema": "theforge/TaskSpec/v1",
+  "status": "created",
+  "targets": [
+    "."
+  ],
+  "unknowns": [],
+  "workspace_root": "E:\\temp\\forge-lab"
+}

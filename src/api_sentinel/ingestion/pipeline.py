@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 from api_sentinel import __version__
 from api_sentinel.domain import (
+    ApiService,
     AuditEvent,
     Clock,
     IdFactory,
@@ -138,18 +139,40 @@ class IngestionPipeline:
             qualities: list[QualityState] = []
             overlap_windows: set[tuple[str, datetime, datetime]] = set()
 
+            # C10-F006: repository-layer batching replaces three measured
+            # per-item query loops (services.get per item, observations.get
+            # per dedup candidate, overlapping_sources per window) with one
+            # bounded read each. Semantics are identical — same rows, same
+            # decisions; only the query shape changed.
+            needed_service_ids = {
+                item.service_id or source.service_id for item in outcome.items
+            }
+            known_services = uow.services.get_many(needed_service_ids)
+
+            assessed: list[tuple[ImportedItem, NormalizedObservation]] = []
             for item in outcome.items:
                 obs = self._assess_item(
-                    uow, source, item, batch_id, ingest_time, processing_time
+                    known_services, source, item, batch_id,
+                    ingest_time, processing_time,
                 )
                 if isinstance(obs, QuarantineEntry):
                     pending_quarantine.append(obs)
-                    continue
+                else:
+                    assessed.append((item, obs))
+
+            # One batched dedup read for every candidate id: prior key by
+            # observation_id, identical to per-row `get(...).idempotency_key`.
+            prior_keys = (
+                uow.observations.idempotency_keys(
+                    [o.observation_id for _, o in assessed]
+                )
+                if assessed
+                else {}
+            )
+            for item, obs in assessed:
                 prior_key = seen_ids.get(obs.observation_id)
                 if prior_key is None:
-                    existing_obs = uow.observations.get(obs.observation_id)
-                    if existing_obs is not None:
-                        prior_key = existing_obs.idempotency_key
+                    prior_key = prior_keys.get(obs.observation_id)
                 if prior_key is not None:
                     if prior_key == obs.idempotency_key:
                         skipped += 1  # identical content redelivered → no-op
@@ -175,12 +198,18 @@ class IngestionPipeline:
                 )
 
             # --- Persist & Aggregate (single transaction) ---
+            windows_by_service: dict[str, set[tuple[datetime, datetime]]] = {}
+            for service_id, w_start, w_end in overlap_windows:
+                windows_by_service.setdefault(service_id, set()).add(
+                    (w_start, w_end)
+                )
             overlapping = sorted(
                 {
                     src
-                    for service_id, w_start, w_end in overlap_windows
-                    for src in uow.observations.overlapping_sources(
-                        service_id, w_start, w_end, exclude_source_id=source.source_id
+                    for service_id, windows in windows_by_service.items()
+                    for src in uow.observations.overlapping_sources_in_ranges(
+                        service_id, windows,
+                        exclude_source_id=source.source_id,
                     )
                 }
             )
@@ -257,21 +286,25 @@ class IngestionPipeline:
         self, uow: UnitOfWork, source: TelemetrySource
     ) -> Callable[[str], str | None]:
         """OTLP `service.name` → registered service_id within the channel's
-        environment. Unresolved names stay unresolved — never guessed."""
+        environment. Unresolved names stay unresolved — never guessed.
+        Results memoize per name: at most one lookup per distinct name."""
         channel = uow.services.get(source.service_id)
         env_id = channel.environment_id if channel is not None else None
+        cache: dict[str, str | None] = {}
 
         def resolve(name: str) -> str | None:
             if env_id is None:
                 return None
-            svc = uow.services.get_by_name(env_id, name)
-            return svc.service_id if svc is not None else None
+            if name not in cache:
+                svc = uow.services.get_by_name(env_id, name)
+                cache[name] = svc.service_id if svc is not None else None
+            return cache[name]
 
         return resolve
 
     def _assess_item(
         self,
-        uow: UnitOfWork,
+        known_services: dict[str, ApiService],
         source: TelemetrySource,
         item: ImportedItem,
         batch_id: str,
@@ -287,7 +320,7 @@ class IngestionPipeline:
                 batch_id, "origin_mismatch", item.model_dump_json(), ingest_time
             )
         service_id = item.service_id or source.service_id
-        if uow.services.get(service_id) is None:
+        if service_id not in known_services:
             return self._quarantine(
                 batch_id, "unresolved_service", item.model_dump_json(), ingest_time
             )

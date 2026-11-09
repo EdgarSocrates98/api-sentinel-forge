@@ -15,6 +15,7 @@ from pydantic import ValidationError as PydanticValidationError
 
 from api_sentinel.contracts.v1 import AtlasExportV1
 from api_sentinel.domain import ApiService, ContractError
+from api_sentinel.infrastructure.security.paths import read_text_bounded
 from api_sentinel.integrations.atlas.models import StructuralEdge, StructuralRef
 from api_sentinel.integrations.errors import (
     IntegrationRefused,
@@ -60,7 +61,9 @@ class FileStructuralContext:
                 "graph (code-atlas) and point the workspace config at it",
             )
         try:
-            data = json.loads(p.read_text(encoding="utf-8"))
+            data = json.loads(
+                read_text_bounded(p, name="atlas export")
+            )
         except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
             raise IntegrationUnavailable(
                 ATLAS_FORGE, f"Atlas manifest unreadable: {p} ({type(exc).__name__})"

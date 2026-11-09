@@ -1,0 +1,101 @@
+# Cycle 10 Wave 0 — baseline test evidence
+# Collected 2026-11-09 on branch cycle-10 @ 29375e3f
+# Interpreter: .venv/Scripts/python.exe (Python 3.12.13, win32)
+
+=============================================================
+$ .venv/Scripts/python.exe -m pytest -q
+=============================================================
+........................................................................ [ 16%]
+........................................................................ [ 32%]
+........................................................................ [ 49%]
+........................................................................ [ 65%]
+........................................................................ [ 81%]
+........................................................................ [ 98%]
+........                                                                 [100%]
+440 passed in 58.45s
+
+=============================================================
+$ .venv/Scripts/python.exe -m ruff check .
+=============================================================
+PTH123 `open()` should be replaced by `Path.open()`
+ --> scripts\cov_core.py:4:17
+  |
+2 | import sys
+3 |
+4 | cov = json.load(open(sys.argv[1]))
+  |                 ^^^^
+5 | CORE = (
+6 |     "/domain/", "/ingestion/", "/detection/", "/metrics/", "/reliability/",
+  |
+help: Replace with `Path.open()`
+
+SIM115 Use a context manager for opening files
+ --> scripts\cov_core.py:4:17
+  |
+2 | import sys
+3 |
+4 | cov = json.load(open(sys.argv[1]))
+  |                 ^^^^
+5 | CORE = (
+  |
+
+Found 2 errors.
+
+=============================================================
+$ .venv/Scripts/python.exe -m mypy src
+=============================================================
+Success: no issues found in 112 source files
+
+=============================================================
+$ .venv/Scripts/python.exe lab/e2e_validate.py --smoke
+=============================================================
+===== SUMMARY (verbatim tail; full transcript in temp dir) =====
+ PASS  S1 install --yes --workspace WS --json
+ PASS  S2 register three services
+ PASS  S3 register jsonl-file sources
+ PASS  S4 ingest lab fixtures (id-remapped) + deploy manifest
+ PASS  S5 slo define + evaluate
+ PASS  S6 detect (latency+error) + dedup re-run
+ PASS  S7 incidents list + ack + show
+ PASS  S8 investigate --incident-id
+ PASS  S9 changes correlate + hypotheses add/verify/promote
+ PASS  S10 handoff doctor + receipt secret-scan
+ PASS  S11 serve + httpx /v1 surface
+ PASS  S12 backup create + restore + count parity
+ PASS  S13 retention dry-run + doctor self-observability
+ PASS  S14 restart-recovery (fresh process, same workspace)
+ PASS  S15 capabilities honest states
+
+verdict: PASS (15/15 steps)
+transcript: %TEMP%\sentinel-e2e-ynlpk_m7\e2e-transcript.txt
+
+Key verbatim lines (F003/F005/F007 evidence):
+  == S10 handoff doctor ==
+    $ api-sentinel handoff doctor --service-id svc_... --json   [rc=0]
+    -> {"handoff": {"handoff_id": "hnd_h_01M703NFKH0FY0WVP11RS0GV8X",
+        "to_forge": "forge-doctor-api", "kind": "api-investigation",
+        "status": "delegated", "mode": "handoff_file",
+        "request_ref": "...\\ws\\handoffs\\hnd_...\\doctor_request.json",
+        "response_ref": null,
+        "detail": "handoff emitted; a separately-run Doctor consumes
+        doctor_request.json and returns a bundle via 'handoff doctor --ingest'"},
+        "status": "delegated", "mode": "handoff_file"}
+  == S11 serve ==
+    GET /v1/health -> 200 ; GET /v1/services -> 200 ;
+    POST /v1/incidents/{id}/investigations -> 201 ;
+    POST /v1/incidents/{id}/execute -> 404 application/problem+json
+  == S15 capabilities ==
+    api.agentic-investigation = declared (only non-available capability);
+    api.aws-readonly-observability = available (boto3 importable, proof passes)
+
+=============================================================
+$ .venv/Scripts/api-sentinel.exe mcp serve   (manifest probe, C10-F012)
+=============================================================
+Usage: api-sentinel [OPTIONS] COMMAND [ARGS]...
+Try 'api-sentinel --help' for help.
+┌─ Error ──────────────────────────────────────────────────────┐
+│ No such command 'mcp'.                                       │
+└──────────────────────────────────────────────────────────────┘
+Note: forge.agentic.json declares "mcp_command": ["{cli}","mcp","serve"]
+but no `mcp` command exists in the CLI surface (24 commands listed by
+--help; grep -i "mcp" src/api_sentinel/cli/__init__.py → 0 hits).

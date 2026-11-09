@@ -1,0 +1,366 @@
+{
+  "argv": [
+    "E:/projetos/FORJAS/api-sentinel-forge/.venv/Scripts/python.exe",
+    "-m",
+    "theforge_apisentinel"
+  ],
+  "capabilities": [
+    "api.service-inventory",
+    "api.runtime-observation",
+    "api.slo-assessment",
+    "api.anomaly-detection",
+    "api.incident-investigation",
+    "api.deployment-correlation",
+    "api.doctor-handoff"
+  ],
+  "error": null,
+  "id": "api-sentinel-forge",
+  "manifest": {
+    "adapter_version": null,
+    "capabilities": [
+      {
+        "accepts_handoff": false,
+        "actions": [
+          "list"
+        ],
+        "aliases": [],
+        "context": {
+          "excerpts": false,
+          "requests": false
+        },
+        "default_action": "list",
+        "deprecated": false,
+        "description": "Sentinel capability api.service-inventory",
+        "finding_class": "runtime",
+        "id": "api.service-inventory",
+        "mcp_requires": [],
+        "offer": null,
+        "operation_class": "read_only",
+        "proposes_plans": false,
+        "relations": {
+          "accepts": [],
+          "can_review": [],
+          "can_verify": [],
+          "complements": [],
+          "conflicts": [],
+          "consumes": [],
+          "produces": [],
+          "refines": [],
+          "requires": [],
+          "specializes": [],
+          "verified_by": [],
+          "verifies": []
+        },
+        "replaced_by": null,
+        "resolves_ambiguity": false,
+        "signals": {
+          "dependencies": [],
+          "file_globs": [],
+          "keywords": [
+            "service-inventory"
+          ]
+        },
+        "state": "supported"
+      },
+      {
+        "accepts_handoff": false,
+        "actions": [
+          "summarize"
+        ],
+        "aliases": [],
+        "context": {
+          "excerpts": false,
+          "requests": false
+        },
+        "default_action": "summarize",
+        "deprecated": false,
+        "description": "Sentinel capability api.runtime-observation",
+        "finding_class": "runtime",
+        "id": "api.runtime-observation",
+        "mcp_requires": [],
+        "offer": null,
+        "operation_class": "read_only",
+        "proposes_plans": false,
+        "relations": {
+          "accepts": [],
+          "can_review": [],
+          "can_verify": [],
+          "complements": [],
+          "conflicts": [],
+          "consumes": [],
+          "produces": [],
+          "refines": [],
+          "requires": [],
+          "specializes": [],
+          "verified_by": [],
+          "verifies": []
+        },
+        "replaced_by": null,
+        "resolves_ambiguity": false,
+        "signals": {
+          "dependencies": [],
+          "file_globs": [],
+          "keywords": [
+            "runtime-observation"
+          ]
+        },
+        "state": "supported"
+      },
+      {
+        "accepts_handoff": false,
+        "actions": [
+          "evaluate"
+        ],
+        "aliases": [],
+        "context": {
+          "excerpts": false,
+          "requests": false
+        },
+        "default_action": "evaluate",
+        "deprecated": false,
+        "description": "forge-seam execute pair implemented — Cycle 10 Wave 2",
+        "finding_class": "runtime",
+        "id": "api.slo-assessment",
+        "mcp_requires": [],
+        "offer": null,
+        "operation_class": "read_only",
+        "proposes_plans": false,
+        "relations": {
+          "accepts": [],
+          "can_review": [],
+          "can_verify": [],
+          "complements": [],
+          "conflicts": [],
+          "consumes": [],
+          "produces": [],
+          "refines": [],
+          "requires": [],
+          "specializes": [],
+          "verified_by": [],
+          "verifies": []
+        },
+        "replaced_by": null,
+        "resolves_ambiguity": false,
+        "signals": {
+          "dependencies": [],
+          "file_globs": [],
+          "keywords": [
+            "slo-assessment"
+          ]
+        },
+        "state": "supported"
+      },
+      {
+        "accepts_handoff": false,
+        "actions": [
+          "run"
+        ],
+        "aliases": [],
+        "context": {
+          "excerpts": false,
+          "requests": false
+        },
+        "default_action": "run",
+        "deprecated": false,
+        "description": "forge-seam execute pair implemented — Cycle 10 Wave 2",
+        "finding_class": "runtime",
+        "id": "api.anomaly-detection",
+        "mcp_requires": [],
+        "offer": null,
+        "operation_class": "read_only",
+        "proposes_plans": false,
+        "relations": {
+          "accepts": [],
+          "can_review": [],
+          "can_verify": [],
+          "complements": [],
+          "conflicts": [],
+          "consumes": [],
+          "produces": [],
+          "refines": [],
+          "requires": [],
+          "specializes": [],
+          "verified_by": [],
+          "verifies": []
+        },
+        "replaced_by": null,
+        "resolves_ambiguity": false,
+        "signals": {
+          "dependencies": [],
+          "file_globs": [],
+          "keywords": [
+            "anomaly-detection"
+          ]
+        },
+        "state": "supported"
+      },
+      {
+        "accepts_handoff": false,
+        "actions": [
+          "list",
+          "show"
+        ],
+        "aliases": [],
+        "context": {
+          "excerpts": false,
+          "requests": false
+        },
+        "default_action": "list",
+        "deprecated": false,
+        "description": "forge-seam execute pair implemented — Cycle 10 Wave 2",
+        "finding_class": "runtime",
+        "id": "api.incident-investigation",
+        "mcp_requires": [],
+        "offer": null,
+        "operation_class": "read_only",
+        "proposes_plans": false,
+        "relations": {
+          "accepts": [],
+          "can_review": [],
+          "can_verify": [],
+          "complements": [],
+          "conflicts": [],
+          "consumes": [],
+          "produces": [],
+          "refines": [],
+          "requires": [],
+          "specializes": [],
+          "verified_by": [],
+          "verifies": []
+        },
+        "replaced_by": null,
+        "resolves_ambiguity": false,
+        "signals": {
+          "dependencies": [],
+          "file_globs": [],
+          "keywords": [
+            "incident-investigation"
+          ]
+        },
+        "state": "supported"
+      },
+      {
+        "accepts_handoff": false,
+        "actions": [
+          "correlate"
+        ],
+        "aliases": [],
+        "context": {
+          "excerpts": false,
+          "requests": false
+        },
+        "default_action": "correlate",
+        "deprecated": false,
+        "description": "forge-seam execute pair implemented — Cycle 10 Wave 2",
+        "finding_class": "runtime",
+        "id": "api.deployment-correlation",
+        "mcp_requires": [],
+        "offer": null,
+        "operation_class": "read_only",
+        "proposes_plans": false,
+        "relations": {
+          "accepts": [],
+          "can_review": [],
+          "can_verify": [],
+          "complements": [],
+          "conflicts": [],
+          "consumes": [],
+          "produces": [],
+          "refines": [],
+          "requires": [],
+          "specializes": [],
+          "verified_by": [],
+          "verifies": []
+        },
+        "replaced_by": null,
+        "resolves_ambiguity": false,
+        "signals": {
+          "dependencies": [],
+          "file_globs": [],
+          "keywords": [
+            "deployment-correlation"
+          ]
+        },
+        "state": "supported"
+      },
+      {
+        "accepts_handoff": true,
+        "actions": [
+          "delegate"
+        ],
+        "aliases": [],
+        "context": {
+          "excerpts": false,
+          "requests": false
+        },
+        "default_action": "delegate",
+        "deprecated": false,
+        "description": "emit+ingest verified; no real Doctor run yet — C10-F003/C10-F009",
+        "finding_class": "runtime",
+        "id": "api.doctor-handoff",
+        "mcp_requires": [],
+        "offer": null,
+        "operation_class": "read_only",
+        "proposes_plans": false,
+        "relations": {
+          "accepts": [],
+          "can_review": [],
+          "can_verify": [],
+          "complements": [],
+          "conflicts": [],
+          "consumes": [],
+          "produces": [],
+          "refines": [],
+          "requires": [],
+          "specializes": [],
+          "verified_by": [],
+          "verifies": []
+        },
+        "replaced_by": null,
+        "resolves_ambiguity": false,
+        "signals": {
+          "dependencies": [],
+          "file_globs": [],
+          "keywords": [
+            "doctor-handoff"
+          ]
+        },
+        "state": "supported"
+      }
+    ],
+    "context_revalidation": null,
+    "domains": [],
+    "execution": {
+      "deterministic": true,
+      "local": true,
+      "offline": true,
+      "requires_network": false
+    },
+    "features": [
+      "handoff/v1"
+    ],
+    "id": "api-sentinel-forge",
+    "limitations": [
+      "discovery is not verification: the manifest declares only capability/action pairs with real executors; CLI-scoped capabilities without a forge execute pair are listed by the capabilities op, not routed here"
+    ],
+    "native_surface_fingerprint": null,
+    "ops": [
+      "describe",
+      "health",
+      "capabilities",
+      "execute"
+    ],
+    "protocols": [
+      "forge/v1"
+    ],
+    "schema": "theforge/ForgeManifest/v1",
+    "unknowns": [],
+    "version": "0.1.0"
+  },
+  "manifest_sha256": "0985ed5c3c2e7473cce6157dae149ffd8cf5457ee83ccb50e73ca1f3bf6b03be",
+  "protocol": "forge/v1",
+  "source": "user",
+  "state": "ready",
+  "trust": "local",
+  "version": "0.1.0"
+}

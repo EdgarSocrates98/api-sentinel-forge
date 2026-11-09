@@ -1,0 +1,130 @@
+# Cycle 10 — Executive summary (final, Wave 5)
+
+> Waves 0–5 executed on `cycle-10`. Full record below; consolidated
+> report in `final-report.md`, gate scorecard + decision in
+> `18-release-readiness.md`, PR artifacts in `15-pr-plan.md`.
+
+## Result — CONDITIONAL GO
+
+**16/18 federated golden path + 2 honestly BLOCKED · 40/40 security ·
+544 tests · Doctor/Atlas/the-forge/Portal INTEGRATED with receipts.**
+
+The cycle closed the homologation loop the prompt demanded: every
+"declared" seam either became a real execution with a receipt or kept
+an honest named state. No capability is `production_validated` — the
+AWS run was real but bounded, Bridge/Lens never executed, hosted CI
+has not run at HEAD. Conditions before `v0.1.0-rc.2`: hosted CI green
++ PR-scope decisions (`15-pr-plan.md`).
+
+## Wave 5 — release closure (executed)
+
+- Gates A–G scored item-by-item → `18-release-readiness.md`:
+  A/B/C/E/F **PASS**, D **PARTIAL** (Bridge/Lens blocked), G **PARTIAL**
+  (Linux + hosted CI unobserved).
+- Docs 14–18 filled; test results consolidated (440→544);
+  compatibility matrix refreshed with real versions
+  (`docs/16-compatibility-matrix.md` + `16-compatibility-matrix.md`).
+- Capability stage manifest generated — `evidence/capability-manifest.json`;
+  `/v1/capabilities` drift corrected: `api.portal-operations` and
+  `api.aws-readonly-observability` → `verified` (W3/W4 homologations).
+- Packaging re-verified: `uv build` clean, wheel 127 files (6/6
+  migrations), sdist 190 (tests+schemas), fresh-venv smoke incl.
+  path-with-spaces + repeat-install — `evidence/installation-results.json`.
+- README de-staled (F001 closed); CHANGELOG cycle-10 entry under
+  `[Unreleased]`; tag plan `v0.1.0-rc.2` — **not tagged**.
+- PR drafts for 3 repos — `15-pr-plan.md`; **no PRs opened, no push**.
+
+## Waves 3–4 recap
+
+- **W3** — Portal `/api-operations` rewired to live Sentinel `/v1`
+  (`SentinelApi`; PF-independent); CSP topology discovered → same-origin
+  proxy pattern; Chromium 19/19 — F005 closed, F019–F021 recorded.
+- **W4** — federated e2e S1–S18 (16/2 BLOCKED/0 fail); F006 N+1 →
+  batch ports (2 880→2); §12 battery 40/40 (F022/F023 fixed en route);
+  bounded real AWS (acct `7025****1161`, 15 calls, STS-gated) — F008
+  partially closed, F024 documented.
+
+## Wave 2 — real cross-Forge federation (executed)
+
+Per `factory/specs/active/cycle-10-wave2-federation.md` — Wave 2 moved the
+federation surface from audited-planned to executed-or-honestly-named:
+
+| Forge | Wave-2 state | Proof |
+|---|---|---|
+| forge-doctor-api | **INTEGRATED** — real in-process run | `evidence/doctor_inprocess_run.json` — completed, 10 findings/9 unknowns (F009) |
+| code-atlas-forge | **INTEGRATED** — real index-store seam | `evidence/atlas/` + `evidence/atlas_correlate_run.json` — 3 structural edges (F011) |
+| the-forge | **INTEGRATED** — registered, routed, receipted | `evidence/theforge/runs/` — 8/8 pairs + receipts (F010/F015/F018) |
+| forge-agent-bridge | NAMED `unverified\|file` | `09-agent-bridge-and-lens.md` |
+| forge-lens | NAMED `unavailable\|file` | same |
+| api-forge | NAMED `unverified\|handoff_file` | same |
+| data-sentinel-forge | NAMED `unverified\|handoff_file` | same (UNEXERCISED-OPTIONAL) |
+
+Findings closed: **C10-F009, F010, F011, F014, F015, F018**; new recorded:
+**C10-F016** (conformance probe/empty-workspace mismatch — peer-side),
+**C10-F017** (forge/v1 has no param channel — honest scoping rule).
+Test suite: **538 passed**; ruff clean; mypy clean (116 files).
+Commits: this repo `cycle-10` (adapter refresh `de5e9df` + wave-2 batch);
+peer `the-forge@cycle-10-apisentinel` = **`5aea039`**. Nothing pushed.
+
+## What Cycle 10 is
+
+Per `prompt_evo_cycle10.md`: cross-forge integration closure, operational UX
+and production readiness. Phase 0 requires a **reality audit before any
+change** — this wave is that audit: baseline, revalidated findings, the
+capability stage matrix and the cross-repo contract inventory. **Docs and
+evidence only — no product code changed.**
+
+## Baseline facts (verified at audit time)
+
+| Fact | Value | Evidence |
+|---|---|---|
+| Branch | `cycle-10` @ `29375e3f` | `git branch --show-current` |
+| Version | `api-sentinel-forge 0.1.0` (RC, cycles 0–9) | `src/api_sentinel/__init__.py`, `CHANGELOG.md` |
+| Test suite | **440 passed in 58.45s** | `evidence/baseline-tests.txt` |
+| E2E smoke | **15/15 PASS** (`lab/e2e_validate.py --smoke`) | same file |
+| mypy | clean — 112 source files | same file |
+| ruff | 2 errors (scripts/cov_core.py only) | same file |
+| Wheel install | clean build + fresh-venv run OK | `evidence/installation-results.json` |
+| Bench 10k | sequential **1075.6 obs/s**; dispersed-1440 **934.9 obs/s** | `evidence/performance-before.json` |
+| Sibling repos | 10 audited, all present, all `.venv` (portal n/a — Node) | `evidence/baseline.json` |
+| Peer modules in sentinel venv | **none** of the 7 forge packages importable | baseline.json `optional_modules_in_venv` |
+
+## Headline findings
+
+- **9 P1 / 1 P2 / 2 P3 / 1 refuted — 0 P0.** Full ledger: `02-revalidated-findings.md`.
+- Sharpest five:
+  1. **F009** — the in-process Doctor path is *stale*: it imports
+     `ProjectContext` from `forge_doctor_api.handoff.context`, but doctor 0.3.1
+     moved it to `core.context`. Even with the package installed, the real
+     execution path dies with ImportError → `status=failed`.
+  2. **F010** — `SentinelBoundary` advertises 7 execute pairs to The Forge;
+     `_EXECUTORS` implements 2. 5 of 7 refuse `APISENT-NO-EXECUTOR`.
+  3. **F011** — `api-sentinel/AtlasExport/v1` is an orphan: nothing in
+     code-atlas-forge emits it (grep → 0 hits). Structural correlation has
+     only ever seen a sentinel-authored lab fixture.
+  4. **F012** — `forge.agentic.json` declares `mcp_command: [cli, mcp, serve]`
+     but `api-sentinel mcp` does not exist (no MCP code in src/).
+  5. **F005** — Portal `/api-operations` is wired to *Product Forge*'s
+     `forge/PortalApi/1` backend, not the Sentinel `/v1` surface — and the two
+     envelopes are structurally incompatible (problem+json vs PortalApi).
+- **F002 refuted**: `cli:main` and `cli:app` are both real, importable,
+  working objects — different contracts, not a divergence.
+- **F006 quantified**: 1 SELECT per observation (dedup) + 1 SELECT per
+  distinct window (overlap) = 12,880 read queries for a 10k dispersed ingest.
+- **F007 confirmed**: role is a raw client header; bounded by loopback
+  default + documented placeholder → P1, the top Phase-1 fix.
+
+## Stage-matrix headline
+
+Local surface (CLI, ingestion, detection, incidents, SLO, backup, retention,
+/v1 API) is **VERIFIED** — 440 tests + 15/15 e2e at HEAD. Federated surface is
+mostly **DECLARED→TESTED**, not INTEGRATED: every peer transport is
+file-emission or named-unavailable; nothing executes a peer today. Full
+matrix: `03-capability-ownership.md`.
+
+## Carry-overs (recorded, not hidden)
+
+Bridge/Lens/api-forge/data-sentinel named states (09) · F016/F017
+peer-side items · F020/F021 P3 gaps · hosted CI pending observation ·
+`production_validated` unclaimed. Full register:
+`17-unresolved-risks.md`.

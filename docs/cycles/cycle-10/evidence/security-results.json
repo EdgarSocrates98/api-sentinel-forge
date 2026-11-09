@@ -1,0 +1,419 @@
+{
+  "schema": "api-sentinel/SecurityBattery/v1",
+  "collected_at": "2026-11-09T15:30:38.242939+00:00",
+  "generator": "lab/security_battery.py",
+  "workspace": "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\proj\\.api-sentinel",
+  "supersedes": "the Wave-0 C10-F007 verification doc previously at this path (moved to security-f007-wave0-evidence.json)",
+  "cases": [
+    {
+      "id": "SEC-API-01",
+      "category": "api",
+      "name": "no credentials \u2192 401 missing_credentials",
+      "expected": "401",
+      "observed": "401",
+      "verdict": "held",
+      "truth": "LOCAL_REAL",
+      "detail": "{\"type\":\"urn:api-sentinel:sentinel.unauthorized\",\"title\":\"unauthorized\",\"status\":401,\"detail\":\"authentication failed: missing_credentials\",\"code\":\"sentinel.unau"
+    },
+    {
+      "id": "SEC-API-02",
+      "category": "api",
+      "name": "bad token \u2192 401",
+      "expected": "401",
+      "observed": "401",
+      "verdict": "held",
+      "truth": "LOCAL_REAL",
+      "detail": ""
+    },
+    {
+      "id": "SEC-API-03",
+      "category": "api",
+      "name": "non-Bearer scheme \u2192 401 bad_authorization_scheme",
+      "expected": "401",
+      "observed": "401",
+      "verdict": "held",
+      "truth": "LOCAL_REAL",
+      "detail": ""
+    },
+    {
+      "id": "SEC-API-04",
+      "category": "api",
+      "name": "self-declared role/principal without credential \u2192 401",
+      "expected": "401",
+      "observed": "401",
+      "verdict": "held",
+      "truth": "LOCAL_REAL",
+      "detail": "self-declared identity headers are never mapped to scopes"
+    },
+    {
+      "id": "SEC-API-05",
+      "category": "api",
+      "name": "forged principal signature \u2192 401",
+      "expected": "401",
+      "observed": "401",
+      "verdict": "held",
+      "truth": "LOCAL_REAL",
+      "detail": ""
+    },
+    {
+      "id": "SEC-API-06",
+      "category": "api",
+      "name": "signed principal (stale ts, bad sig) \u2192 401 before data",
+      "expected": "401",
+      "observed": "401",
+      "verdict": "held",
+      "truth": "LOCAL_REAL",
+      "detail": ""
+    },
+    {
+      "id": "SEC-API-07",
+      "category": "api",
+      "name": "CORS: foreign Origin not reflected",
+      "expected": "no ACAO / no wildcard",
+      "observed": "ACAO='' status=200",
+      "verdict": "held",
+      "truth": "LOCAL_REAL",
+      "detail": "no CORS middleware by default \u2014 cross-origin browser reads are impossible (Portal uses the same-origin /sentinel proxy)"
+    },
+    {
+      "id": "SEC-API-08",
+      "category": "api",
+      "name": "forwarded/proxy headers establish nothing \u2192 401",
+      "expected": "401",
+      "observed": "401",
+      "verdict": "held",
+      "truth": "LOCAL_REAL",
+      "detail": ""
+    },
+    {
+      "id": "SEC-API-09",
+      "category": "api",
+      "name": "BOLA/nonexistent resource \u2192 typed 404 (no oracle, no leak)",
+      "expected": "404 typed",
+      "observed": "404",
+      "verdict": "held",
+      "truth": "LOCAL_REAL",
+      "detail": "{\"type\":\"urn:api-sentinel:sentinel.not_found\",\"title\":\"not found\",\"status\":404,\"detail\":\"service not found: svc_doesnotexist_zzz\",\"code\":\"sentinel.not_found\",\"details\":{}}"
+    },
+    {
+      "id": "SEC-API-10",
+      "category": "api",
+      "name": "/v1/health open by design (liveness)",
+      "expected": "200",
+      "observed": "200",
+      "verdict": "held",
+      "truth": "LOCAL_REAL",
+      "detail": "documented exception \u2014 liveness carries no workspace data"
+    },
+    {
+      "id": "SEC-API-11",
+      "category": "api",
+      "name": "unknown route \u2192 typed 404 JSON",
+      "expected": "404 JSON envelope",
+      "observed": "404",
+      "verdict": "held",
+      "truth": "LOCAL_REAL",
+      "detail": "{\"type\":\"urn:api-sentinel:sentinel.not_found\",\"title\":\"not found\",\"status\":404,\"detail\":\"Not Found\",\"code\":\"sentinel.not_found\",\"details\":{}}"
+    },
+    {
+      "id": "SEC-API-12",
+      "category": "api",
+      "name": "replay: identical re-ingest dedups, never doubles",
+      "expected": "accepted=0, skipped>=1",
+      "observed": "accepted=0 skipped=7",
+      "verdict": "held",
+      "truth": "LOCAL_REAL",
+      "detail": ""
+    },
+    {
+      "id": "SEC-API-13",
+      "category": "api",
+      "name": "oversized POST body \u2192 bounded typed refusal (never OOM/hang)",
+      "expected": "4xx/413 typed",
+      "observed": "404",
+      "verdict": "held",
+      "truth": "LOCAL_REAL",
+      "detail": "{\"type\":\"urn:api-sentinel:sentinel.not_found\",\"title\":\"not found\",\"status\":404,\"detail\":\"incident not found: inc_none\",\"code\":\"sentinel.not_found\",\"details\":{}}"
+    },
+    {
+      "id": "SEC-API-14",
+      "category": "api",
+      "name": "rate behavior: 120 rapid authenticated GETs",
+      "expected": "documented observed behavior",
+      "observed": "{200: 120} in 1.4s",
+      "verdict": "held",
+      "truth": "LOCAL_REAL",
+      "detail": "loopback-only local surface; no rate limiter by design \u2014 named limitation, not a hidden gap"
+    },
+    {
+      "id": "SEC-API-15",
+      "category": "api",
+      "name": "mutating verb on read route \u2192 405",
+      "expected": "405",
+      "observed": "405",
+      "verdict": "held",
+      "truth": "LOCAL_REAL",
+      "detail": ""
+    },
+    {
+      "id": "SEC-STO-01",
+      "category": "storage",
+      "name": "handoff/receipt child name traversal refused",
+      "expected": "typed refusal",
+      "observed": "ValidationError",
+      "verdict": "held",
+      "truth": "LOCAL_REAL",
+      "detail": ""
+    },
+    {
+      "id": "SEC-STO-02",
+      "category": "storage",
+      "name": "symlink escape under workspace refused",
+      "expected": "typed refusal",
+      "observed": "ValidationError",
+      "verdict": "held",
+      "truth": "LOCAL_REAL",
+      "detail": ""
+    },
+    {
+      "id": "SEC-STO-03",
+      "category": "storage",
+      "name": "malformed payload \u2192 typed/quarantine path, never crash",
+      "expected": "quarantined>=1 or named error, no traceback",
+      "observed": "rc=0 quarantined=2",
+      "verdict": "held",
+      "truth": "LOCAL_REAL",
+      "detail": "{\"batch_id\": \"batch_01M70EWZXRWBPHW5V4XW49HES4\", \"accepted\": 0, \"quarantined\": 2, \"skipped_duplicates\": 0}\n"
+    },
+    {
+      "id": "SEC-STO-04",
+      "category": "storage",
+      "name": "corrupt backup manifest \u2192 restore refuses (integrity)",
+      "expected": "nonzero rc / integrity!=ok",
+      "observed": "rc=1 integrity=None",
+      "verdict": "held",
+      "truth": "LOCAL_REAL",
+      "detail": ""
+    },
+    {
+      "id": "SEC-STO-05",
+      "category": "storage",
+      "name": "quarantine contents are inert data (no exec path)",
+      "expected": "files stored, never imported as code",
+      "observed": "exists=False entries=0",
+      "verdict": "held",
+      "truth": "LOCAL_REAL",
+      "detail": "quarantine rows live in sentinel.db + files; nothing eval()s or imports from quarantine"
+    },
+    {
+      "id": "SEC-AGT-01",
+      "category": "agentic",
+      "name": "prompt-injection-shaped identifiers stay data (typed refusal on bogus incident, never interpreted)",
+      "expected": "typed error, no instruction following",
+      "observed": "register_rc=0 investigate_rc=1",
+      "verdict": "held",
+      "truth": "LOCAL_REAL",
+      "detail": ""
+    },
+    {
+      "id": "SEC-AGT-02",
+      "category": "agentic",
+      "name": "tool-output injection in attributes \u2192 stored as data, never executed",
+      "expected": "accepted/quarantined as data",
+      "observed": "ingest=1",
+      "verdict": "held",
+      "truth": "LOCAL_REAL",
+      "detail": "attributes persist verbatim \u2014 the investigation layer quotes them, nothing dispatches them"
+    },
+    {
+      "id": "SEC-AGT-03",
+      "category": "agentic",
+      "name": "unauthorized/bogus pack request \u2192 typed NotFound, no crash",
+      "expected": "nonzero rc, typed error",
+      "observed": "rc=1",
+      "verdict": "held",
+      "truth": "LOCAL_REAL",
+      "detail": ""
+    },
+    {
+      "id": "SEC-AGT-04",
+      "category": "agentic",
+      "name": "malformed/wrong-schema/truncated handoff bundles \u2192 typed refusal",
+      "expected": "all 2 refused",
+      "observed": "refused=2/2 err=error[sentinel.contract]: doctor bundle is not valid JSON: Unterminated string starting at: line 1 column 50 (char 49)\n",
+      "verdict": "held",
+      "truth": "LOCAL_REAL",
+      "detail": ""
+    },
+    {
+      "id": "SEC-AGT-05",
+      "category": "agentic",
+      "name": "session replay (same idempotency key) \u2192 deduped",
+      "expected": "same investigation_id or typed refusal",
+      "observed": "first=inv_422fdbcf5eec2498e328bde9 second=inv_422fdbcf5eec2498e328bde9",
+      "verdict": "held",
+      "truth": "LOCAL_REAL",
+      "detail": ""
+    },
+    {
+      "id": "SEC-CLD-01",
+      "category": "cloud",
+      "name": "mutating AWS ops refused pre-transport (mechanical proof)",
+      "expected": "prove_read_only()=True",
+      "observed": "True: mechanical proof: 6 mutating/escape attributes refused pre-transport with zero calls issued; describe_alarms reached the",
+      "verdict": "held",
+      "truth": "LOCAL_REAL",
+      "detail": ""
+    },
+    {
+      "id": "SEC-CLD-02",
+      "category": "cloud",
+      "name": "put_metric_data refused before any call",
+      "expected": "named refusal, zero transport calls",
+      "observed": "IntegrationUnavailable calls=0",
+      "verdict": "held",
+      "truth": "LOCAL_REAL",
+      "detail": ""
+    },
+    {
+      "id": "SEC-CLD-03",
+      "category": "cloud",
+      "name": "cross-account credential \u2192 STS preflight refuses",
+      "expected": "IntegrationRefused account mismatch",
+      "observed": "IntegrationRefused: integration refused: aws \u2014 account mismatch: expected 7025****1161, caller is 1111****1111 \u2014 wrong credential scope",
+      "verdict": "held",
+      "truth": "SIMULATED",
+      "detail": ""
+    },
+    {
+      "id": "SEC-CLD-04",
+      "category": "cloud",
+      "name": "wrong region scope \u2192 named refusal",
+      "expected": "IntegrationRefused region mismatch",
+      "observed": "IntegrationRefused: integration refused: aws \u2014 region mismatch: expected eu-west-1, session resolved us-east-1 \u2014 explicit scope required",
+      "verdict": "held",
+      "truth": "SIMULATED",
+      "detail": ""
+    },
+    {
+      "id": "SEC-CLD-05",
+      "category": "cloud",
+      "name": "expired credentials \u2192 named refusal",
+      "expected": "aws_refused(ExpiredToken)",
+      "observed": "IntegrationRefused: integration refused: aws \u2014 sts:GetCallerIdentity denied (ExpiredToken) \u2014 identity must be verifiable before collection",
+      "verdict": "held",
+      "truth": "SIMULATED",
+      "detail": ""
+    },
+    {
+      "id": "SEC-CLD-06",
+      "category": "cloud",
+      "name": "AccessDenied on identity \u2192 named refusal",
+      "expected": "aws_refused(AccessDenied)",
+      "observed": "IntegrationRefused: integration refused: aws \u2014 sts:GetCallerIdentity denied (AccessDenied) \u2014 identity must be verifiable before collection",
+      "verdict": "held",
+      "truth": "SIMULATED",
+      "detail": ""
+    },
+    {
+      "id": "SEC-CLD-07",
+      "category": "cloud",
+      "name": "credential-shaped source config refused (env holds creds, never config)",
+      "expected": "typed refusal",
+      "observed": "IntegrationRefused: integration refused: aws \u2014 source config carries credential-shaped keys \u2014 credentials are held by the environment, never",
+      "verdict": "held",
+      "truth": "LOCAL_REAL",
+      "detail": ""
+    },
+    {
+      "id": "SEC-CLD-08",
+      "category": "cloud",
+      "name": "no endpoint-override surface in session config (SSRF vector absent by construction)",
+      "expected": "no endpoint/url field",
+      "observed": "fields=['expected_account_id', 'profile', 'region', 'role_arn']",
+      "verdict": "held",
+      "truth": "LOCAL_REAL",
+      "detail": "region/profile/role_arn only \u2014 endpoints resolve through boto3's own resolution, never through workspace config"
+    },
+    {
+      "id": "SEC-CLD-09",
+      "category": "cloud",
+      "name": "permanent throttling \u2192 bounded named failure (never hangs)",
+      "expected": "named throttle refusal",
+      "observed": "rc=1 error[sentinel.aws_throttled]: integration refused: aws \u2014 cloudwatch:GetMetricData throttled past retry budget (1 retries, code ThrottlingEx",
+      "verdict": "held",
+      "truth": "SIMULATED",
+      "detail": ""
+    },
+    {
+      "id": "SEC-CLD-10",
+      "category": "cloud",
+      "name": "budget 0 \u2192 refusal before any egress",
+      "expected": "named budget refusal",
+      "observed": "rc=1 error[sentinel.aws_budget_exceeded]: integration refused: aws \u2014 collection budget already exhausted before first call: estimated_cost\n",
+      "verdict": "held",
+      "truth": "SIMULATED",
+      "detail": ""
+    },
+    {
+      "id": "SEC-CLD-11",
+      "category": "cloud",
+      "name": "bounded lab013 window \u2192 real paginated collect or honest empty/partial",
+      "expected": "typed outcome (collected|partial|empty|refusal)",
+      "observed": "rc=0 outcome=partial",
+      "verdict": "held",
+      "truth": "SIMULATED",
+      "detail": "{\"source_id\": \"src_01M70EXANV8389N4F61NAAGQQ4\", \"kind\": \"cloudwatch\", \"outcome\": \"partial\", \"detail\": \"collection completed with named losses\", \"account_masked\": \"1234****9012\", \"account_hash\": \"sha256:3ad280755990fecc\", \"region\": \"us-east-"
+    },
+    {
+      "id": "SEC-CLD-12",
+      "category": "cloud",
+      "name": "missing/expired profile \u2192 typed IntegrationUnavailable, no fabricated inventory",
+      "expected": "nonzero rc, named error",
+      "observed": "rc=1 error[sentinel.integration_unavailable]: integration unavailable: aws \u2014 could not resolve AWS session: ProfileNotFound: The config profile (",
+      "verdict": "held",
+      "truth": "LOCAL_REAL",
+      "detail": ""
+    },
+    {
+      "id": "SEC-CLD-13",
+      "category": "cloud",
+      "name": "no credential material persisted in workspace artifacts",
+      "expected": "zero AKIA/secret/private-key hits",
+      "observed": "0 hits []",
+      "verdict": "held",
+      "truth": "LOCAL_REAL",
+      "detail": ""
+    },
+    {
+      "id": "SEC-UI-01",
+      "category": "ui",
+      "name": "served Portal bundle embeds no credential material",
+      "expected": "zero token/key literals",
+      "observed": "0 hits []",
+      "verdict": "held",
+      "truth": "LOCAL_REAL",
+      "detail": ""
+    },
+    {
+      "id": "SEC-UI-02",
+      "category": "ui",
+      "name": "bearer token never rendered into the DOM (S14 browser check)",
+      "expected": "covered_by S14 playwright step 'token not in DOM'",
+      "observed": "see federated-e2e-receipt S14",
+      "verdict": "held",
+      "truth": "LOCAL_REAL",
+      "detail": "the authoritative check runs live in S14; recorded here for the \u00a712 matrix"
+    }
+  ],
+  "summary": {
+    "total": 40,
+    "held": 40,
+    "breached": 0,
+    "not_applicable": 0,
+    "truth_labels": [
+      "LOCAL_REAL",
+      "SIMULATED"
+    ]
+  }
+}

@@ -1,0 +1,135 @@
+{
+  "schema": "sentinel-evidence/PortalVerification/v1",
+  "cycle": 10,
+  "wave": 3,
+  "finding": "C10-F005",
+  "verdict": "pass",
+  "generated_by": "forge-portal e2e/test_sentinel_e2e.py (real browser run, real CLI-seeded workspace, real serve process - no mocks)",
+  "portal": {
+    "repo": "forge-portal",
+    "branch": "cycle-10-sentinel",
+    "base": "1e85c28",
+    "bundle": "dist/forge-portal-app/browser (ng build)",
+    "unit_tests": "624 passed / 57 files (npm test)",
+    "e2e": "Chromium via playwright 1.60"
+  },
+  "sentinel": {
+    "serve": "http://127.0.0.1:8317",
+    "pid": 38144,
+    "workspace": "C:\\Users\\edgar\\AppData\\Local\\Temp\\portal-sentinel-e2e-8dn7tca3\\ws",
+    "auth": "Authorization: Bearer via API_SENTINEL_TOKEN env channel",
+    "exposure": "same-origin /sentinel reverse proxy (CSP connect-src self; see C10-F019)",
+    "portal_origin": "http://127.0.0.1:58938"
+  },
+  "seed_steps": [
+    {
+      "name": "install",
+      "ok": true,
+      "detail": "{\"workspace\": \"C:\\\\Users\\\\edgar\\\\AppData\\\\Local\\\\Temp\\\\portal-sentinel-e2e-8dn7tca3\\\\ws\", \"profile\": \"local\", \"scope\": \"project\", \"portal\": false, \"token_created\": false, \"token_path\": null}"
+    },
+    {
+      "name": "services register",
+      "ok": true,
+      "detail": "{\"payments-api\": \"svc_01M709T5XB9F2FM6D3R6BJ0AM0\", \"checkout-api\": \"svc_01M709T6W1Z70PV3RFD5FE8164\"}"
+    },
+    {
+      "name": "sources register",
+      "ok": true,
+      "detail": "{\"payments-api\": \"src_01M709T7W4F5A8HDBZHMVJ149J\", \"checkout-api\": \"src_01M709T8P7C1BZCNEX7888NQDJ\"}"
+    },
+    {
+      "name": "ingest fixtures",
+      "ok": true,
+      "detail": "accepted 8+18 observations"
+    },
+    {
+      "name": "changes import",
+      "ok": true,
+      "detail": "{\"file_ref\": \"E:\\\\projetos\\\\FORJAS\\\\api-sentinel-forge\\\\lab\\\\fixtures\\\\lab-004-regressive-deploy\\\\deploy-manifest.json\", \"imported\": 2, \"deduplicated\": 0, \"skipped\": 0, \"change_ids\": [\"chg_5110f444017"
+    },
+    {
+      "name": "slo define",
+      "ok": true,
+      "detail": "slo_01M709TCFSDJFTQJVQVKKW437M"
+    },
+    {
+      "name": "slo evaluate",
+      "ok": true,
+      "detail": "MET"
+    },
+    {
+      "name": "detect anomalies",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "incident exists",
+      "ok": true,
+      "detail": "inc_1ab6c8a14f94b036f7bc0696"
+    },
+    {
+      "name": "hypothesis CORRELATED",
+      "ok": true,
+      "detail": "hyp_936b07ad8861a3c982dd44a9"
+    },
+    {
+      "name": "hypothesis VERIFIED",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "serve /v1",
+      "ok": true,
+      "detail": "pid=38144 on http://127.0.0.1:8317"
+    }
+  ],
+  "browser_steps": [
+    {
+      "name": "ui connection card",
+      "ok": true,
+      "detail": "typed proxy base+token, test connected"
+    },
+    {
+      "name": "services inventory",
+      "ok": true,
+      "detail": "rows render real service ids"
+    },
+    {
+      "name": "service detail",
+      "ok": true,
+      "detail": "hero+indicators+panels render"
+    },
+    {
+      "name": "incident detail",
+      "ok": true,
+      "detail": "hypotheses ladder + timeline render"
+    },
+    {
+      "name": "investigation run",
+      "ok": true,
+      "detail": "POST /v1/incidents/<id>/investigations"
+    },
+    {
+      "name": "status surface",
+      "ok": true,
+      "detail": "capabilities render with stage column"
+    },
+    {
+      "name": "token not in DOM/console",
+      "ok": true,
+      "detail": "dom=False console=0"
+    }
+  ],
+  "token_in_artifacts": false,
+  "artifacts": [
+    "forge-portal/e2e/artifacts/sentinel-00-connected.png",
+    "forge-portal/e2e/artifacts/sentinel-01-services.png",
+    "forge-portal/e2e/artifacts/sentinel-02-service-detail.png",
+    "forge-portal/e2e/artifacts/sentinel-03-incidents.png",
+    "forge-portal/e2e/artifacts/sentinel-04-incident-detail.png",
+    "forge-portal/e2e/artifacts/sentinel-05-investigation.png",
+    "forge-portal/e2e/artifacts/sentinel-06-status.png"
+  ],
+  "server_log_tail": "INFO:     Started server process [16752]\nINFO:     Waiting for application startup.\nINFO:     Application startup complete.\nERROR:    [Errno 10048] error while attempting to bind on address ('127.0.0.1', 8317): [winerror 10048] normalmente \u00c3\u00a9 permitida apenas uma utiliza\u00c3\u00a7\u00c3\u00a3o de cada endere\u00c3\u00a7o de soquete (protocolo/endere\u00c3\u00a7o de rede/porta)\nINFO:     Waiting for application shutdown.\nINFO:     Application shutdown complete.\n",
+  "sentinel_pytest": "538 passed"
+}

@@ -4,7 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
-from api_sentinel.api.deps import get_uow
+from api_sentinel.api.deps import get_uow, require_scope
 from api_sentinel.api.schemas import InvestigationResponse
 from api_sentinel.application.ports import UnitOfWork
 from api_sentinel.application.use_cases import GetInvestigation
@@ -16,6 +16,7 @@ router = APIRouter(tags=["investigations"])
 def investigation(
     investigation_id: str,
     uow: Annotated[UnitOfWork, Depends(get_uow)],
+    actor: Annotated[str, Depends(require_scope("query"))],
 ) -> InvestigationResponse:
     """The stored investigation: bounded pack + honest unknowns."""
     row = GetInvestigation(uow).execute(investigation_id=investigation_id)

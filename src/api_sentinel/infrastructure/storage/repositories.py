@@ -5,7 +5,10 @@ from __future__ import annotations
 import builtins
 import json
 import sqlite3
+from bisect import bisect_left
+from collections.abc import Collection
 from datetime import datetime
+from itertools import accumulate
 from pathlib import Path
 from typing import Any
 
@@ -76,6 +79,12 @@ def _dt(value: str | None) -> datetime | None:
     return datetime.fromisoformat(value) if value else None
 
 
+#: SQLite's documented bind-parameter ceiling is 999 (modern builds raise it
+#: far higher); chunked `IN` lookups stay well below either limit so the
+#: same code path works on every supported sqlite version.
+_BIND_CHUNK = 400
+
+
 class _ServiceRepo:
     def __init__(self, conn: sqlite3.Connection) -> None:
         self._c = conn
@@ -97,6 +106,26 @@ class _ServiceRepo:
             "SELECT * FROM api_services WHERE service_id=?", (service_id,)
         ).fetchone()
         return self._row(r) if r else None
+
+    def get_many(self, service_ids: Collection[str]) -> dict[str, ApiService]:
+        """Batched service lookup — one chunked `IN` query per 400 ids.
+
+        C10-F006: the ingest assess stage used to call `get` once per item;
+        batch callers now resolve every candidate id in O(#ids/400) queries.
+        """
+        ids = sorted(set(service_ids))
+        found: dict[str, ApiService] = {}
+        for off in range(0, len(ids), _BIND_CHUNK):
+            chunk = ids[off : off + _BIND_CHUNK]
+            marks = ",".join("?" for _ in chunk)
+            rows = self._c.execute(
+                f"SELECT * FROM api_services WHERE service_id IN ({marks})",  # noqa: S608 — `marks` is a literal run of `?` bind placeholders; all values are parameters
+                chunk,
+            ).fetchall()
+            for r in rows:
+                svc = self._row(r)
+                found[svc.service_id] = svc
+        return found
 
     def get_by_name(self, environment_id: str, service_name: str) -> ApiService | None:
         r = self._c.execute(
@@ -428,6 +457,30 @@ class _ObservationRepo:
         ).fetchone()
         return self._row(r) if r else None
 
+    def idempotency_keys(
+        self, observation_ids: Collection[str]
+    ) -> dict[str, str]:
+        """Batched dedup read: observation_id → idempotency_key.
+
+        C10-F006: the ingest dedup check used to run one point `get` per
+        candidate; batch callers now resolve all ids in O(#ids/400)
+        queries. Only the key column is fetched — dedup needs the stored
+        key, never the row payload.
+        """
+        ids = sorted(set(observation_ids))
+        found: dict[str, str] = {}
+        for off in range(0, len(ids), _BIND_CHUNK):
+            chunk = ids[off : off + _BIND_CHUNK]
+            marks = ",".join("?" for _ in chunk)
+            rows = self._c.execute(
+                "SELECT observation_id, idempotency_key FROM runtime_observations"  # noqa: S608 — `marks` below is a literal run of `?` bind placeholders; all values are parameters
+                f" WHERE observation_id IN ({marks})",
+                chunk,
+            ).fetchall()
+            for r in rows:
+                found[r["observation_id"]] = r["idempotency_key"]
+        return found
+
     def put(self, o: NormalizedObservation) -> None:
         self._c.execute(
             "INSERT OR IGNORE INTO runtime_observations"
@@ -496,6 +549,56 @@ class _ObservationRepo:
             ),
         ).fetchall()
         return {r["source_id"] for r in rows}
+
+    def overlapping_sources_in_ranges(
+        self,
+        service_id: str,
+        windows: Collection[tuple[datetime, datetime]],
+        exclude_source_id: str,
+    ) -> set[str]:
+        """Union of `overlapping_sources` over many windows — one SQL scan.
+
+        C10-F006: callers used to issue the per-window query once per
+        distinct batch window (2x1440 on the dispersed benchmark). This
+        reads the bounding range once and matches each stored row against
+        the exact window set in memory: a row overlaps query window ``w``
+        iff ``row.window_start < w.end AND row.window_end > w.start`` —
+        identical semantics, never a bounding-box over-approximation (a
+        source covering only the gap between two windows is NOT reported).
+
+        Matching runs O(#windows · log) via the sorted window starts plus
+        a running max of window ends: a stored row ``(s, e)`` overlaps iff
+        the earliest-ending-adequate prefix contains a window whose end
+        exceeds ``s``.
+        """
+        wins = sorted(set(windows))
+        if not wins:
+            return set()
+        starts = [w[0] for w in wins]
+        # prefix_max_end[i] = max window_end over wins[0..i]; with bisect on
+        # `starts` it answers "any window with start < e has end > s" in
+        # O(log n) per stored row.
+        prefix_max_end = list(accumulate((w[1] for w in wins), max))
+        rows = self._c.execute(
+            "SELECT DISTINCT source_id, window_start, window_end"
+            " FROM runtime_observations"
+            " WHERE service_id=? AND source_id!=?"
+            "   AND window_start < ? AND window_end > ?",
+            (
+                service_id,
+                exclude_source_id,
+                wins[-1][1].isoformat(),  # bounding window_end bound (hi)
+                wins[0][0].isoformat(),  # bounding window_start bound (lo)
+            ),
+        ).fetchall()
+        out: set[str] = set()
+        for r in rows:
+            row_start = datetime.fromisoformat(r["window_start"])
+            row_end = datetime.fromisoformat(r["window_end"])
+            idx = bisect_left(starts, row_end)  # wins[i].start < row_end
+            if idx and prefix_max_end[idx - 1] > row_start:
+                out.add(r["source_id"])
+        return out
 
     def raw_attributes(self, observation_id: str) -> str:
         r = self._c.execute(

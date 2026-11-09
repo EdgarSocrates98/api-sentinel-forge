@@ -65,14 +65,45 @@ def _doctor_state() -> dict[str, object]:
     }
 
 
-def _atlas_state(atlas_manifest: Path | None) -> dict[str, object]:
+def _atlas_state(
+    atlas_manifest: Path | None,
+    atlas_db: Path | None = None,
+    atlas_repository: str | None = None,
+    atlas_snapshot_id: int | None = None,
+) -> dict[str, object]:
+    if atlas_db is not None:
+        try:
+            from api_sentinel.integrations.atlas.store_adapter import (
+                DbStructuralContext,
+            )
+
+            DbStructuralContext.load(
+                atlas_db,
+                repository=atlas_repository,
+                snapshot_id=atlas_snapshot_id,
+            )
+        except SentinelError as exc:
+            reason = getattr(exc, "reason", exc.message)
+            return {
+                "forge": ATLAS_FORGE,
+                "state": IntegrationState.UNAVAILABLE.value,
+                "mode": "db",
+                "reason": reason,
+            }
+        return {
+            "forge": ATLAS_FORGE,
+            "state": IntegrationState.AVAILABLE.value,
+            "mode": "db",
+            "reason": f"real Atlas index store readable at {atlas_db}",
+        }
     if atlas_manifest is None:
         return {
             "forge": ATLAS_FORGE,
             "state": IntegrationState.UNAVAILABLE.value,
             "mode": "file",
             "reason": "no atlas export configured — set "
-                      "integrations.atlas.export in workspace config",
+                      "integrations.atlas.db_path or .export in "
+                      "workspace config",
         }
     try:
         FileStructuralContext.load(atlas_manifest)
@@ -179,12 +210,19 @@ def _apiforge_state() -> dict[str, object]:
     }
 
 
-def integration_status(atlas_manifest: Path | None = None) -> list[dict[str, object]]:
+def integration_status(
+    atlas_manifest: Path | None = None,
+    atlas_db: Path | None = None,
+    atlas_repository: str | None = None,
+    atlas_snapshot_id: int | None = None,
+) -> list[dict[str, object]]:
     """Report every sibling Forge's honest state, deterministically sorted."""
     return sorted(
         (
             _apiforge_state(),
-            _atlas_state(atlas_manifest),
+            _atlas_state(
+                atlas_manifest, atlas_db, atlas_repository, atlas_snapshot_id
+            ),
             _bridge_state(),
             _data_sentinel_state(),
             _doctor_state(),

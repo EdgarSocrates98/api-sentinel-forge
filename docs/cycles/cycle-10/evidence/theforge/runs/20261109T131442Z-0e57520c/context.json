@@ -1,0 +1,44 @@
+{
+  "budget_bytes": 65536,
+  "created_at": "2026-11-09T13:14:43.661256Z",
+  "excluded": [],
+  "files": [],
+  "limitations": [
+    "git: not a repository"
+  ],
+  "producer": {
+    "id": "theforge",
+    "version": "0.7.4"
+  },
+  "provider_id": "api-sentinel-forge",
+  "root": "E:\\temp\\forge-lab",
+  "round": 0,
+  "schema": "theforge/ContextPack/v1",
+  "status": "complete",
+  "task_id": "20261109T131442Z-0e57520c",
+  "tier_bytes": {
+    "metadata": 0,
+    "reference": 0
+  },
+  "tokens": {
+    "kind": "unknown",
+    "value": null
+  },
+  "truncated": false,
+  "unknowns": [],
+  "used_bytes": 0,
+  "workspace": {
+    "dependency_files": [],
+    "files_scanned": 15,
+    "git": {
+      "available": false,
+      "branch": null,
+      "changed_files": null,
+      "detached": false,
+      "dirty": null,
+      "head": null,
+      "state": []
+    },
+    "unmatched_files": 15
+  }
+}

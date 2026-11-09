@@ -1,0 +1,13 @@
+describe               pass  api-sentinel-forge 0.1.0
+features               pass  1 declared, 1 implied
+health                 pass  status degraded
+execute                fail  api.service-inventory: execute refused: APISENT-WORKSPACE-UNAVAILABLE: workspace unavailable: unable to open database file; api.runtime-observation: execute refused: APISENT-WORKSPACE-UNAVAILABLE: workspace unavailable: unable to open database file; api.slo-assessment: execute refused: APISENT-WORKSPACE-UNAVAILABLE: workspace unavailable: unable to open database file; api.anomaly-detection: execute refused: APISENT-WORKSPACE-UNAVAILABLE: workspace unavailable: unable to open database file; api.incident-investigation: execute refused: APISENT-WORKSPACE-UNAVAILABLE: workspace unavailable: unable to open database file; api.deployment-correlation: execute refused: APISENT-WORKSPACE-UNAVAILABLE: workspace unavailable: unable to open database file; api.doctor-handoff: execute refused: APISENT-WORKSPACE-UNAVAILABLE: workspace unavailable: unable to open database file
+context                pass  reference tier exercised (no capability declares excerpts)
+handoff                fail  execute refused: APISENT-WORKSPACE-UNAVAILABLE: workspace unavailable: unable to open database file
+refusals               pass  unknown capability and unknown action refused
+artifacts              skip  no result declared artifacts
+replay-determinism     pass  7 deterministic capability(ies) replayed identically
+malformed-protocol     pass  invalid JSON, unknown op, foreign protocol and echoes all governed
+producer-identity      pass  envelope producer matches the manifest
+timeout                pass  every call bounded (describe/health 10s, execute 30s); a hang fails its own check
+conformance: FAILED

@@ -1,7 +1,9 @@
 import json
 import sys
+from pathlib import Path
 
-cov = json.load(open(sys.argv[1]))
+with Path(sys.argv[1]).open() as fh:
+    cov = json.load(fh)
 CORE = (
     "/domain/", "/ingestion/", "/detection/", "/metrics/", "/reliability/",
     "/incidents/", "/infrastructure/storage/", "/infrastructure/security/",

@@ -1,0 +1,61 @@
+{
+  "created_at": "2026-11-09T13:22:18.542493Z",
+  "error": null,
+  "finished_at": "2026-11-09T13:22:18.542493Z",
+  "forge_version": "0.7.4",
+  "inputs": {
+    "budget_sha256": "0e422aa389817023f0bb9a26406ea2d6cf51e76e638f2296b2722131a1b8c506",
+    "complexity_sha256": "f62054104746be0be0982c1de0839917d198e73c04cb6c67dc90a8d10cc41ee2",
+    "context_round_sha256": [],
+    "context_sha256": "dfc2e6414635da9f5279640d01bb2ea2f659d84f11fec4222554c0bf21fb86e0",
+    "handoff_sha256": null,
+    "risk_sha256": "b3e71ebc8109ce50c36d2d88ee5e47f71cf4f0ffbf3902db52f6019bb1b8392f",
+    "routing_proposal_sha256": null,
+    "routing_sha256": "59c090764d7907dca63e60031b58d57f267833199739273bde93d40ec795093e",
+    "task_sha256": "924ad3c9e56d01979902482770ee3fd36bd45e619bd36d27296445214aec9b19"
+  },
+  "kind": "run",
+  "limitations": [
+    "complexity: repositories: unknown: no workspace descriptor",
+    "complexity: technologies: unknown: no workspace descriptor",
+    "complexity: estimated_context: unknown: context bytes not estimated pre-broker",
+    "git: not a repository",
+    "context-not-reverified",
+    "provider-revalidation-undeclared"
+  ],
+  "parent_run": null,
+  "plan": null,
+  "plan_node": null,
+  "producer": {
+    "id": "theforge",
+    "version": "0.7.4"
+  },
+  "provider": {
+    "executable": "E:/projetos/FORJAS/api-sentinel-forge/.venv/Scripts\\python.exe",
+    "fingerprint": "9267aa12863ab9ff2abffc5f2cd1991a9b383495224dcbf6ef06edee4100fc49",
+    "id": "api-sentinel-forge",
+    "manifest_sha256": "0985ed5c3c2e7473cce6157dae149ffd8cf5457ee83ccb50e73ca1f3bf6b03be",
+    "native_surface_fingerprint": null,
+    "observed_version": "0.1.0",
+    "surface_fingerprint": "8c39124b02aac34b9ac9761de0fa75c59245bc22dbba682c3919e9eaa18b5d8c",
+    "trust": "local",
+    "version": "0.1.0"
+  },
+  "provider_receipt": null,
+  "replay_of": null,
+  "reproducibility": {
+    "level": "partially_reproducible",
+    "reasons": [
+      "context verification not performed at level minimal"
+    ]
+  },
+  "result_sha256": "59d41fd900b222dd357e2ff4414d641c48c0a6781291652ec9fda3544ce37f62",
+  "resumed_from": null,
+  "run_id": "20261109T132216Z-004a614a",
+  "schema": "theforge/ExecutionReceipt/v1",
+  "started_at": "2026-11-09T13:22:16.082459Z",
+  "status": "ok",
+  "telemetry_sha256": "60954f2e027fb0756d620c57ad24c256d181d47aa379ae0da0e88e9876796871",
+  "unknowns": [],
+  "verification_sha256": "db591fc8fe426fab3c622f0b4abccfef14aa7f4a737ae17dab4fff7c9813df6b"
+}

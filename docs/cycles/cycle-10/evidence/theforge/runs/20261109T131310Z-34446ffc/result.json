@@ -1,0 +1,50 @@
+{
+  "artifacts": [],
+  "assumptions": [],
+  "context_request": null,
+  "created_at": "2026-11-09T13:13:12Z",
+  "evidence": [
+    {
+      "claim": "detection run det_8cbc4f8e61378f65c7e2ed0e: 6 evaluations, 0 anomalies, 2 deduplicated, 0 incidents created",
+      "derived_from": null,
+      "epistemic": "observed",
+      "hash": null,
+      "id": "run-det_8cbc4f8e61378f65c7e2ed0e",
+      "limitations": [],
+      "location": null,
+      "producer": {
+        "id": "api-sentinel-forge",
+        "version": "0.1.0"
+      },
+      "subject": "svc_01M706F8VPWGYJQ5JQ23E3Z757"
+    }
+  ],
+  "findings": [],
+  "limitations": [],
+  "metrics": {
+    "context_bytes": {
+      "kind": "measured",
+      "value": 0.0
+    },
+    "duration_ms": {
+      "kind": "measured",
+      "value": 1263.337
+    },
+    "tokens": {
+      "kind": "unknown",
+      "value": null
+    }
+  },
+  "native_trace": null,
+  "producer": {
+    "id": "api-sentinel-forge",
+    "version": "0.1.0"
+  },
+  "provider_economy": null,
+  "provider_receipt": null,
+  "schema": "theforge/ExecutionResult/v1",
+  "status": "ok",
+  "unknowns": [
+    "no new anomalies in the requested window (2 deduplicated)"
+  ]
+}

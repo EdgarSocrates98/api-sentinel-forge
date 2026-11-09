@@ -1,0 +1,59 @@
+{
+  "artifacts": [],
+  "assumptions": [],
+  "context_request": null,
+  "created_at": "2026-11-09T13:13:19Z",
+  "evidence": [
+    {
+      "claim": "persisted handoff request envelope (ref E:\\temp\\forge-lab\\.api-sentinel\\handoffs\\hnd_h_01M70725G1XS8DSMHWPAC742G4\\doctor_request.json)",
+      "derived_from": null,
+      "epistemic": "observed",
+      "hash": null,
+      "id": "E:\\temp\\forge-lab\\.api-sentinel\\handoffs\\hnd_h_01M70725G1XS8DSMHWPAC742G4\\doctor_request.json",
+      "limitations": [],
+      "location": null,
+      "producer": {
+        "id": "api-sentinel-forge",
+        "version": "0.1.0"
+      },
+      "subject": "svc_01M706F8VPWGYJQ5JQ23E3Z757"
+    }
+  ],
+  "findings": [
+    {
+      "evidence_ids": [
+        "E:\\temp\\forge-lab\\.api-sentinel\\handoffs\\hnd_h_01M70725G1XS8DSMHWPAC742G4\\doctor_request.json"
+      ],
+      "id": "hnd_h_01M70725G1XS8DSMHWPAC742G4",
+      "severity": "info",
+      "title": "doctor handoff delegated (handoff_file)"
+    }
+  ],
+  "limitations": [
+    "handoff emitted; a separately-run Doctor consumes doctor_request.json and returns a bundle via 'handoff doctor --ingest'"
+  ],
+  "metrics": {
+    "context_bytes": {
+      "kind": "measured",
+      "value": 0.0
+    },
+    "duration_ms": {
+      "kind": "measured",
+      "value": 1827.018
+    },
+    "tokens": {
+      "kind": "unknown",
+      "value": null
+    }
+  },
+  "native_trace": null,
+  "producer": {
+    "id": "api-sentinel-forge",
+    "version": "0.1.0"
+  },
+  "provider_economy": null,
+  "provider_receipt": null,
+  "schema": "theforge/ExecutionResult/v1",
+  "status": "ok",
+  "unknowns": []
+}

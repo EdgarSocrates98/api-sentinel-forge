@@ -5,7 +5,12 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 
-from api_sentinel.api.deps import ApiContext, get_ctx, get_uow
+from api_sentinel.api.deps import (
+    ApiContext,
+    get_ctx,
+    get_uow,
+    require_scope,
+)
 from api_sentinel.api.schemas import (
     MetricsResponse,
     OperationListResponse,
@@ -30,6 +35,7 @@ router = APIRouter(tags=["services"])
 def list_services(
     ctx: Annotated[ApiContext, Depends(get_ctx)],
     uow: Annotated[UnitOfWork, Depends(get_uow)],
+    actor: Annotated[str, Depends(require_scope("query"))],
 ) -> ServiceListResponse:
     """Every registered service with coverage + honest health — real
     inventory only, never demo data."""
@@ -43,6 +49,7 @@ def service_detail(
     service_id: str,
     ctx: Annotated[ApiContext, Depends(get_ctx)],
     uow: Annotated[UnitOfWork, Depends(get_uow)],
+    actor: Annotated[str, Depends(require_scope("query"))],
 ) -> ServiceDetailResponse:
     """Full health + coverage + the external-links verdict.
 
@@ -61,6 +68,7 @@ def service_detail(
 def service_operations(
     service_id: str,
     uow: Annotated[UnitOfWork, Depends(get_uow)],
+    actor: Annotated[str, Depends(require_scope("query"))],
 ) -> OperationListResponse:
     """Identified operations — declared inventory and observed series kept
     distinct via `provenance`."""
@@ -73,6 +81,7 @@ def service_operations(
 def service_metrics(
     service_id: str,
     uow: Annotated[UnitOfWork, Depends(get_uow)],
+    actor: Annotated[str, Depends(require_scope("query"))],
     window_start: Annotated[datetime | None, Query()] = None,
     window_end: Annotated[datetime | None, Query()] = None,
     operation_id: Annotated[str | None, Query()] = None,
@@ -94,6 +103,7 @@ def service_metrics(
 def service_slos(
     service_id: str,
     uow: Annotated[UnitOfWork, Depends(get_uow)],
+    actor: Annotated[str, Depends(require_scope("query"))],
 ) -> SloPanelResponse:
     """Objectives, budgets and windowed history — each assessment pinned to
     the definition revision that produced it."""

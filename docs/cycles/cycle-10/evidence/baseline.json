@@ -1,0 +1,261 @@
+{
+  "schema": "api-sentinel/CycleBaseline/v1",
+  "cycle": "cycle-10",
+  "wave": "wave0-baseline",
+  "collected_at": "2026-11-09T12:10:00Z",
+  "collector": "Devin subagent (read-only audit; no sibling repo modified)",
+  "workspace": "E:\\projetos\\FORJAS",
+  "gh_auth": {
+    "command": "gh auth status",
+    "result": "authenticated",
+    "account": "EdgarSocrates98",
+    "protocol": "https",
+    "token_scopes": ["gist", "read:org", "repo", "workflow"]
+  },
+  "repos": {
+    "api-sentinel-forge": {
+      "path": "E:\\projetos\\FORJAS\\api-sentinel-forge",
+      "remote": "https://github.com/EdgarSocrates98/api-sentinel-forge.git",
+      "default_branch": "main",
+      "current_branch": "cycle-10",
+      "head_sha": "29375e3ffda764757991997933e177301ff721bb",
+      "version": "0.1.0",
+      "version_source": "src/api_sentinel/__init__.py (__version__); pyproject dynamic",
+      "dirty_files": 0,
+      "dirty_summary": "clean (only untracked factory/specs/active/ added this wave)",
+      "dev_env": ".venv present (uv-managed, no pip module); Python 3.12.13",
+      "optional_modules_in_venv": {
+        "fastapi": true, "uvicorn": true, "boto3": true, "mcp": true,
+        "forge_doctor_api": false, "forge_agent_bridge": false,
+        "forge_lens": false, "data_sentinel": false, "apiforge": false,
+        "code_atlas": false, "theforge": false
+      },
+      "contract_schemas_found": [
+        "api-sentinel/Anomaly/v1", "api-sentinel/AtlasExport/v1",
+        "api-sentinel/BackupManifest/v1", "api-sentinel/DeployManifest/v1",
+        "api-sentinel/EvidenceArtifact/v1", "api-sentinel/InvestigationHandoff/v1",
+        "api-sentinel/RuntimeObservation/v1", "api-sentinel/ServiceIdentity/v1",
+        "api-sentinel/TelemetrySource/v1",
+        "theforge/ExecutionResult/v1", "theforge/ForgeManifest/v1",
+        "forge/ExecutionResult/v1", "forge/SpecialistAgenticManifest/v1",
+        "forge/v1 (protocol envelope)"
+      ],
+      "recent_prs": [],
+      "prs_note": "gh pr list returned [] — no PRs on this repo"
+    },
+    "the-forge": {
+      "path": "E:\\projetos\\FORJAS\\the-forge",
+      "remote": "https://github.com/EdgarSocrates98/the-forge.git",
+      "default_branch": "main",
+      "current_branch": "phase2/baseline-observability-20261108",
+      "head_sha": "6dfb79f9089d9fa254feef0f0dfa2bc1f18a85cb",
+      "version": "0.7.4",
+      "version_source": "pyproject.toml",
+      "dirty_files": 16,
+      "dirty_summary": "untracked audit/.codebase-memory/.audit-work artifacts only — no tracked source modified",
+      "dev_env": ".venv present",
+      "contract_schemas_found": [
+        "theforge/ExecutionResult/v1 (contracts/result.py:38)",
+        "theforge/Handoff/v1 (contracts/handoff.py:26)",
+        "forge/v1 Request/Response envelope (contracts/envelope.py:30,40,49)",
+        "forge/PortalApi/1 (_forge_portal.py:38)",
+        "theforge/PlanResult/v1", "theforge/CapabilityNegotiationResult/v1",
+        "forge/AgentCatalog/v1", "forge/HostActivationPlan/v1",
+        "forge/InstallReceipt/v1 family", "apiforge/upstream-facts/v1"
+      ],
+      "recent_prs": [
+        {"number": 191, "state": "OPEN", "title": "docs(theforge): establish phase 2 baseline and ownership", "head": "phase2/baseline-observability-20261108"},
+        {"number": 190, "state": "MERGED", "title": "feat: add native MCP server and install integration"},
+        {"number": 189, "state": "MERGED", "title": "docs: record Spark full suite result"}
+      ],
+      "last_commit": "2026-11-09 09:07:19 -0300 docs: pin latest Product Forge evidence"
+    },
+    "forge-doctor-api": {
+      "path": "E:\\projetos\\FORJAS\\forge-doctor-api",
+      "remote": "https://github.com/EdgarSocrates98/forge-doctor-api.git",
+      "default_branch": "main",
+      "current_branch": "main",
+      "head_sha": "fe99013ed9b5583f655b4b4bb66b59aca58a842c",
+      "version": "0.3.1",
+      "version_source": "pyproject.toml",
+      "dirty_files": 1,
+      "dirty_summary": "untracked .codebase-memory/ only",
+      "dev_env": ".venv present (import tests executed against it)",
+      "contract_schemas_found": [
+        "handoff protocol v2 (handoff/protocol.py:25 PROTOCOL_VERSION=2)",
+        "ForgeRequest (handoff/protocol.py:124)", "ForgeHandoff (protocol.py:170)",
+        "ApiHandoffBundle handoff_version=1|2 (handoff/model.py:107,133)",
+        "forge/InstallReceipt/v1", "forge/InstallationManifest/v1",
+        "forge/WorkspaceInstall/v1", "forge/InstallLedger/v1"
+      ],
+      "recent_prs": [
+        {"number": 100, "state": "OPEN", "title": "chore(deps): bump softprops/action-gh-release"},
+        {"number": 99, "state": "MERGED", "title": "feat: add Forge Doctor API specialist roster"},
+        {"number": 97, "state": "OPEN", "title": "chore(deps-dev): update mypy requirement"},
+        {"number": 96, "state": "OPEN", "title": "chore(deps-dev): update ruff requirement"}
+      ],
+      "last_commit": "2026-11-08 03:01:20 -0300 feat: add Forge Doctor API specialist roster",
+      "boundary_probe": "from forge_doctor_api.handoff.context import ProjectContext -> ImportError (lives in forge_doctor_api.core.context); core.context import OK; ApiHandoffBundle has to_dict"
+    },
+    "api-forge": {
+      "path": "E:\\projetos\\FORJAS\\api-forge",
+      "remote": "https://github.com/EdgarSocrates98/api-forge.git",
+      "default_branch": "main",
+      "current_branch": "fix/control-plane-windows-concurrency-20261108",
+      "head_sha": "029b9aac1aa156d3ee3a938a08c7c0cfa1759503",
+      "version": "0.3.2",
+      "version_source": "pyproject.toml",
+      "dirty_files": 1,
+      "dirty_summary": "untracked .codebase-memory/ only",
+      "dev_env": ".venv present",
+      "contract_schemas_found": [
+        "apiforge/* v1 contract family (adaptive-retrieval-result, agent-span, agent-audit, ...)",
+        "apiforge/upstream-facts/v1"
+      ],
+      "recent_prs": [
+        {"number": 119, "state": "OPEN", "title": "Validate fix/control-plane-windows-concurrency-20261108"},
+        {"number": 118, "state": "MERGED", "title": "fix: serialize concurrent control-plane transitions"}
+      ],
+      "last_commit": "2026-11-08 22:04:12 -0300 fix(obsidian): redact sensitive review text"
+    },
+    "code-atlas-forge": {
+      "path": "E:\\projetos\\FORJAS\\code-atlas-forge",
+      "remote": "https://github.com/EdgarSocrates98/code-atlas-forge.git",
+      "default_branch": "main",
+      "current_branch": "main",
+      "head_sha": "12bdc39efbe303a8c1cc54abad4e7dd3a85f0a85",
+      "version": "1.1.1",
+      "version_source": "src/code_atlas/__init__.py (__version__); pyproject attr",
+      "dirty_files": 2,
+      "dirty_summary": "untracked .codebase-memory/ + uv.lock only",
+      "dev_env": ".venv present",
+      "contract_schemas_found": [
+        "forge/CodeAtlasInstallReceipt/v1", "forge/SpecialistAgenticManifest/v1",
+        "theforge/KnowledgeContextPack/v1", "theforge/ObsidianNoteRef/v1"
+      ],
+      "contract_gap": "zero references to 'AtlasExport' or 'api-sentinel' in src/ — does NOT emit api-sentinel/AtlasExport/v1",
+      "recent_prs": [
+        {"number": 37, "state": "MERGED", "title": "fix: make knowledge pack identity and provenance explicit"},
+        {"number": 36, "state": "MERGED", "title": "feat: declare Code Atlas specialist roster"}
+      ],
+      "last_commit": "2026-11-08 22:32:21 -0300 feat: add body-free Obsidian document relations"
+    },
+    "forge-agent-bridge": {
+      "path": "E:\\projetos\\FORJAS\\forge-agent-bridge",
+      "remote": "https://github.com/EdgarSocrates98/forge-agent-bridge.git",
+      "default_branch": "main",
+      "current_branch": "fix/phase1.1-fast-provider-catalog-20261108",
+      "head_sha": "92df03f06c0f8e6878ada459728c542060f1bbce",
+      "version": "0.2.1",
+      "version_source": "pyproject.toml",
+      "dirty_files": 1,
+      "dirty_summary": "modified uv.lock only",
+      "dev_env": ".venv present",
+      "contract_schemas_found": [
+        "forge/AgentBridgeContract/v1", "forge/AgentBridgeEvent/v1",
+        "forge/AgentContextDelta/v1", "forge/AgentFinOps/v1",
+        "forge/BridgeDoctorReport/v1", "forge/MCPServerDescriptor/v1",
+        "forge/ProductAgentSessionContext/v2", "forge/SessionIntegrity/v1",
+        "forge/DegradedMode/v1", "forge/ProviderRouting/v1"
+      ],
+      "recent_prs": [
+        {"number": 14, "state": "MERGED", "title": "fix: bound provider catalog discovery"},
+        {"number": 13, "state": "MERGED", "title": "fix: enforce context pack authorization scope"}
+      ],
+      "last_commit": "2026-11-08 22:38:58 -0300 test: enforce Obsidian source reauthorization"
+    },
+    "forge-lens": {
+      "path": "E:\\projetos\\FORJAS\\forge-lens",
+      "remote": "https://github.com/EdgarSocrates98/forge-lens.git",
+      "default_branch": "main",
+      "current_branch": "main",
+      "head_sha": "5687788cd0f4d0719abb25f8f6b1599ca3c5ad95",
+      "version": "0.2.1",
+      "version_source": "pyproject.toml",
+      "dirty_files": 0,
+      "dirty_summary": "clean",
+      "dev_env": ".venv present",
+      "contract_schemas_found": [
+        "forge/SpecialistAgenticManifest/v1", "theforge/KnowledgeContextPack/v1",
+        "theforge/ObsidianSyncReceipt/v1"
+      ],
+      "recent_prs": [
+        {"number": 29, "state": "MERGED", "title": "feat: declare Forge Lens specialist roster"},
+        {"number": 28, "state": "MERGED", "title": "feat(cli): expose canonical Forge Lens wizard surface"}
+      ],
+      "last_commit": "n/a (main, clean)"
+    },
+    "data-sentinel-forge": {
+      "path": "E:\\projetos\\FORJAS\\data-sentinel-forge",
+      "remote": "https://github.com/EdgarSocrates98/data-sentinel-forge.git",
+      "default_branch": "main",
+      "current_branch": "main",
+      "head_sha": "e222af87e0003c88a2de1c6fd83108184ac3c63b",
+      "version": "0.5.2",
+      "version_source": "src/data_sentinel/__init__.py (__version__)",
+      "dirty_files": 3,
+      "dirty_summary": "modified docs/evidence JSONs (eval/bench artifacts) only",
+      "dev_env": ".venv present",
+      "contract_schemas_found": [
+        "data-sentinel/EnvironmentReport/v1", "sentinel/doctor-correlation/v1",
+        "forge/InstallReceipt/v1 family", "forge/SpecialistAgenticManifest/v1",
+        "forge/InstallLedger/v1"
+      ],
+      "recent_prs": [
+        {"number": 5, "state": "MERGED", "title": "Declare packaged specialist agent roster"},
+        {"number": 4, "state": "MERGED", "title": "feat: add portable installer surface"}
+      ],
+      "last_commit": "2026-11-08 00:10:01 -0300 Declare packaged specialist agent roster (#5)"
+    },
+    "forge-portal": {
+      "path": "E:\\projetos\\FORJAS\\forge-portal",
+      "remote": "https://github.com/EdgarSocrates98/forge-portal.git",
+      "default_branch": "main",
+      "current_branch": "feat/api-operations-contract-surface-20261108",
+      "head_sha": "1e85c284f4e2c3f31b7b1d920ceaa0e17636bbd3",
+      "version": "1.1.1",
+      "version_source": "package.json",
+      "dirty_files": 101,
+      "dirty_summary": "modified e2e artifact PNGs/probe-metrics + design captures — generated artifacts, no source modified",
+      "dev_env": "no .venv (Angular/Node project; node_modules not audited)",
+      "contract_schemas_found": [
+        "consumes forge/PortalApi/1 via PfApi service (src/app/pf/pf-api.service.ts)",
+        "productforge/ProductHealth/v1 (api-operations.page.spec.ts:37)"
+      ],
+      "sentinel_wiring": "none — api-operations.page.ts injects PfApi (product-forge); zero 'sentinel' references in src/app outside an unrelated template name",
+      "recent_prs": [
+        {"number": 88, "state": "MERGED", "title": "feat: add governed API operations investigation surface"},
+        {"number": 87, "state": "MERGED", "title": "docs: record current Portal visual gate"}
+      ],
+      "last_commit": "2026-11-09 08:12:42 -0300 feat: expose knowledge lifecycle in portal"
+    },
+    "product-forge": {
+      "path": "E:\\projetos\\FORJAS\\product-forge",
+      "remote": "https://github.com/EdgarSocrates98/product-forge.git",
+      "default_branch": "main",
+      "current_branch": "fix/bridge-embedded-parity-20261108",
+      "head_sha": "2660d391532466432c463fd69dbf0636f6625d7a",
+      "version": "0.2.2",
+      "version_source": "src/product_forge/__init__.py (__version__)",
+      "dirty_files": 7,
+      "dirty_summary": "modified bench script/test + untracked .coverage/.codebase-memory",
+      "dev_env": ".venv present",
+      "contract_schemas_found": [
+        "forge/PortalApi/1 (_forge_portal.py:38, __init__.py:13 ENVELOPE_SCHEMA)",
+        "forge/PortalEvent/1 (_forge_portal.py:44 EVENT_SCHEMA)",
+        "forge/AgentBridgeContract/v1 + bridge contract family",
+        "forge/InstallReceipt/v1 family", "forge/MCPServerDescriptor/v1"
+      ],
+      "recent_prs": [
+        {"number": 32, "state": "MERGED", "title": "fix: refresh embedded agent bridge parity"},
+        {"number": 31, "state": "MERGED", "title": "fix: restore embedded Agent Bridge roster parity"}
+      ],
+      "last_commit": "2026-11-09 09:06:46 -0300 feat: preserve Base dashboard artifact ids"
+    }
+  },
+  "notes": [
+    "Spec AC lists '9 repos' but enumerates 10 names — all 10 audited.",
+    "No sibling repo was modified; .venv presence was checked, nothing installed.",
+    "forge-doctor-api sibling .venv used ONLY to run two import probes (read-only)."
+  ]
+}

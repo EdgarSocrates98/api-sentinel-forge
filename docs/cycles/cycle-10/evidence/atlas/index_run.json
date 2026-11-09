@@ -1,0 +1,1 @@
+{"tool": "code-atlas", "version": "1.1.1", "schema_version": "2", "root": "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\fixtures\\atlas-repo", "snapshot_id": 11, "job_id": 12, "status": "noop", "files_indexed": 0, "secrets_skipped": 0, "warnings": [], "noop": true, "error": "", "stats": {}, "plan": {}, "diagnostics": [], "domains": ["api"], "cross_domain": false}

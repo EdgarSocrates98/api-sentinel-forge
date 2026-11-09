@@ -1,0 +1,463 @@
+{
+ "schema": "api-sentinel/AwsValidation/v1",
+ "generated_at": "2026-11-09T15:20:00+00:00",
+ "profile": "sparkforge",
+ "credential_mechanism": "aws-cli `aws configure export-credentials` -> env vars (session creds, never persisted to disk or config); sparkforge profile uses login_session which botocore cannot resolve without botocore[crt]",
+ "preflight": {
+  "command": "aws sts get-caller-identity --profile sparkforge",
+  "account_masked": "7025****1161",
+  "account_hash": "sha256:51e88bde2c83d9b4",
+  "expected_account": "702561771161",
+  "matched": true,
+  "arn_masked": "arn:aws:iam::7025****1161:root",
+  "region": "us-east-1"
+ },
+ "read_only_proof": {
+  "passed": true,
+  "detail": "mechanical proof: 6 mutating/escape attributes refused pre-transport with zero calls issued; describe_alarms reached the transport",
+  "refused": [
+   "terminate_instances",
+   "put_metric_data",
+   "delete_alarms",
+   "create_api_key",
+   "get_paginator",
+   "meta"
+  ],
+  "permitted": "describe_alarms"
+ },
+ "real_flows": [
+  {
+   "id": "AWS-RT-01",
+   "truth": "EXTERNAL_REAL",
+   "command": "api-sentinel aws discover --region us-east-1 --account-id 702561771161",
+   "result": {
+    "account_masked": "7025****1161",
+    "calls": 3,
+    "endpoints": [
+     {
+      "api_id": "whbzatkr64",
+      "api_name": "sentinel-demo-api",
+      "api_type": "HTTP",
+      "stage": "$default"
+     }
+    ]
+   }
+  },
+  {
+   "id": "AWS-RT-02",
+   "truth": "EXTERNAL_REAL",
+   "command": "api-sentinel aws collect --source-id src_01M70DV3GEDQT2QGCBKPHC2HZA --window 30m (api-gateway source)",
+   "result": {
+    "outcome": "empty",
+    "detail": "no datapoints returned for the window",
+    "requested_queries": 6,
+    "answered_queries": 6,
+    "calls": 4,
+    "estimated_cost_usd": 6e-05,
+    "receipt": "rcpt_aws_01M70DVAZ5T3GRRACKZ8X3V0EB"
+   }
+  },
+  {
+   "id": "AWS-RT-03",
+   "truth": "EXTERNAL_REAL",
+   "command": "api-sentinel aws collect --source-id src_01M70DV3GEDQT2QGCBKPHC2HZA --window 24h --max-lookback-minutes 1440",
+   "result": {
+    "outcome": "partial",
+    "observations": 4,
+    "accepted": 4,
+    "datapoints": 4,
+    "calls": 4,
+    "estimated_cost_usd": 6e-05,
+    "batch_ids": [
+     "batch_01M70DVTYJ8BSVP403GXVY4RQZ"
+    ],
+    "receipt": "rcpt_aws_01M70DVV9GY9FM3D2RST8GNKPV"
+   }
+  },
+  {
+   "id": "AWS-RT-04",
+   "truth": "EXTERNAL_REAL",
+   "command": "api-sentinel aws collect --source-id src_01M70DV3GEDQT2QGCBKPHC2HZA --window 5m",
+   "result": {
+    "outcome": "empty",
+    "calls": 4,
+    "receipt": "rcpt_aws_01M70DW4KE598WN7NZYA4A2HRP"
+   }
+  },
+  {
+   "id": "AWS-RT-05",
+   "truth": "EXTERNAL_REAL",
+   "command": "api-sentinel aws collect --source-id src_01M70DWFYJ3Y5C18KS6YKR7RC0 --window 5m (region=eu-west-1 source)",
+   "result": {
+    "outcome": "empty",
+    "region": "eu-west-1",
+    "requested_queries": 0,
+    "unknowns": [
+     "no_queries"
+    ],
+    "note": "correct-scope region holds zero APIs -> honest empty, not a mismatch failure",
+    "receipt": "rcpt_aws_01M70DWQZE6X8DZ31SBF5KFJA1"
+   }
+  }
+ ],
+ "negative_controls": [
+  {
+   "id": "AWS-NEG-01",
+   "truth": "EXTERNAL_REAL",
+   "command": "api-sentinel aws discover --account-id 999999999999",
+   "result": "integration_refused: account mismatch: expected 9999****9999, caller is 7025****1161 - wrong credential scope"
+  },
+  {
+   "id": "AWS-NEG-02",
+   "truth": "SIMULATED",
+   "command": "api-sentinel aws collect --source-id src_01M70DWXYMY2H7XZCGWE0SWD2B --simulate lab013",
+   "result": {
+    "outcome": "partial",
+    "observations": 6,
+    "accepted": 6,
+    "throttled_retries": 2,
+    "account_masked": "1234****9012",
+    "batch_ids": [
+     "batch_01M70DX3YVEXC6S4VK26AJ3WMP"
+    ],
+    "receipt": "rcpt_aws_01M70DX48Y4MQ2E0WEVJ75MQXG"
+   }
+  },
+  {
+   "id": "AWS-NEG-03",
+   "truth": "SIMULATED",
+   "command": "api-sentinel aws collect --source-id src_01M70DXJ4867GN0ZNY4YMKWT82 --simulate throttle-forever --max-retries 2 (cloudwatch source)",
+   "result": "sentinel.aws_throttled: cloudwatch:GetMetricData throttled past retry budget (2 retries, code ThrottlingException)"
+  },
+  {
+   "id": "AWS-NEG-04",
+   "truth": "SIMULATED",
+   "command": "api-sentinel aws collect --source-id src_01M70DWXYMY2H7XZCGWE0SWD2B --simulate throttle-forever (api-gateway source)",
+   "result": "integration_refused: apigateway:GetRestApis denied: UnscriptedOperation - simulated apigateway has no canned response for get_rest_apis",
+   "note": "throttle-forever script targets cloudwatch:GetMetricData; api-gateway discovery is unscripted -> named refusal"
+  }
+ ],
+ "receipts": [
+  {
+   "receipt_id": "rcpt_aws_01M70DVAZ5T3GRRACKZ8X3V0EB",
+   "kind": "aws-collect",
+   "source_id": "src_01M70DV3GEDQT2QGCBKPHC2HZA",
+   "account_masked": "7025****1161",
+   "account_hash": "sha256:51e88bde2c83d9b4",
+   "region": "us-east-1",
+   "window_start": "2026-11-09T14:41:52.855712Z",
+   "window_end": "2026-11-09T15:11:52.855712Z",
+   "outcome": "empty",
+   "detail": "no datapoints returned for the window",
+   "calls": 4,
+   "pages": 1,
+   "datapoints": 0,
+   "throttled_retries": 0,
+   "retried_calls": 0,
+   "bytes_processed": 908,
+   "estimated_cost_usd": 6e-05,
+   "batch_ids": [],
+   "unknowns": [
+    "status:Complete for 4xx",
+    "status:Complete for 5xx",
+    "status:Complete for Count",
+    "status:Complete for IntegrationError",
+    "status:Complete for IntegrationLatency",
+    "status:Complete for Latency"
+   ],
+   "at": "2026-11-09T15:11:55.365976Z",
+   "receipt_file": "lab/run/aws-rt/receipts/rcpt_aws_01M70DVAZ5T3GRRACKZ8X3V0EB.aws.receipt.json",
+   "receipt_sha256": "sha256:c979d67fd46deb9a"
+  },
+  {
+   "receipt_id": "rcpt_aws_01M70DVV9GY9FM3D2RST8GNKPV",
+   "kind": "aws-collect",
+   "source_id": "src_01M70DV3GEDQT2QGCBKPHC2HZA",
+   "account_masked": "7025****1161",
+   "account_hash": "sha256:51e88bde2c83d9b4",
+   "region": "us-east-1",
+   "window_start": "2026-11-08T15:12:09.270536Z",
+   "window_end": "2026-11-09T15:12:09.270536Z",
+   "outcome": "partial",
+   "detail": "collection completed with named losses",
+   "calls": 4,
+   "pages": 1,
+   "datapoints": 4,
+   "throttled_retries": 0,
+   "retried_calls": 0,
+   "bytes_processed": 1093,
+   "estimated_cost_usd": 6e-05,
+   "batch_ids": [
+    "batch_01M70DVTYJ8BSVP403GXVY4RQZ"
+   ],
+   "unknowns": [
+    "status:Complete for 4xx",
+    "status:Complete for 5xx",
+    "status:Complete for Count",
+    "status:Complete for IntegrationError",
+    "status:Complete for IntegrationLatency",
+    "status:Complete for Latency"
+   ],
+   "at": "2026-11-09T15:12:12.081823Z",
+   "receipt_file": "lab/run/aws-rt/receipts/rcpt_aws_01M70DVV9GY9FM3D2RST8GNKPV.aws.receipt.json",
+   "receipt_sha256": "sha256:66d824aea337ac1c"
+  },
+  {
+   "receipt_id": "rcpt_aws_01M70DW4KE598WN7NZYA4A2HRP",
+   "kind": "aws-collect",
+   "source_id": "src_01M70DV3GEDQT2QGCBKPHC2HZA",
+   "account_masked": "7025****1161",
+   "account_hash": "sha256:51e88bde2c83d9b4",
+   "region": "us-east-1",
+   "window_start": "2026-11-09T15:07:19.316341Z",
+   "window_end": "2026-11-09T15:12:19.316341Z",
+   "outcome": "empty",
+   "detail": "no datapoints returned for the window",
+   "calls": 4,
+   "pages": 1,
+   "datapoints": 0,
+   "throttled_retries": 0,
+   "retried_calls": 0,
+   "bytes_processed": 908,
+   "estimated_cost_usd": 6e-05,
+   "batch_ids": [],
+   "unknowns": [
+    "status:Complete for 4xx",
+    "status:Complete for 5xx",
+    "status:Complete for Count",
+    "status:Complete for IntegrationError",
+    "status:Complete for IntegrationLatency",
+    "status:Complete for Latency"
+   ],
+   "at": "2026-11-09T15:12:21.614188Z",
+   "receipt_file": "lab/run/aws-rt/receipts/rcpt_aws_01M70DW4KE598WN7NZYA4A2HRP.aws.receipt.json",
+   "receipt_sha256": "sha256:d92775481021a014"
+  },
+  {
+   "receipt_id": "rcpt_aws_01M70DWQZE6X8DZ31SBF5KFJA1",
+   "kind": "aws-collect",
+   "source_id": "src_01M70DWFYJ3Y5C18KS6YKR7RC0",
+   "account_masked": "7025****1161",
+   "account_hash": "sha256:51e88bde2c83d9b4",
+   "region": "eu-west-1",
+   "window_start": "2026-11-09T15:07:39.378386Z",
+   "window_end": "2026-11-09T15:12:39.378386Z",
+   "outcome": "empty",
+   "detail": "no datapoints returned for the window",
+   "calls": 2,
+   "pages": 0,
+   "datapoints": 0,
+   "throttled_retries": 0,
+   "retried_calls": 0,
+   "bytes_processed": 0,
+   "estimated_cost_usd": 0.0,
+   "batch_ids": [],
+   "unknowns": [
+    "no_queries"
+   ],
+   "at": "2026-11-09T15:12:41.454906Z",
+   "receipt_file": "lab/run/aws-rt/receipts/rcpt_aws_01M70DWQZE6X8DZ31SBF5KFJA1.aws.receipt.json",
+   "receipt_sha256": "sha256:7cefde1e6e853409"
+  },
+  {
+   "receipt_id": "rcpt_aws_01M70DWRVTMESJW9RV3H05QMAZ",
+   "kind": "aws-collect",
+   "source_id": "src_01M70DV3GEDQT2QGCBKPHC2HZA",
+   "account_masked": "unknown",
+   "account_hash": "unknown",
+   "region": "unknown",
+   "window_start": "2026-11-09T14:42:42.273697Z",
+   "window_end": "2026-11-09T15:12:42.273697Z",
+   "outcome": "refused",
+   "detail": "sentinel.integration_refused: integration refused: aws \u2014 account mismatch: expected 7025****1161, caller is 1234****9012 \u2014 wrong credential scope",
+   "calls": 0,
+   "pages": 0,
+   "datapoints": 0,
+   "throttled_retries": 0,
+   "retried_calls": 0,
+   "bytes_processed": 0,
+   "estimated_cost_usd": 0.0,
+   "batch_ids": [],
+   "unknowns": [
+    "terminal:refused"
+   ],
+   "at": "2026-11-09T15:12:42.362915Z",
+   "receipt_file": "lab/run/aws-rt/receipts/rcpt_aws_01M70DWRVTMESJW9RV3H05QMAZ.aws.receipt.json",
+   "receipt_sha256": "sha256:565dc2346c26eff0"
+  },
+  {
+   "receipt_id": "rcpt_aws_01M70DWSPYR5YDCPP0WG4HV3XA",
+   "kind": "aws-collect",
+   "source_id": "src_01M70DV3GEDQT2QGCBKPHC2HZA",
+   "account_masked": "unknown",
+   "account_hash": "unknown",
+   "region": "unknown",
+   "window_start": "2026-11-09T14:42:43.135143Z",
+   "window_end": "2026-11-09T15:12:43.135143Z",
+   "outcome": "refused",
+   "detail": "sentinel.integration_refused: integration refused: aws \u2014 account mismatch: expected 7025****1161, caller is 1234****9012 \u2014 wrong credential scope",
+   "calls": 0,
+   "pages": 0,
+   "datapoints": 0,
+   "throttled_retries": 0,
+   "retried_calls": 0,
+   "bytes_processed": 0,
+   "estimated_cost_usd": 0.0,
+   "batch_ids": [],
+   "unknowns": [
+    "terminal:refused"
+   ],
+   "at": "2026-11-09T15:12:43.230061Z",
+   "receipt_file": "lab/run/aws-rt/receipts/rcpt_aws_01M70DWSPYR5YDCPP0WG4HV3XA.aws.receipt.json",
+   "receipt_sha256": "sha256:111d783876308cfd"
+  },
+  {
+   "receipt_id": "rcpt_aws_01M70DX48Y4MQ2E0WEVJ75MQXG",
+   "kind": "aws-collect",
+   "source_id": "src_01M70DWXYMY2H7XZCGWE0SWD2B",
+   "account_masked": "1234****9012",
+   "account_hash": "sha256:3ad280755990fecc",
+   "region": "us-east-1",
+   "window_start": "2026-11-09T14:42:51.771415Z",
+   "window_end": "2026-11-09T15:12:51.771415Z",
+   "outcome": "partial",
+   "detail": "collection completed with named losses",
+   "calls": 8,
+   "pages": 2,
+   "datapoints": 6,
+   "throttled_retries": 2,
+   "retried_calls": 2,
+   "bytes_processed": 817,
+   "estimated_cost_usd": 0.00048,
+   "batch_ids": [
+    "batch_01M70DX3YVEXC6S4VK26AJ3WMP"
+   ],
+   "unknowns": [
+    "data points were omitted for part of the requested window"
+   ],
+   "at": "2026-11-09T15:12:54.046002Z",
+   "receipt_file": "lab/run/aws-rt/receipts/rcpt_aws_01M70DX48Y4MQ2E0WEVJ75MQXG.aws.receipt.json",
+   "receipt_sha256": "sha256:98d84c2944fe532e"
+  },
+  {
+   "receipt_id": "rcpt_aws_01M70DX5435TS2R3W26TKZKB1S",
+   "kind": "aws-collect",
+   "source_id": "src_01M70DWXYMY2H7XZCGWE0SWD2B",
+   "account_masked": "1234****9012",
+   "account_hash": "sha256:3ad280755990fecc",
+   "region": "us-east-1",
+   "window_start": "2026-11-09T14:42:54.789995Z",
+   "window_end": "2026-11-09T15:12:54.789995Z",
+   "outcome": "refused",
+   "detail": "sentinel.integration_refused: integration refused: aws \u2014 apigateway:GetRestApis denied: UnscriptedOperation \u2014 simulated apigateway has no canned response for get_rest_apis",
+   "calls": 1,
+   "pages": 0,
+   "datapoints": 0,
+   "throttled_retries": 0,
+   "retried_calls": 0,
+   "bytes_processed": 0,
+   "estimated_cost_usd": 0.0,
+   "batch_ids": [],
+   "unknowns": [
+    "terminal:refused"
+   ],
+   "at": "2026-11-09T15:12:54.915624Z",
+   "receipt_file": "lab/run/aws-rt/receipts/rcpt_aws_01M70DX5435TS2R3W26TKZKB1S.aws.receipt.json",
+   "receipt_sha256": "sha256:6a670e381540cded"
+  },
+  {
+   "receipt_id": "rcpt_aws_01M70DXBTK9FVYNNB6Y5DQ9W3Z",
+   "kind": "aws-collect",
+   "source_id": "src_01M70DX91MCPF2WNKAD0DZT3E3",
+   "account_masked": "1234****9012",
+   "account_hash": "sha256:3ad280755990fecc",
+   "region": "us-east-1",
+   "window_start": "2026-11-09T14:43:01.636994Z",
+   "window_end": "2026-11-09T15:13:01.636994Z",
+   "outcome": "refused",
+   "detail": "sentinel.integration_refused: integration refused: aws \u2014 invalid metric query at index 0: 1 validation error for MetricQuery\nmetric_name\n  Field required [type=missing, input_value={'namespace': 'AWS/ApiGat...atkr64'}, 'stat': 'Sum'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.14/v/missing",
+   "calls": 0,
+   "pages": 0,
+   "datapoints": 0,
+   "throttled_retries": 0,
+   "retried_calls": 0,
+   "bytes_processed": 0,
+   "estimated_cost_usd": 0.0,
+   "batch_ids": [],
+   "unknowns": [
+    "terminal:refused"
+   ],
+   "at": "2026-11-09T15:13:01.779346Z",
+   "receipt_file": "lab/run/aws-rt/receipts/rcpt_aws_01M70DXBTK9FVYNNB6Y5DQ9W3Z.aws.receipt.json",
+   "receipt_sha256": "sha256:66482f01035a3a16"
+  },
+  {
+   "receipt_id": "rcpt_aws_01M70DXQDNG77TA1QEPJ24D540",
+   "kind": "aws-collect",
+   "source_id": "src_01M70DXJ4867GN0ZNY4YMKWT82",
+   "account_masked": "1234****9012",
+   "account_hash": "sha256:3ad280755990fecc",
+   "region": "us-east-1",
+   "window_start": "2026-11-09T14:43:11.204016Z",
+   "window_end": "2026-11-09T15:13:11.204016Z",
+   "outcome": "refused",
+   "detail": "sentinel.aws_throttled: integration refused: aws \u2014 cloudwatch:GetMetricData throttled past retry budget (2 retries, code ThrottlingException)",
+   "calls": 3,
+   "pages": 0,
+   "datapoints": 0,
+   "throttled_retries": 3,
+   "retried_calls": 2,
+   "bytes_processed": 0,
+   "estimated_cost_usd": 3e-05,
+   "batch_ids": [],
+   "unknowns": [
+    "terminal:refused"
+   ],
+   "at": "2026-11-09T15:13:13.653699Z",
+   "receipt_file": "lab/run/aws-rt/receipts/rcpt_aws_01M70DXQDNG77TA1QEPJ24D540.aws.receipt.json",
+   "receipt_sha256": "sha256:eaa10eaa3dfe1fd9"
+  }
+ ],
+ "no_credentials_persisted": true,
+ "budget": {
+  "max_calls": 30,
+  "max_datapoints": 5000,
+  "max_runtime_seconds": 90,
+  "max_lookback_minutes": 1440,
+  "total_real_calls_observed": 15,
+  "total_estimated_cost_usd": 0.00018
+ },
+ "slo_and_detection_evidence": {
+  "note": "assessment/detect over the mixed aws-rt workspace; per_source breakdown keeps real vs simulated sources distinct \u2014 the fired anomaly is on the REAL source",
+  "slo_assessment": {
+   "assessment_id": "asmt_2b855e36056d28b4a2ef282b",
+   "slo_id": "slo_01M70EKCD4KNDBHRQGHNPJRADG",
+   "state": "MET",
+   "sli": 1.0,
+   "eligible": 371.0,
+   "quality": "STALE",
+   "per_source": {
+    "src_01M70DV3GEDQT2QGCBKPHC2HZA (real api-gateway)": {
+     "eligible": 0.0,
+     "note": "gateway metrics carry no request-plane \u2192 honestly eligible=0, not fabricated"
+    },
+    "src_01M70DWXYMY2H7XZCGWE0SWD2B (simulated lab013)": {
+     "eligible": 371.0
+    }
+   },
+   "observations_included": 8,
+   "truth": "MIXED \u2014 real source contributes observations, request-plane eligible count comes from simulated source; reported per-source, never summed opaquely"
+  },
+  "detection": {
+   "request_id": "det_5ba1fbb0c5749f292ccb00f7",
+   "outcomes": {
+    "budget_burn_acceleration": "clean",
+    "error_ratio_over_limit": "clean",
+    "p95_over_latency_target": "clean",
+    "source_silence": "fired"
+   },
+   "fired_on": "src_01M70DV3GEDQT2QGCBKPHC2HZA (REAL api-gateway source, silent 3788s)",
+   "truth": "EXTERNAL_REAL \u2014 anomaly computed over real collected data"
+  }
+ }
+}
