@@ -585,20 +585,94 @@ status: FIXED — Wave 2. `_ref_evidence()` re-emits each Sentinel ref
 
 ---
 
+## C10-F019 — Portal `connect-src 'self'` requires same-origin Sentinel proxying
+
+```text
+id: C10-F019
+severity: P2
+repository: forge-portal (deployment topology)
+file: portal_core/forge_portal.py (vendored canonical server — not
+  editable in-place) Content-Security-Policy: connect-src 'self'
+root_cause: the served SPA refuses every cross-origin fetch; a direct
+  browser call to http://127.0.0.1:8317/v1/* is blocked before the
+  network (verified: zero requests reach uvicorn). Sentinel-side
+  api.cors_origins works (curl-verified) but only helps when the page
+  itself is served without the strict CSP.
+reproduction: serve the portal bundle canonically, point
+  sentinel.baseUrl at http://127.0.0.1:8317 → every fetch fails with
+  a Refused to connect CSP violation in the console; no HTTP request
+  reaches Sentinel.
+impact: any Sentinel-backed page needs a topology decision at deploy
+  time; the naive "point the SPA at the sentinel port" silently fails.
+status: DOCUMENTED + WORKED AROUND — Wave 3 e2e deploys a same-origin
+  /sentinel reverse proxy in front of the bundle (forwards GET/POST +
+  Authorization, strips Cookie/Origin/Referer so the portal session
+  can never leak into Sentinel). This is the recommended production
+  pattern; see 10-portal-api-operations.md §3.
+```
+
+## C10-F020 — spec/docs vs CLI disagree on the default serve port
+
+```text
+id: C10-F020
+severity: P3
+repository: api-sentinel-forge
+file: factory/specs/active/cycle-10-wave3-portal-ux.md §7 + CLI help
+contract: docs cite http://127.0.0.1:8080/v1/* as the local surface
+  while serve --port 8317 is the value the Wave-3 portal client
+  defaults to (sentinel.baseUrl http://127.0.0.1:8317).
+root_cause: port was changed late; the spec text kept the earlier
+  value.
+reproduction: api-sentinel serve --help vs spec §7/10 docs.
+impact: trivial confusion when wiring clients; user direction
+  resolved it to 8317 for this wave.
+status: OPEN — decide once, in one place (recommend documenting 8317
+  as THE local default in 10-portal-api-operations.md §4 + README).
+```
+
+## C10-F021 — service detail does not expose source error/retry/quarantine fields
+
+```text
+id: C10-F021
+severity: P3
+repository: api-sentinel-forge
+file: src/api_sentinel/application/use_cases.py service detail builder
+contract: spec §7.4's "Sources view" lists last-obs/freshness/
+  coverage/errors/quarantine/retries/budgets — the detail payload
+  emits registered name/kind/observations/latest window/stale flag
+  but no last_error, retry budget, or quarantine depth.
+root_cause: the failure channels exist in the source registry but are
+  not projected into the detail response model.
+reproduction: GET /v1/services/{id} → sources[] entries carry
+  observations+window but no error/budget fields.
+impact: the Portal sources panel renders what is exposed and marks
+  the rest not-exposed (honest gap, not fabricated zeros); a fuller
+  sources view needs an additive projection.
+status: OPEN — additive candidate for a future wave; non-blocking
+  for Wave 3 (no UI element fakes the missing fields).
+```
+
+---
+
 ### Severity roll-up
 
 | Severity | Count | Ids |
 |---|---|---|
 | P0 | 0 | — |
-| P1 | 11 | F003, F004, F005, F007*, F008, F009*, F010*, F011*, F012*, F015*, F018* |
-| P2 | 3 | F006, F016, F017 |
-| P3 | 3 | F001, F013, F014* |
+| P1 | 11 | F003, F004, F005*, F007*, F008, F009*, F010*, F011*, F012*, F015*, F018* |
+| P2 | 4 | F006, F016, F017, F019* |
+| P3 | 5 | F001, F013, F014*, F020, F021 |
 | Refuted | 1 | F002 (no defect) |
 
 *F007 and F012 FIXED in Wave 1 (status inline). F009, F010, F011, F014,
 F015 and F018 FIXED in Wave 2 (status inline); F016/F017 recorded as
 peer-side / wire-contract limitations with honest workarounds.
-Deferred: F005 → Wave 3, F006 → Wave 4.
+F005 FIXED in Wave 3 (dedicated SentinelApi adapter + real browser
+verification, status inline in 10-portal-api-operations.md).
+F019 DOCUMENTED in Wave 3 (same-origin proxy pattern; a sentinel-side
+CORS toggle cannot help under the canonical CSP). F020/F021 recorded
+as contract-doc/surface gaps, honest workarounds shipped.
+Deferred: F006 → Wave 4.
 
 No P0s: nothing in the audit corrupts data, executes unsanctioned code, or
 fails structurally under the supported deployment — the unavailable
