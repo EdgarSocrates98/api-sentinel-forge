@@ -1,124 +1,124 @@
 {
   "schema": "api-sentinel/EvidenceManifest/v1",
   "cycle": "cycle-10.2",
-  "generated_at": "2026-11-10T10:38:42.266973+00:00",
+  "generated_at": "2026-11-10T10:54:44.086414+00:00",
   "generator": "lab/federated_e2e.py",
-  "commit": "f8996d8fa9b78da8acd4260a36901133e8f1060c",
+  "commit": "1ca26b9a5ed83bf609f4e72b61919093e7c13af0",
   "files": [
     {
       "path": "lab\\run\\fed\\steps\\S1.json",
-      "sha256": "sha256:7acce0d731926377cc4f0ad162bcb740e88ef842c0f08de37f141a888b14293e",
+      "sha256": "sha256:a5556d4848623161aafb297f55f854a6f58e78b3acd4b2811d41b0fa3a064513",
       "bytes": 1931
     },
     {
       "path": "lab\\run\\fed\\steps\\S10.json",
-      "sha256": "sha256:1779535215427d9c4dba18800bd8e642cebd3f66496d6762695461d3200eb2b9",
+      "sha256": "sha256:0b7a736786152a1187e19f71917135cfb0a50fb742d363a2d8c6916bd9a12790",
       "bytes": 1887
     },
     {
       "path": "lab\\run\\fed\\steps\\S11.json",
-      "sha256": "sha256:8bcd064a8bb7413cd6d0098a08d52fb3c808b5ce74407d4ba26025276c23692e",
+      "sha256": "sha256:72642d632eceb87fbabfdad2dc11baaded0211aa0104bc09344b3ac8bc348558",
       "bytes": 4642
     },
     {
       "path": "lab\\run\\fed\\steps\\S12.json",
-      "sha256": "sha256:f4e7179dbc1b7b86090c77c9daeff71c92ddff09973a835f4c64f07e79327618",
-      "bytes": 2967
+      "sha256": "sha256:eee80097d29fcb844aad30d4ded6ec2b3b18861a1f8e14e747e70c4e643dcc02",
+      "bytes": 3529
     },
     {
       "path": "lab\\run\\fed\\steps\\S13.json",
-      "sha256": "sha256:2c788607a136521a601a6ef86e319fd604e57aaf8f380e9ad41d77eabd1bf3c8",
+      "sha256": "sha256:5f9dfbd57fe6a08b018b7d6b150f0a7609bb90801c2360760a1843a123cb67e8",
       "bytes": 2792
     },
     {
       "path": "lab\\run\\fed\\steps\\S14.json",
-      "sha256": "sha256:8f48526e61c4512e9219747d3f510748a30f2069f780cd8154c180367e03576f",
-      "bytes": 2793
+      "sha256": "sha256:a165d644918d4c1bbbedee75a00036536cb8a18dbd11ca4e97ad5607ef5237e8",
+      "bytes": 2794
     },
     {
       "path": "lab\\run\\fed\\steps\\S15.json",
-      "sha256": "sha256:6f5f3c57aab103ab033dc97a5333d910403f1b4e5b62631caa51f94201eb6c15",
+      "sha256": "sha256:5a157cb706a8c23cf4531cfbcde44a27f892ba15e91538b7fea37ddd9adf0c28",
       "bytes": 1595
     },
     {
       "path": "lab\\run\\fed\\steps\\S16.json",
-      "sha256": "sha256:f9b15d3caf2fc41df3986fbc95936fed4bc40f611935b5b38de2361d121bb412",
+      "sha256": "sha256:846ae59ef1f09598f5d68d5f9f5446f035f570295d3478af2f18f672739ba2f6",
       "bytes": 1302
     },
     {
       "path": "lab\\run\\fed\\steps\\S17.json",
-      "sha256": "sha256:1f669f5ddb1241d0bdba65cb6f23bddc5da158e560f64831b7b5faee5b0b3675",
+      "sha256": "sha256:6d09843a966fe37761dbdbaca9513ccb06a62cde3b28bfb439b1b7efecc29db9",
       "bytes": 2997
     },
     {
       "path": "lab\\run\\fed\\steps\\S18.json",
-      "sha256": "sha256:ae50912ea9d2835c91b3c51f5588dc2d7033b27ff0ef6a3bc9c83c62dbd57a85",
+      "sha256": "sha256:2408fe0d610e97a7adc24cbca5f108d2d155d503d4173e09fe05de96a0868606",
       "bytes": 1270
     },
     {
       "path": "lab\\run\\fed\\steps\\S2.json",
-      "sha256": "sha256:d7da3e962a4a36de4a1d337650721be6d99b40d8ecb679866edda2cd7068f196",
-      "bytes": 1007
+      "sha256": "sha256:898f1a38ca03bc41a941f3f5e0e5abee5df7ebf1077d497de83e8d91a62fbd34",
+      "bytes": 1011
     },
     {
       "path": "lab\\run\\fed\\steps\\S3.json",
-      "sha256": "sha256:765d1daf46ee796cc53cb3ca4fa04c26583d228d28d964e1db52e6dec8ff0ef7",
+      "sha256": "sha256:ec0b3a8dee3bcb201456324e07cc2fccbbbcbbf9f0b6721d87c73f6192e2b4da",
       "bytes": 1212
     },
     {
       "path": "lab\\run\\fed\\steps\\S4.json",
-      "sha256": "sha256:9c1ece10c9c598a69bcfe0121df21e3ce8e323a1aab475f3a9067a6019365f4b",
-      "bytes": 11097
+      "sha256": "sha256:175a4d7ed23c4b43349bba37b0ed73c7e78468c7d54713c2f96f6b67d6361df5",
+      "bytes": 11103
     },
     {
       "path": "lab\\run\\fed\\steps\\S5.json",
-      "sha256": "sha256:761e853a8bfe96fb950cf9b4b7e8064508e391f68806aae97d0e97341c393fa0",
+      "sha256": "sha256:96aa6e5042b4248895b488f20b07eeec3c1fdb3bdd70507b2ce155c3c77f624c",
       "bytes": 1375
     },
     {
       "path": "lab\\run\\fed\\steps\\S6.json",
-      "sha256": "sha256:6a7aa756b12d5153a664b5e5bf4b7f2f04ada10927f63f63f99094df74ce874c",
+      "sha256": "sha256:cf4046efab2d28251d58101c498049860f83c59e530a1f6da2ce77dabb337095",
       "bytes": 1128
     },
     {
       "path": "lab\\run\\fed\\steps\\S7.json",
-      "sha256": "sha256:c2c499b3f6e1269c475c5cfc0956105e7cd5867e3bf7b9b4e4a3f7cf4f73c323",
-      "bytes": 13235
+      "sha256": "sha256:9d55656481ca944e528a78efd4430b0cbdaf696fb14f82de0ac174ec8a543e70",
+      "bytes": 13226
     },
     {
       "path": "lab\\run\\fed\\steps\\S8.json",
-      "sha256": "sha256:96e96ba83adcde4c80933089e4363751b3a286bfef3a0a2f38d5f9875b8e59b9",
+      "sha256": "sha256:7b0e9528b20223dfd78130264cfb5a489ec2f651a2656d814c4b9420be0ef483",
       "bytes": 1792
     },
     {
       "path": "lab\\run\\fed\\steps\\S9.json",
-      "sha256": "sha256:1b176fcea640d16aebc318b4eb4405f91ba3a9c5c3a2ab72f50b2f5adffad8c2",
+      "sha256": "sha256:44b230df0b32e3fa1cae3b5d9f99e13692aa2b183a85b3ffe01b6addf79a8522",
       "bytes": 1802
     },
     {
       "path": "lab\\run\\fed\\artifacts\\export-degraded.jsonl",
-      "sha256": "sha256:f115b098e537bc296285b2775cde1275b1378145eb1a22d4280133999a4956da",
-      "bytes": 5058
+      "sha256": "sha256:6ac0d10422ca43101ad7c9a833e9c1b420738cda9c12cf7a0a565f7b079f09c1",
+      "bytes": 5052
     },
     {
       "path": "lab\\run\\fed\\artifacts\\export-healthy.jsonl",
-      "sha256": "sha256:ec0d37b178dc1c681b5c457b4827e83caca3812d22582792f40ae32680121f80",
-      "bytes": 2882
+      "sha256": "sha256:628b4b087eb0e1f7c8dab4f54ca6d26a9b72cf4f4952ee3c816c59e41d920760",
+      "bytes": 2876
     },
     {
       "path": "lab\\run\\fed\\artifacts\\export-recovery.jsonl",
-      "sha256": "sha256:f8d5b074edaca42c91f1ecc1ee342a4710f85937aea97519356829565161b13f",
-      "bytes": 7944
+      "sha256": "sha256:7d27c994c9e91a2c82520588500febb11bb8f392b57c3e5b39291fc015e02ba2",
+      "bytes": 7938
     },
     {
       "path": "lab\\run\\fed\\artifacts\\portal\\portal-incidents.png",
-      "sha256": "sha256:098eb04c2c1dbb3a1f1b91bf2112797c5b6b66a7bf8745db61df49dfd763f79f",
-      "bytes": 91799
+      "sha256": "sha256:d42d5dd6a62939dee771270877259f716610167da7ecdbf2154551f00af7d6d5",
+      "bytes": 92068
     },
     {
       "path": "lab\\run\\fed\\artifacts\\portal\\portal-services.png",
-      "sha256": "sha256:c4db13bfeefc6989fe36997a8832ffb60d7b719b5b08ddc0b5433b465e2cfb04",
-      "bytes": 91660
+      "sha256": "sha256:833da72b5ea61d551b3b972c5a512e6305317b1932fd7cac256136b61dc2ed67",
+      "bytes": 91951
     },
     {
       "path": "lab\\run\\fed\\artifacts\\theforge-20261109T152819Z-bfc9650e\\budget.json",
@@ -371,9 +371,109 @@
       "bytes": 1227
     },
     {
+      "path": "lab\\run\\fed\\artifacts\\theforge-20261110T104514Z-b336d193\\budget.json",
+      "sha256": "sha256:a375ca9c46e727df2be0bc70d026006ba9eaee3ad8811f7f28df45217812fde7",
+      "bytes": 448
+    },
+    {
+      "path": "lab\\run\\fed\\artifacts\\theforge-20261110T104514Z-b336d193\\complexity.json",
+      "sha256": "sha256:c4ddb1810eb2952ead0fa33e17d4299c4a6df669b04d8019a4f2cf734afdeab2",
+      "bytes": 2713
+    },
+    {
+      "path": "lab\\run\\fed\\artifacts\\theforge-20261110T104514Z-b336d193\\context.json",
+      "sha256": "sha256:351cee8afa37059b1a75fa65f9ff76996430a22a402446a2bdaa6972b0eb5989",
+      "bytes": 1134
+    },
+    {
+      "path": "lab\\run\\fed\\artifacts\\theforge-20261110T104514Z-b336d193\\receipt.json",
+      "sha256": "sha256:4ee7e64650c441fc28a5e07422897b86fa55732cc8a3bf0152555b366e3218b2",
+      "bytes": 2495
+    },
+    {
+      "path": "lab\\run\\fed\\artifacts\\theforge-20261110T104514Z-b336d193\\result.json",
+      "sha256": "sha256:a9f75358efce136893351d64b1f9ecd24febe8729d6844a988c1679a086b1b5e",
+      "bytes": 878
+    },
+    {
+      "path": "lab\\run\\fed\\artifacts\\theforge-20261110T104514Z-b336d193\\risk.json",
+      "sha256": "sha256:d593b027fd5faa3da455af9daeb433c4e478427113b5f2b46eb7d70ebb7781cd",
+      "bytes": 985
+    },
+    {
+      "path": "lab\\run\\fed\\artifacts\\theforge-20261110T104514Z-b336d193\\routing.json",
+      "sha256": "sha256:d62be6e350386246ea64faf3f8b7e416880ca1d0ef3b10b32a6948874f44fa91",
+      "bytes": 1033
+    },
+    {
+      "path": "lab\\run\\fed\\artifacts\\theforge-20261110T104514Z-b336d193\\task.json",
+      "sha256": "sha256:564afa784f75c3d4a832e602564af6fd3dda17e8c60fc9cdde391b2bf96d7d83",
+      "bytes": 581
+    },
+    {
+      "path": "lab\\run\\fed\\artifacts\\theforge-20261110T104514Z-b336d193\\telemetry.json",
+      "sha256": "sha256:25b01b38abfd9753a5df9037ef2013c6ec5aa17a68de59baca56086fae8686cb",
+      "bytes": 4766
+    },
+    {
+      "path": "lab\\run\\fed\\artifacts\\theforge-20261110T104514Z-b336d193\\verification.json",
+      "sha256": "sha256:c9613595f392adc416bf33c46c96f95c25b9a562dbca543ebfe6b74bddec3716",
+      "bytes": 1227
+    },
+    {
+      "path": "lab\\run\\fed\\artifacts\\theforge-20261110T105211Z-0677639b\\budget.json",
+      "sha256": "sha256:669ad2fa73dc8d02ef5f24b115d7d0790f7b44407359d222b207271020007407",
+      "bytes": 448
+    },
+    {
+      "path": "lab\\run\\fed\\artifacts\\theforge-20261110T105211Z-0677639b\\complexity.json",
+      "sha256": "sha256:ba43bdb4b20b30ec3bc82c41315b6bd7a7f283c0000689f48a9f9a3095d9c2eb",
+      "bytes": 2713
+    },
+    {
+      "path": "lab\\run\\fed\\artifacts\\theforge-20261110T105211Z-0677639b\\context.json",
+      "sha256": "sha256:79e46000a6dca116d14ee0c4f91b98bcad73c3ed6fea9ecc47022ecdee5f82ee",
+      "bytes": 1133
+    },
+    {
+      "path": "lab\\run\\fed\\artifacts\\theforge-20261110T105211Z-0677639b\\receipt.json",
+      "sha256": "sha256:eb433d2a5107016c28e0a2465f9481cceddc03ab9f1631e7d08c6c54c027113b",
+      "bytes": 2495
+    },
+    {
+      "path": "lab\\run\\fed\\artifacts\\theforge-20261110T105211Z-0677639b\\result.json",
+      "sha256": "sha256:714233703c9c46c1ed5b295f4f4d6f22cb27e6c982006241f6b7c762810c4ec8",
+      "bytes": 876
+    },
+    {
+      "path": "lab\\run\\fed\\artifacts\\theforge-20261110T105211Z-0677639b\\risk.json",
+      "sha256": "sha256:e40b5bd8eeaf33247c200f44871eb873fd4740990814cf97fca8988c7f4887e8",
+      "bytes": 985
+    },
+    {
+      "path": "lab\\run\\fed\\artifacts\\theforge-20261110T105211Z-0677639b\\routing.json",
+      "sha256": "sha256:4d0ae157eaee0af519b9fb14004170e46e68370a7ea3547fa44d0f160557e11a",
+      "bytes": 1033
+    },
+    {
+      "path": "lab\\run\\fed\\artifacts\\theforge-20261110T105211Z-0677639b\\task.json",
+      "sha256": "sha256:549ef60fb73a21343eb0e23f284a672a8a022a261f2298db346d7e3967721e35",
+      "bytes": 581
+    },
+    {
+      "path": "lab\\run\\fed\\artifacts\\theforge-20261110T105211Z-0677639b\\telemetry.json",
+      "sha256": "sha256:2141ee9443bdc96527e7ec1deb0779269923a0d1f942ee7fb76100f55175b615",
+      "bytes": 4762
+    },
+    {
+      "path": "lab\\run\\fed\\artifacts\\theforge-20261110T105211Z-0677639b\\verification.json",
+      "sha256": "sha256:b81c6b1f88852f120fed03b0740ed1a51b50f0e585e7f7b08e3b7f511c43f446",
+      "bytes": 1227
+    },
+    {
       "path": "docs\\cycles\\cycle-10.2\\evidence\\federated-e2e-receipt.json",
-      "sha256": "sha256:6d289cde615f4bc51f7b786ad9be52155256b1656d0878ddc7b02f5c0016d959",
-      "bytes": 67315
+      "sha256": "sha256:a356b4c838a47976542a884ffaa1bfe2840314dbcb576cf59b8d661320c180e0",
+      "bytes": 67887
     }
   ]
 }
