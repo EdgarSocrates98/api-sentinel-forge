@@ -20,14 +20,14 @@ sys.path.insert(0, str(LAB))
 
 import federated_e2e as fe  # noqa: E402
 
-VERIFIER = LAB / "run" / "verify_evidence.py"
+VERIFIER = LAB / "verify_evidence.py"
 
 
 @pytest.fixture()
 def sandbox(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     """An isolated run root: steps + artifacts + evidence under tmp."""
-    (tmp_path / "lab" / "run").mkdir(parents=True)
-    shutil.copy(VERIFIER, tmp_path / "lab" / "run" / "verify_evidence.py")
+    (tmp_path / "lab").mkdir(parents=True)
+    shutil.copy(VERIFIER, tmp_path / "lab" / "verify_evidence.py")
     steps_dir = tmp_path / "steps"
     art_dir = tmp_path / "artifacts"
     ev_dir = tmp_path / "evidence"
@@ -61,7 +61,7 @@ def _run_verifier(root: Path, ev: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(  # noqa: S603 — fixed argv, lab verifier script
         [
             sys.executable,
-            str(root / "lab" / "run" / "verify_evidence.py"),
+            str(root / "lab" / "verify_evidence.py"),
             "--receipt",
             str(ev / "federated-e2e-receipt.json"),
             "--manifest",

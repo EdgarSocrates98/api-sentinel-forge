@@ -1279,7 +1279,7 @@ def s18_receipt(ws: Path, aws_result: dict[str, object] | None = None) -> Path:
         # Independent verification — a second process recomputes every
         # hash and cross-checks receipt ↔ manifest ↔ step files.
         v = run_cmd(
-            [sys.executable, str(ROOT / "lab" / "run" / "verify_evidence.py"),
+            [sys.executable, str(ROOT / "lab" / "verify_evidence.py"),
              "--receipt", str(receipt_path),
              "--manifest", str(manifest_path),
              "--root", str(ROOT)],
