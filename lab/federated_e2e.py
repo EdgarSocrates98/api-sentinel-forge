@@ -1256,7 +1256,7 @@ def _write_e18_evidence(
     }
     receipt = {
         "schema": "sentinel-evidence/FederatedE2EReceipt/v1",
-        "cycle": "10.1",
+        "cycle": "10.2",
         "generated_at": utcnow(),
         "generator": "lab/federated_e2e.py",
         "commit": COMMIT,
