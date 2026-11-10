@@ -1,0 +1,130 @@
+{
+ "schema": "api-sentinel/AdapterConformanceProbe/v1",
+ "cycle": "cycle-10.1",
+ "probe": "theforge_apisentinel forge/v1 stdio",
+ "at": "2026-11-10T01:14:24.898550+00:00",
+ "cases": [
+  {
+   "label": "describe",
+   "rc": 0,
+   "status": "ok",
+   "error": null,
+   "payload_keys": [
+    "capabilities",
+    "execution",
+    "features",
+    "id",
+    "limitations",
+    "ops",
+    "protocols",
+    "schema"
+   ],
+   "stderr_tail": ""
+  },
+  {
+   "label": "health",
+   "rc": 0,
+   "status": "ok",
+   "error": null,
+   "payload_keys": [
+    "checks",
+    "status"
+   ],
+   "stderr_tail": ""
+  },
+  {
+   "label": "capabilities",
+   "rc": 0,
+   "status": "ok",
+   "error": null,
+   "payload_keys": [
+    "artifacts",
+    "created_at",
+    "evidence",
+    "findings",
+    "limitations",
+    "producer",
+    "schema",
+    "status"
+   ],
+   "stderr_tail": ""
+  },
+  {
+   "label": "execute:service-inventory",
+   "rc": 0,
+   "status": "refused",
+   "error": {
+    "code": "APISENT-WORKSPACE-UNAVAILABLE",
+    "detail": "workspace unavailable: unable to open database file"
+   },
+   "payload_keys": [],
+   "stderr_tail": ""
+  },
+  {
+   "label": "execute:missing-params",
+   "rc": 0,
+   "status": "refused",
+   "error": {
+    "code": "APISENT-WORKSPACE-UNAVAILABLE",
+    "detail": "workspace unavailable: unable to open database file"
+   },
+   "payload_keys": [],
+   "stderr_tail": ""
+  },
+  {
+   "label": "execute:unknown-capability",
+   "rc": 0,
+   "status": "refused",
+   "error": {
+    "code": "APISENT-UNKNOWN-CAPABILITY",
+    "detail": "unknown capability 'api.no-such'"
+   },
+   "payload_keys": [],
+   "stderr_tail": ""
+  },
+  {
+   "label": "execute:unknown-action",
+   "rc": 0,
+   "status": "refused",
+   "error": {
+    "code": "APISENT-UNKNOWN-ACTION",
+    "detail": "unknown action 'delete' for 'api.service-inventory' (declared: ['list'])"
+   },
+   "payload_keys": [],
+   "stderr_tail": ""
+  },
+  {
+   "label": "unknown-op",
+   "rc": 0,
+   "status": "refused",
+   "error": {
+    "code": "APISENT-UNKNOWN-OP",
+    "detail": "unsupported op 'frobnicate'"
+   },
+   "payload_keys": [],
+   "stderr_tail": ""
+  },
+  {
+   "label": "wrong-protocol",
+   "rc": 0,
+   "status": "refused",
+   "error": {
+    "code": "APISENT-PROTOCOL",
+    "detail": "unsupported protocol 'forge/v2'"
+   },
+   "payload_keys": [],
+   "stderr_tail": ""
+  },
+  {
+   "label": "wrong-kind",
+   "rc": 0,
+   "status": "refused",
+   "error": {
+    "code": "APISENT-PROTOCOL",
+    "detail": "unsupported protocol 'forge/v1'"
+   },
+   "payload_keys": [],
+   "stderr_tail": ""
+  }
+ ]
+}
