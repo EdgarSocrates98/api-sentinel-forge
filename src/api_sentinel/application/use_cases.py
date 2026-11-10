@@ -329,6 +329,10 @@ class EvaluateSlo:
                 observations=observations,
                 window=window,
                 evaluated_at=_now(self._clock),
+                source_kinds={
+                    s.source_id: s.kind
+                    for s in self._uow.sources.list(definition.service_id)
+                },
             )
             self._uow.slo_assessments.put(assessment)
             self._uow.audit.append(

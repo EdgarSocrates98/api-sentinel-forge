@@ -171,6 +171,45 @@ def test_availability_assessment_oracle_violated() -> None:
     assert asmt.budget_consumed == pytest.approx(2.0)
 
 
+def test_simulated_source_provenance_is_labeled_not_promoted() -> None:
+    # C101-F009: a MET computed on simulated traffic must be *labeled* —
+    # simulated data can never masquerade as real production health.
+    obs = [
+        _counter("ok", 0, 990.0, source="sim_1",
+                 attributes={"http.response.status_code": 200}),
+        _counter("err", 1, 10.0, source="sim_1",
+                 attributes={"http.response.status_code": 500}),
+    ]
+    asmt = evaluate_slo(
+        definition=_definition(),
+        observations=obs,
+        window=WINDOW,
+        evaluated_at=NOW,
+        source_kinds={"sim_1": "simulated"},
+    )
+    # Math is unchanged — the provenance label is what changed.
+    assert asmt.state is AssessmentState.MET
+    assert asmt.primary_source_id == "sim_1"
+    assert asmt.per_source[0].source_kind == "simulated"
+    assert "simulated_source_data:sim_1" in asmt.limitations
+    assert "simulated_primary_source" in asmt.limitations
+
+
+def test_unknown_source_kind_leaves_assessment_unchanged() -> None:
+    obs = [_counter("ok", 0, 100.0,
+                    attributes={"http.response.status_code": 200})]
+    asmt = evaluate_slo(
+        definition=_definition(),
+        observations=obs,
+        window=WINDOW,
+        evaluated_at=NOW,
+        source_kinds={"src_1": "collector"},
+    )
+    assert asmt.state is AssessmentState.MET
+    assert asmt.per_source[0].source_kind == "collector"
+    assert not [lim for lim in asmt.limitations if lim.startswith("simulated")]
+
+
 def test_dedicated_indicators_do_not_consume_budget() -> None:
     # 401/403/429 are dedicated indicators, not unavailability (docs/05).
     obs = [
