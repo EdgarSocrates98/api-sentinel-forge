@@ -21,6 +21,7 @@ class Field:
     required: bool = False
     kind: str = "text"  # text | int | float | bool | choice
     choices: tuple[str, ...] = ()
+    sensitive: bool = False
 
 
 @dataclass(frozen=True)
@@ -66,7 +67,7 @@ CATALOG: tuple[Command, ...] = (
     Command("Observe", "sources — list / register", ("sources",),
             (Field("--register", "Register kind (e.g. collector, simulated)"),
              Field("--service-id", "Service id (with --register)"),
-             Field("--config", "JSON config payload"))),
+             Field("--config", "JSON config payload", sensitive=True))),
     Command("Observe", "ingest — telemetry batch file", ("ingest",),
             (Field("--file", "Batch file (jsonl/json)", required=True),
              Field("--source-id", "Source id"),
@@ -245,3 +246,26 @@ def build_argv(cmd: Command, values: dict[str, str], *, ws: str | None) -> list[
     if ws:
         argv += ["--workspace", ws]
     return argv
+
+
+def display_argv(cmd: Command, values: dict[str, str], *, ws: str | None) -> list[str]:
+    """Return a safe presentation argv while preserving execution argv."""
+    argv = build_argv(cmd, values, ws=ws)
+    sensitive = {
+        f.flag.lower() for f in cmd.fields if f.sensitive
+    }
+    sensitive.update({
+        "--password", "--token", "--secret", "--api-key", "--apikey",
+        "--authorization", "--credential", "--bearer",
+    })
+    out: list[str] = []
+    mask_next = False
+    for item in argv:
+        if mask_next:
+            out.append("[REDACTED]")
+            mask_next = False
+            continue
+        out.append(item)
+        if item.lower() in sensitive:
+            mask_next = True
+    return out

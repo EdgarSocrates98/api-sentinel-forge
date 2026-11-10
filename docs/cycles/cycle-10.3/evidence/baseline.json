@@ -1,0 +1,37 @@
+{
+  "schema": "api-sentinel/Cycle103Baseline/v1",
+  "repository": "api-sentinel-forge",
+  "head": "643f394ae4d3e2246092afc8ccb1a3482354762d",
+  "branch": "main",
+  "python": "3.14.6",
+  "platform": "Windows-11",
+  "tests": {
+    "passed": 627,
+    "failed": 0,
+    "skipped": 8
+  },
+  "quality": {
+    "ruff": "PASS",
+    "mypy": "PASS",
+    "build": "PASS"
+  },
+  "build": {
+    "wheel": "PASS",
+    "sdist": "PASS",
+    "version": "0.1.0"
+  },
+  "e2e": "FAIL",
+  "e2e_detail": {
+    "command": "uv run python lab/federated_e2e.py --traffic-seconds 0",
+    "verdict": "FAIL",
+    "passed": 11,
+    "blocked": 2,
+    "failed": 5,
+    "truth_labels": ["LOCAL_REAL", "INTEGRATION_REAL", "BLOCKED"]
+  },
+  "limitations": [
+    "Linux execution was not available in the local Windows shell; hosted Linux CI is required for the platform claim.",
+    "Bridge and Lens provider execution are blocked because no authorized external provider is configured."
+  ],
+  "generated_at": "2026-11-10T22:35:49Z"
+}

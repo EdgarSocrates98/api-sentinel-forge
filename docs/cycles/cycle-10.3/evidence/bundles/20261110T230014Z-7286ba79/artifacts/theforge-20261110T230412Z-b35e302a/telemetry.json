@@ -1,0 +1,189 @@
+{
+  "agent_calls": {
+    "kind": "unknown",
+    "value": null
+  },
+  "bytes_hashed": {
+    "kind": "unknown",
+    "value": null
+  },
+  "cache_hits": {
+    "kind": "unknown",
+    "value": null
+  },
+  "cache_misses": {
+    "kind": "unknown",
+    "value": null
+  },
+  "context_bytes": {
+    "kind": "unknown",
+    "value": null
+  },
+  "context_drift": [],
+  "context_ms": {
+    "kind": "unknown",
+    "value": null
+  },
+  "correlation_id": null,
+  "created_at": "2026-11-10T23:04:12.783665Z",
+  "evidence_returned": {
+    "kind": "measured",
+    "value": 0.0
+  },
+  "fallbacks_used": {
+    "kind": "measured",
+    "value": 0.0
+  },
+  "files_cited": {
+    "kind": "measured",
+    "value": 0.0
+  },
+  "files_hashed": {
+    "kind": "unknown",
+    "value": null
+  },
+  "files_scanned": {
+    "kind": "measured",
+    "value": 5.0
+  },
+  "files_selected": {
+    "kind": "unknown",
+    "value": null
+  },
+  "findings_returned": {
+    "kind": "measured",
+    "value": 0.0
+  },
+  "knowledge_bytes": {
+    "kind": "unknown",
+    "value": null
+  },
+  "limitations": [],
+  "negotiation_rounds": {
+    "kind": "measured",
+    "value": 0.0
+  },
+  "parent_run": null,
+  "planning_calls": {
+    "kind": "unknown",
+    "value": null
+  },
+  "producer": {
+    "id": "theforge",
+    "version": "0.7.5"
+  },
+  "profile": {
+    "budget_bytes": 262144,
+    "effective_tiers": [],
+    "execute_timeout_s": 180.0,
+    "fallback": true,
+    "max_files": 64,
+    "max_providers": 1,
+    "name": "balanced",
+    "negotiation_rounds": 1,
+    "tiers": [
+      "metadata",
+      "reference",
+      "excerpt",
+      "requested"
+    ],
+    "verification": "conditional"
+  },
+  "provider_ms": {
+    "kind": "unknown",
+    "value": null
+  },
+  "provider_revalidation": null,
+  "providers_executed": {
+    "kind": "measured",
+    "value": 0.0
+  },
+  "routing_ms": {
+    "kind": "measured",
+    "value": 179.8
+  },
+  "run_id": "20261110T230412Z-b35e302a",
+  "scan_ms": {
+    "kind": "measured",
+    "value": 12.978
+  },
+  "schema": "theforge/RunTelemetry/v1",
+  "semantic_planner_calls": {
+    "kind": "unknown",
+    "value": null
+  },
+  "semantic_resolver_calls": {
+    "kind": "unknown",
+    "value": null
+  },
+  "skill_bytes": {
+    "kind": "unknown",
+    "value": null
+  },
+  "skills_considered": {
+    "kind": "unknown",
+    "value": null
+  },
+  "skills_loaded": {
+    "kind": "unknown",
+    "value": null
+  },
+  "spans": [
+    {
+      "attributes": {},
+      "duration_ms": 12.978,
+      "id": "s1",
+      "name": "scan",
+      "parent": null,
+      "start_ms": 0.0,
+      "status": "ok"
+    },
+    {
+      "attributes": {},
+      "duration_ms": 179.8,
+      "id": "s2",
+      "name": "routing",
+      "parent": null,
+      "start_ms": 13.338,
+      "status": "ok"
+    },
+    {
+      "attributes": {},
+      "duration_ms": 0.011,
+      "id": "s3",
+      "name": "synthesis",
+      "parent": null,
+      "start_ms": 195.09,
+      "status": "ok"
+    }
+  ],
+  "subagent_calls": {
+    "kind": "unknown",
+    "value": null
+  },
+  "unknowns": [
+    "agent_calls",
+    "bytes_hashed",
+    "cache_hits",
+    "cache_misses",
+    "context_bytes",
+    "context_ms",
+    "files_hashed",
+    "files_selected",
+    "knowledge_bytes",
+    "planning_calls",
+    "provider_ms",
+    "semantic_planner_calls",
+    "semantic_resolver_calls",
+    "skill_bytes",
+    "skills_considered",
+    "skills_loaded",
+    "subagent_calls",
+    "verification_calls"
+  ],
+  "verification_calls": {
+    "kind": "unknown",
+    "value": null
+  },
+  "verification_performed": null
+}

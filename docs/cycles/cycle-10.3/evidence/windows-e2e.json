@@ -1,0 +1,13 @@
+{
+  "schema": "api-sentinel/Cycle103Evidence/v1",
+  "status": "PASS_WITH_LIMITATIONS",
+  "truth": "LOCAL_REAL",
+  "run_id": "20261110T230014Z-7286ba79",
+  "passed": 14,
+  "failed": 0,
+  "blocked": 4,
+  "steps": 18,
+  "bundle_entries": 28,
+  "independent_verification": "PASS",
+  "blocked_steps": ["S10", "S12", "S13", "S14"]
+}

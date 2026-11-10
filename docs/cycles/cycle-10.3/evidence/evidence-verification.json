@@ -1,0 +1,10 @@
+{
+  "schema": "api-sentinel/Cycle103Evidence/v1",
+  "status": "PASS",
+  "truth": "LOCAL_REAL",
+  "run_id": "20261110T230014Z-7286ba79",
+  "manifest_entries": 28,
+  "steps": 18,
+  "checkout_verification": "PASS",
+  "independent_copy_verification": "PASS"
+}

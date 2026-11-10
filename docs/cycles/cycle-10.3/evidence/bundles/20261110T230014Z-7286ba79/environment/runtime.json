@@ -1,0 +1,9 @@
+{
+  "schema": "api-sentinel/Cycle103Runtime/v1",
+  "run_id": "20261110T230014Z-7286ba79",
+  "commit": "643f394ae4d3e2246092afc8ccb1a3482354762d",
+  "platform": "win32",
+  "python": "3.12.13",
+  "profile": "federated-local",
+  "truth": "LOCAL_REAL"
+}

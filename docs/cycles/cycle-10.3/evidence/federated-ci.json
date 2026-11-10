@@ -1,0 +1,6 @@
+{
+  "schema": "api-sentinel/Cycle103Evidence/v1",
+  "status": "NOT_RUN",
+  "truth": "NOT_RUN",
+  "reason": "workflow added; hosted dispatch pending after branch push"
+}

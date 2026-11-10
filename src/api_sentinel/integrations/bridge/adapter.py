@@ -361,13 +361,28 @@ class HttpAgentSession:
     def _http_detail(exc: urllib.error.HTTPError) -> str:
         """Named refusal detail from the Bridge's typed error envelope."""
         try:
-            body = json.loads(exc.read().decode("utf-8"))
+            raw_length = exc.headers.get("Content-Length") if exc.headers else None
+            if raw_length:
+                try:
+                    if int(raw_length) > _MAX_RESPONSE_BYTES:
+                        return f"HTTP-{exc.code}: response body exceeds size limit"
+                except (TypeError, ValueError):
+                    # A malformed length must not disable the byte cap.
+                    raw_length = None
+            raw = exc.read(_MAX_RESPONSE_BYTES + 1)
+            if len(raw) > _MAX_RESPONSE_BYTES:
+                return f"HTTP-{exc.code}: response body exceeds size limit"
+            body = json.loads(raw.decode("utf-8"))
+            if not isinstance(body, dict):
+                raise ValueError("Bridge error body is not an object")
             err = body.get("error") or {}
+            if not isinstance(err, dict):
+                raise ValueError("Bridge error envelope is invalid")
             code = err.get("code") or f"HTTP-{exc.code}"
             msg = err.get("message") or exc.reason
-        except (ValueError, OSError):
+        except (ValueError, OSError, UnicodeError):
             code, msg = f"HTTP-{exc.code}", str(exc.reason)
-        return f"{code}: {str(msg)[:300]}"
+        return redact(f"{code}: {str(msg)[:300]}").text
 
 
 def _pair_exchange(base_url: str, pair_token: str, timeout: float) -> str | None:

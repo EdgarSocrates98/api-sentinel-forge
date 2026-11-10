@@ -1,0 +1,8 @@
+{
+  "schema": "api-sentinel/Cycle103Evidence/v1",
+  "status": "PASS",
+  "truth": "LOCAL_REAL",
+  "controls": 40,
+  "breached": 0,
+  "source": "baseline Golden Path S17"
+}

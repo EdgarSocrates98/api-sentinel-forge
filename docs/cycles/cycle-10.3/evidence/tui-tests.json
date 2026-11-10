@@ -1,0 +1,6 @@
+{
+  "schema": "api-sentinel/Cycle103Evidence/v1",
+  "status": "PASS",
+  "truth": "LOCAL_REAL",
+  "command": "uv run pytest -q tests/integration/test_tui.py tests/integration/test_cycle103_hardening.py"
+}

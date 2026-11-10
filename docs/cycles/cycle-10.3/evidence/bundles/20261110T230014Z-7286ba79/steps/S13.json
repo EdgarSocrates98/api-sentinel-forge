@@ -1,0 +1,69 @@
+{
+  "id": "S13",
+  "command": "integrations status + forge_lens probe + refs manifest check",
+  "input": {},
+  "output": {
+    "forge_lens_importable": false,
+    "integrations": [
+      {
+        "forge": "api-forge",
+        "state": "unverified",
+        "mode": "handoff_file",
+        "reason": "apiforge not importable \u2014 implementation-request envelopes emit under handoffs/ for a separately-run peer; the Sentinel never edits API Forge's code"
+      },
+      {
+        "forge": "code-atlas-forge",
+        "state": "unavailable",
+        "mode": "db",
+        "reason": "no Atlas index at <home>\\.local\\code-atlas\\atlas.db \u2014 run `code-atlas index <repo> --domains api` and point the workspace config at the store"
+      },
+      {
+        "forge": "data-sentinel-forge",
+        "state": "unverified",
+        "mode": "handoff_file",
+        "reason": "data_sentinel not importable \u2014 stale-data handoffs emit envelopes under handoffs/ for a separately-run peer; generic telemetry never leaves"
+      },
+      {
+        "forge": "forge-agent-bridge",
+        "state": "unverified",
+        "mode": "file",
+        "reason": "forge_agent_bridge not importable \u2014 governed session requests emit envelopes under agent_sessions/ for a separately-run Bridge; the peer is unconfirmed"
+      },
+      {
+        "forge": "forge-doctor-api",
+        "state": "available",
+        "mode": "in_process",
+        "reason": "forge_doctor_api importable \u2014 in-process delegation through DoctorBoundary"
+      },
+      {
+        "forge": "forge-lens",
+        "state": "unavailable",
+        "mode": "file",
+        "reason": "forge_lens not importable \u2014 set integrations.lens.refs to an exported refs manifest for trace references"
+      },
+      {
+        "forge": "the-forge",
+        "state": "available",
+        "mode": "local_boundary",
+        "reason": "the Sentinel's forge/v1 provider seam lives in this process \u2014 describe/health/capabilities/execute are local"
+      }
+    ],
+    "detail": "importable=False, no refs manifest configured"
+  },
+  "process": {},
+  "ts": "2026-11-10T23:04:13.018117+00:00",
+  "status": "blocked",
+  "commit": "643f394ae4d3e2246092afc8ccb1a3482354762d",
+  "version": "",
+  "provider": "forge-lens",
+  "workspace": "<checkout>\\lab\\run\\fed\\20261110T230014Z-7286ba79\\proj\\.api-sentinel",
+  "artifacts": [],
+  "hashes": {},
+  "errors": [],
+  "limitations": [
+    "no forge-lens provider and no exported refs manifest on this host \u2014 trace refs are Lens-owned; absent \u2192 named unavailable, never fabricated",
+    "operator instructions: export a refs manifest via forge-lens, then set `integrations.lens.refs` in config.yaml"
+  ],
+  "truth": "BLOCKED",
+  "finished_at": "2026-11-10T23:04:14.126203+00:00"
+}

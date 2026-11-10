@@ -1,0 +1,33 @@
+{
+  "id": "S14",
+  "command": "serve sentinel ws \u2192 stdlib same-origin /sentinel proxy \u2192 playwright (system python) through the real bundle",
+  "input": {},
+  "output": {
+    "playwright_probe": {
+      "argv": [
+        "<checkout>\\.venv\\Scripts\\python.EXE",
+        "-c",
+        "import playwright"
+      ],
+      "rc": 1,
+      "stdout": "",
+      "stderr": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nModuleNotFoundError: No module named 'playwright'\n"
+    },
+    "detail": "Playwright runtime unavailable"
+  },
+  "process": {},
+  "ts": "2026-11-10T23:04:14.127235+00:00",
+  "status": "blocked",
+  "commit": "643f394ae4d3e2246092afc8ccb1a3482354762d",
+  "version": "",
+  "provider": "forge-portal",
+  "workspace": "<checkout>\\lab\\run\\fed\\20261110T230014Z-7286ba79\\proj\\.api-sentinel",
+  "artifacts": [],
+  "hashes": {},
+  "errors": [],
+  "limitations": [
+    "Playwright is not installed in the selected browser runtime"
+  ],
+  "truth": "BLOCKED",
+  "finished_at": "2026-11-10T23:04:14.239626+00:00"
+}

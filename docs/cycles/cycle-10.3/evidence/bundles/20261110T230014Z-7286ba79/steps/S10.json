@@ -1,0 +1,26 @@
+{
+  "id": "S10",
+  "command": "correlate --service-id svc_01M73V2ATCG3TXP9R2Y82JS4W1 with integrations.atlas.db_path=<home>\\.local\\code-atlas\\atlas.db (incident context: inc_bbf081ab185a966554db9ae3)",
+  "input": {},
+  "output": {
+    "structural_edges": 0,
+    "status": "BLOCKED",
+    "reason": "optional Code Atlas database unavailable",
+    "detail": "real atlas.db unavailable"
+  },
+  "process": {},
+  "ts": "2026-11-10T23:04:10.525872+00:00",
+  "status": "blocked",
+  "commit": "643f394ae4d3e2246092afc8ccb1a3482354762d",
+  "version": "",
+  "provider": "code-atlas",
+  "workspace": "<checkout>\\lab\\run\\fed\\20261110T230014Z-7286ba79\\proj\\.api-sentinel",
+  "artifacts": [],
+  "hashes": {},
+  "errors": [],
+  "limitations": [
+    "Code Atlas database unavailable at <home>\\.local\\code-atlas\\atlas.db; no provider claim made"
+  ],
+  "truth": "BLOCKED",
+  "finished_at": "2026-11-10T23:04:10.525872+00:00"
+}

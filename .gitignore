@@ -27,6 +27,7 @@ lab/bench/datasets/
 
 # Federated E2E run artifacts (reproducible — see lab/federated_e2e.py)
 lab/run/
+.codebase-memory/
 
 # Kiro local spec workflow (working memory, not committed)
 .kiro/

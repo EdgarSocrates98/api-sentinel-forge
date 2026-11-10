@@ -30,7 +30,16 @@ import argparse
 import hashlib
 import json
 import sys
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
+
+MAX_MANIFEST_BYTES = 4 * 1024 * 1024
+MAX_RECEIPT_BYTES = 16 * 1024 * 1024
+MAX_FILE_BYTES = 32 * 1024 * 1024
+VALID_STATUSES = {"pass", "fail", "blocked", "not_run"}
+VALID_TRUTHS = {
+    "LOCAL_REAL", "INTEGRATION_REAL", "EXTERNAL_REAL", "FIXTURE",
+    "SIMULATED", "NOT_RUN", "BLOCKED",
+}
 
 
 def _sha256(path: Path) -> str:
@@ -41,7 +50,44 @@ def _sha256(path: Path) -> str:
     return f"sha256:{h.hexdigest()}"
 
 
+def _read_json_limited(path: Path, limit: int) -> object:
+    if not path.is_file():
+        raise OSError(f"not a regular file: {path}")
+    if path.stat().st_size > limit:
+        raise ValueError(f"file exceeds {limit} bytes: {path}")
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _relative_target(root: Path, raw: object) -> tuple[str, Path] | tuple[None, None]:
+    rel = str(raw or "").replace("\\", "/")
+    if not rel or "\x00" in rel:
+        return None, None
+    # PureWindowsPath catches drive-qualified paths even when the verifier
+    # itself runs on Linux.
+    if Path(rel).is_absolute() or PureWindowsPath(rel).is_absolute():
+        return None, None
+    parts = Path(rel).parts
+    if any(part in ("", ".", "..") for part in parts):
+        return None, None
+    candidate = root.joinpath(*parts)
+    # Reject symlinks before opening anything.  resolve() then protects
+    # against a symlink in an ancestor not visible from the lexical path.
+    cursor = root
+    for part in parts:
+        cursor = cursor / part
+        if cursor.is_symlink():
+            return None, None
+    target = candidate.resolve()
+    try:
+        target.relative_to(root)
+    except ValueError:
+        return None, None
+    return "/".join(parts), target
+
+
 def main() -> int:
+    sys.stdout.reconfigure(errors="replace")
+    sys.stderr.reconfigure(errors="replace")
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--receipt", type=Path, required=True)
     parser.add_argument("--manifest", type=Path, required=True)
@@ -56,16 +102,19 @@ def main() -> int:
     failures: list[str] = []
 
     try:
-        manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
+        manifest = _read_json_limited(args.manifest, MAX_MANIFEST_BYTES)
     except (OSError, ValueError) as exc:
         print(f"FATAL manifest unreadable: {exc}")
         return 2
     try:
-        receipt = json.loads(args.receipt.read_text(encoding="utf-8"))
+        receipt = _read_json_limited(args.receipt, MAX_RECEIPT_BYTES)
     except (OSError, ValueError) as exc:
         print(f"FATAL receipt unreadable: {exc}")
         return 2
 
+    if not isinstance(manifest, dict):
+        failures.append("manifest must be a JSON object")
+        manifest = {}
     if manifest.get("schema") != "api-sentinel/EvidenceManifest/v1":
         failures.append(
             f"manifest schema {manifest.get('schema')!r} is not "
@@ -79,29 +128,58 @@ def main() -> int:
     # 1 — every manifest entry verifies byte-for-byte
     manifest_paths: set[str] = set()  # forward-slash normalized
     for entry in entries:
-        rel = str(entry.get("path", "")).replace("\\", "/")
-        manifest_paths.add(rel)
-        target = (root / rel).resolve()
-        if not str(target).startswith(str(root)):
-            failures.append(f"{rel}: escapes the declared root")
+        if not isinstance(entry, dict):
+            failures.append("manifest entry is not an object")
             continue
+        rel, target = _relative_target(root, entry.get("path"))
+        if rel is None or target is None:
+            failures.append(f"{entry.get('path')!r}: invalid or escaping path")
+            continue
+        if rel in manifest_paths:
+            failures.append(f"{rel}: duplicate manifest path")
+            continue
+        manifest_paths.add(rel)
         if not target.is_file():
             failures.append(f"{rel}: missing on disk")
+            continue
+        size = target.stat().st_size
+        declared_size = entry.get("bytes")
+        if not isinstance(declared_size, int) or declared_size < 0:
+            failures.append(f"{rel}: invalid byte size")
+            continue
+        if size > MAX_FILE_BYTES:
+            failures.append(f"{rel}: file exceeds {MAX_FILE_BYTES} bytes")
             continue
         digest = _sha256(target)
         if digest != entry.get("sha256"):
             failures.append(f"{rel}: sha256 mismatch "
                             f"({entry.get('sha256')} != {digest})")
-        size = target.stat().st_size
-        if size != entry.get("bytes"):
+        if size != declared_size:
             failures.append(f"{rel}: byte size mismatch "
-                            f"({entry.get('bytes')} != {size})")
+                            f"({declared_size} != {size})")
 
+    if not isinstance(receipt, dict):
+        failures.append("receipt must be a JSON object")
+        receipt = {}
     steps = receipt.get("steps") or []
     if not isinstance(steps, list):
         failures.append("receipt 'steps' is not a list")
         steps = []
-    step_ids = [str(s.get("id")) for s in steps if isinstance(s, dict)]
+    step_ids: list[str] = []
+    for s in steps:
+        if not isinstance(s, dict):
+            failures.append("receipt step is not an object")
+            continue
+        sid = str(s.get("id") or "")
+        if not sid.startswith("S") or not sid[1:].isdigit():
+            failures.append(f"invalid step id: {sid!r}")
+        if s.get("status") not in VALID_STATUSES:
+            failures.append(f"step {sid}: invalid status {s.get('status')!r}")
+        if s.get("truth") not in VALID_TRUTHS:
+            failures.append(f"step {sid}: invalid truth {s.get('truth')!r}")
+        step_ids.append(sid)
+    if len(step_ids) != len(set(step_ids)):
+        failures.append("receipt contains duplicate step ids")
 
     # 2 — every embedded step has a manifest entry
     for sid in step_ids:
@@ -123,7 +201,10 @@ def main() -> int:
         )
         if rel is None:
             continue
-        target = (root / rel).resolve()
+        _, target = _relative_target(root, rel)
+        if target is None:
+            failures.append(f"steps/{sid}.json: invalid manifest path")
+            continue
         try:
             on_disk = json.loads(target.read_text(encoding="utf-8"))
         except (OSError, ValueError) as exc:
@@ -134,11 +215,16 @@ def main() -> int:
 
     # 4 — no step file on disk goes unmanifested
     steps_dirs = {
-        (root / rel).parent for rel in manifest_paths if "steps/" in rel
+        (root / rel).parent for rel in manifest_paths
+        if Path(rel).parts and Path(rel).parts[0] == "steps"
     }
     for d in steps_dirs:
         for f in d.glob("S*.json"):
-            rel_f = str(f.resolve().relative_to(root)).replace("\\", "/")
+            try:
+                rel_f = str(f.resolve().relative_to(root)).replace("\\", "/")
+            except ValueError:
+                failures.append(f"{f}: step file escapes root")
+                continue
             if rel_f not in manifest_paths:
                 failures.append(f"{rel_f}: step file not in manifest")
 
