@@ -148,7 +148,7 @@ def test_missing_textual_is_named_error(tmp_path: Path, monkeypatch) -> None:
     )
     from api_sentinel.domain import ValidationError
 
-    with pytest.raises(ValidationError, match="tui.*extra") as ei:
+    with pytest.raises(ValidationError, match=r"tui.*extra") as ei:
         run(workspace=str(tmp_path))
     assert "tui]" in ei.value.details["install"]
     assert textual_available()  # sanity: real env has the extra
