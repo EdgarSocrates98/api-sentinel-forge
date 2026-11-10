@@ -3,7 +3,11 @@
 The required Golden Path is S1–S18 with real local traffic, deep recovery
 parity, independent bundle verification, and cleanup. A previous diagnostic
 run with zero traffic is not release evidence. A later run that used a stale
-pre-fix wheel is also excluded. Corrected run `20261110T230014Z-7286ba79` is
-the valid Windows evidence: 14 PASS, 0 FAIL, 4 BLOCKED, 18/18 steps in the
-portable bundle, and independent verification passed from the checkout and
-from a copied bundle root.
+pre-fix wheel is also excluded.
+
+Corrected Windows run `20261110T230014Z-7286ba79` is retained as local runtime
+evidence: 14 PASS, 0 FAIL, 4 BLOCKED. The canonical distributed bundle is the
+Linux CI artifact from run `42924480632`, bundle run
+`20261110T233447Z-3cb3cbc3`: 14 PASS, 0 FAIL, 4 BLOCKED, 18/18 steps, 28
+manifest entries, and independent verification passed after download outside
+the runner.

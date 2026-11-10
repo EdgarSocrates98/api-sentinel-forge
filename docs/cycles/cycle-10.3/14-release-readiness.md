@@ -3,8 +3,8 @@
 Current decision: **CONDITIONAL GO with explicit external/runtime limitations**.
 
 The local core and corrected Windows Golden Path are healthy. Core matrix run
-`42922701461` passed on Windows and Linux, and fixed-revision federated run
-`42922701484` passed with 14 PASS, 0 FAIL, and S10/S12/S13/S14 explicitly
+`42924480581` passed on Windows and Linux, and fixed-revision federated run
+`42924480632` passed with 14 PASS, 0 FAIL, and S10/S12/S13/S14 explicitly
 BLOCKED by unavailable Atlas/browser/provider resources. They are not claimed
 as homologated. No release publication is authorized by this document.
 

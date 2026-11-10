@@ -6,7 +6,7 @@
 * Portal browser evidence is blocked when the selected Python lacks Playwright.
 * Bridge provider and Lens provider execution require external authorization.
 * Hosted CI and PR checks are recorded against final PR HEAD
-  `b000480944ea9bf5ca9dd2ce562b215483ce2b40`; merge-to-main revalidation is
+  `7d83d97b2a290732542d9db3f0bb258294e24ce7`; merge-to-main revalidation is
   still required before release closure.
 
 These are explicit BLOCKED/NOT_RUN states, not approvals.

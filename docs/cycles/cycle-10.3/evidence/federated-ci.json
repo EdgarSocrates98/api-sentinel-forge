@@ -2,9 +2,9 @@
   "schema": "api-sentinel/Cycle103Evidence/v1",
   "status": "PASS_WITH_LIMITATIONS",
   "truth": "INTEGRATION_REAL",
-  "head": "b000480944ea9bf5ca9dd2ce562b215483ce2b40",
-  "core_run_id": "42922701461",
-  "federated_run_id": "42922701484",
+  "head": "7d83d97b2a290732542d9db3f0bb258294e24ce7",
+  "core_run_id": "42924480581",
+  "federated_run_id": "42924480632",
   "jobs": [
     "ubuntu-latest / py3.12",
     "windows-latest / py3.12",
@@ -14,7 +14,8 @@
   "federated_workflow": "PASS",
   "federated_job": "PASS",
   "artifact": "cycle-10.3-federated-evidence",
-  "artifact_id": "13812257911",
+  "artifact_id": "13814110653",
+  "bundle_run_id": "20261110T233447Z-3cb3cbc3",
   "golden_path": {
     "passed": 14,
     "failed": 0,
