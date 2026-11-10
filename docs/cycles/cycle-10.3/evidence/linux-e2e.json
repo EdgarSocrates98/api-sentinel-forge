@@ -1,6 +1,19 @@
 {
   "schema": "api-sentinel/Cycle103Evidence/v1",
-  "status": "NOT_RUN",
-  "truth": "NOT_RUN",
-  "reason": "Linux evidence requires hosted Linux execution"
+  "status": "PASS_WITH_LIMITATIONS",
+  "truth": "INTEGRATION_REAL",
+  "head": "b000480944ea9bf5ca9dd2ce562b215483ce2b40",
+  "run_id": "42922701484",
+  "job": "130201255367",
+  "passed": 14,
+  "failed": 0,
+  "blocked": 4,
+  "blocked_steps": ["S10", "S12", "S13", "S14"],
+  "bundle_verification": "PASS",
+  "artifact": "cycle-10.3-federated-evidence",
+  "limitations": [
+    "Atlas database unavailable in the runner.",
+    "Bridge/Lens providers were not authorized.",
+    "Playwright browser runtime was unavailable."
+  ]
 }

@@ -1,12 +1,11 @@
 # Release readiness
 
-Current decision: **CONDITIONAL GO pending hosted Linux/CI evidence**.
+Current decision: **CONDITIONAL GO with explicit external/runtime limitations**.
 
-The local core and corrected Windows Golden Path are healthy, and the hosted
-core matrix passed on both Windows and Linux in run `42921827462`. The cycle
-remains open until the final peer revision matrix and the federated workflow
-run are evidenced. S10/S12/S13/S14 remain explicitly
-blocked by unavailable Atlas/browser/provider resources; they are not claimed
+The local core and corrected Windows Golden Path are healthy. Core matrix run
+`42922701461` passed on Windows and Linux, and fixed-revision federated run
+`42922701484` passed with 14 PASS, 0 FAIL, and S10/S12/S13/S14 explicitly
+BLOCKED by unavailable Atlas/browser/provider resources. They are not claimed
 as homologated. No release publication is authorized by this document.
 
 Cycle 11 planning only:

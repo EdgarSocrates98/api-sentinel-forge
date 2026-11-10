@@ -23,6 +23,10 @@ jobs:
     steps:
       - name: Checkout Sentinel
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          # The bundle must identify the exact submitted head, never the
+          # synthetic pull-request merge revision.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Checkout fixed peers
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -79,18 +83,24 @@ jobs:
           uv pip install --python .venv/bin/python peers/the-forge peers/forge-doctor-api
 
       - name: Run fixed-revision federated Golden Path
+        id: e2e
         shell: bash
         env:
           FORGE_DOCTOR_DIR: ${{ github.workspace }}/peers/forge-doctor-api
           FORGE_PORTAL_DIR: ${{ github.workspace }}/peers/forge-portal
           THEFORGE_BIN: ${{ github.workspace }}/.venv/bin/theforge
-        run: uv run python lab/federated_e2e.py
+        run: |
+          set -euo pipefail
+          uv run python lab/federated_e2e.py
+          bundle=$(find docs/cycles/cycle-10.3/evidence/bundles -mindepth 1 -maxdepth 1 -type d | sort | tail -1)
+          test -n "$bundle"
+          echo "bundle=$bundle" >> "$GITHUB_OUTPUT"
 
       - name: Verify produced bundle independently
         shell: bash
         run: |
           set -euo pipefail
-          bundle=$(find docs/cycles/cycle-10.3/evidence/bundles -mindepth 1 -maxdepth 1 -type d | sort | tail -1)
+          bundle="${{ steps.e2e.outputs.bundle }}"
           test -n "$bundle"
           uv run python lab/verify_evidence.py \
             --receipt "$bundle/federated-e2e-receipt.json" \
@@ -102,4 +112,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cycle-10.3-federated-evidence
-          path: docs/cycles/cycle-10.3/evidence/bundles
+          path: ${{ steps.e2e.outputs.bundle }}
