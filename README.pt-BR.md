@@ -58,3 +58,12 @@ Ciclos 2–4 (ver `factory/specs/inbox/`).
 ## Licença
 
 Apache-2.0 — ver `LICENSE`.
+# Status operacional do Cycle 10.2
+
+As evidências de recuperação e segurança estão em
+[`docs/cycles/cycle-10.2/`](docs/cycles/cycle-10.2/). Use `api-sentinel install`
+para criar o workspace, `api-sentinel tui` para o painel no terminal e
+`api-sentinel backup create` / `api-sentinel backup restore --from <dir>` para
+recuperação verificada. Um restore recusa um workspace ocupado sem `--force`
+explícito. A decisão atual é `CONDITIONAL GO`: os providers opcionais Bridge e
+Lens e a verificação Linux hospedada permanecem limitações nomeadas.

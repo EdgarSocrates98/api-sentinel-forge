@@ -1,0 +1,1 @@
+{"schema":"api-sentinel/cycle-10.2/portal/v1","result":"PASS","truth":"INTEGRATION_REAL","browser_steps":4,"limitation":"local served bundle; hosted CI still required"}

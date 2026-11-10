@@ -22,8 +22,10 @@ providers, approvals, budgets, storage and execution.
 from __future__ import annotations
 
 import importlib.util
+import ipaddress
 import json
 import os
+import socket
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -44,6 +46,83 @@ from api_sentinel.investigation.agent_session import (
 
 BRIDGE_FORGE = "forge-agent-bridge"
 BRIDGE_MODULE = "forge_agent_bridge"
+_MAX_RESPONSE_BYTES = 1 << 20
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Never replay a bearer-bearing request to a new origin."""
+
+    def redirect_request(
+        self,
+        req: Any,
+        fp: Any,
+        code: int,
+        msg: str,
+        headers: Any,
+        newurl: str,
+    ) -> Any:
+        raise urllib.error.HTTPError(
+            req.full_url,
+            code,
+            "redirect refused by Bridge transport policy",
+            headers,
+            fp,
+        )
+
+
+def _validate_loopback_url(base_url: str) -> urllib.parse.ParseResult:
+    parsed = urllib.parse.urlparse(base_url)
+    host = (parsed.hostname or "").lower()
+    if (
+        parsed.scheme not in ("http", "https")
+        or not host
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise ValueError(
+            "bridge base_url must be loopback http(s) without credentials, "
+            f"query or fragment: {base_url!r}"
+        )
+    try:
+        resolved = {
+            ipaddress.ip_address(info[4][0])
+            for info in socket.getaddrinfo(host, parsed.port, type=socket.SOCK_STREAM)
+        }
+    except (OSError, ValueError) as exc:
+        raise ValueError(f"bridge host does not resolve safely: {host!r}") from exc
+    if not resolved or not all(address.is_loopback for address in resolved):
+        raise ValueError(
+            "bridge base_url must resolve exclusively to loopback addresses: "
+            f"{base_url!r}"
+        )
+    return parsed
+
+
+def _open_local(req: urllib.request.Request, timeout: float) -> Any:
+    """Open a loopback request with proxy use and redirects disabled."""
+    opener = urllib.request.build_opener(
+        urllib.request.ProxyHandler({}),
+        _NoRedirect(),
+    )
+    return opener.open(req, timeout=timeout)
+
+
+def _read_json_object(resp: Any) -> dict[str, Any]:
+    content_type = resp.headers.get_content_type()
+    if content_type != "application/json":
+        raise ValueError(f"unexpected Bridge content type: {content_type}")
+    raw_length = resp.headers.get("Content-Length")
+    if raw_length and int(raw_length) > _MAX_RESPONSE_BYTES:
+        raise ValueError("Bridge response exceeds the configured size limit")
+    raw = resp.read(_MAX_RESPONSE_BYTES + 1)
+    if len(raw) > _MAX_RESPONSE_BYTES:
+        raise ValueError("Bridge response exceeds the configured size limit")
+    value = json.loads(raw.decode("utf-8"))
+    if not isinstance(value, dict):
+        raise ValueError("Bridge response must be a JSON object")
+    return value
 
 
 def bridge_importable() -> bool:
@@ -140,15 +219,7 @@ class HttpAgentSession:
         *,
         timeout_seconds: float = 30.0,
     ) -> None:
-        parsed = urllib.parse.urlparse(base_url)
-        host = (parsed.hostname or "").lower()
-        if parsed.scheme not in ("http", "https") or host not in (
-            "127.0.0.1", "::1", "localhost",
-        ):
-            raise ValueError(
-                "bridge base_url must be loopback http(s) — the local "
-                f"service binds loopback only; got {base_url!r}"
-            )
+        _validate_loopback_url(base_url)
         self._base = base_url.rstrip("/")
         self._bearer = bearer
         self._timeout = timeout_seconds
@@ -157,8 +228,19 @@ class HttpAgentSession:
         self, request: AgentSessionRequest
     ) -> AgentSessionResult:
         gov = request.governance
+        if not gov.provider:
+            return AgentSessionResult(
+                status=STATUS_REFUSED,
+                detail=(
+                    "provider selection is required; the Sentinel will not "
+                    "silently substitute a fake provider"
+                ),
+                session_request_id=request.session_request_id,
+                governance=gov,
+                unknowns=["provider_not_selected"],
+            )
         body = {
-            "provider": gov.provider or "fake",
+            "provider": gov.provider,
             "workspace_id": gov.workspace,
             "model": gov.model,
             "title": (
@@ -201,10 +283,8 @@ class HttpAgentSession:
             },
         )
         try:
-            with urllib.request.urlopen(  # noqa: S310 — loopback-only, validated in __init__
-            req, timeout=self._timeout
-        ) as resp:
-                out = json.loads(resp.read().decode("utf-8"))
+            with _open_local(req, self._timeout) as resp:
+                out = _read_json_object(resp)
         except urllib.error.HTTPError as exc:
             detail = self._http_detail(exc)
             status = (
@@ -225,6 +305,13 @@ class HttpAgentSession:
                 session_request_id=request.session_request_id,
                 governance=gov,
             )
+        except (UnicodeError, ValueError) as exc:
+            return AgentSessionResult(
+                status=STATUS_FAILED,
+                detail=f"invalid_response: {str(exc)[:200]}",
+                session_request_id=request.session_request_id,
+                governance=gov,
+            )
         except (urllib.error.URLError, OSError) as exc:
             return AgentSessionResult(
                 status=STATUS_UNAVAILABLE,
@@ -234,10 +321,24 @@ class HttpAgentSession:
                 unknowns=["bridge_transport_unreachable"],
             )
         session_id = out.get("id") or out.get("session_id")
-        if not session_id:
+        if not isinstance(session_id, str) or not 1 <= len(session_id) <= 256:
             return AgentSessionResult(
                 status=STATUS_FAILED,
                 detail="invalid_response: bridge 201 without a session id",
+                session_request_id=request.session_request_id,
+                governance=gov,
+            )
+        if out.get("workspace_id") not in (None, gov.workspace):
+            return AgentSessionResult(
+                status=STATUS_FAILED,
+                detail="invalid_response: workspace identity mismatch",
+                session_request_id=request.session_request_id,
+                governance=gov,
+            )
+        if out.get("provider") not in (None, body["provider"]):
+            return AgentSessionResult(
+                status=STATUS_FAILED,
+                detail="invalid_response: provider identity mismatch",
                 session_request_id=request.session_request_id,
                 governance=gov,
             )
@@ -283,11 +384,10 @@ def _pair_exchange(base_url: str, pair_token: str, timeout: float) -> str | None
                  "Origin": "http://127.0.0.1"},
     )
     try:
-        with urllib.request.urlopen(  # noqa: S310 — loopback-only, validated by caller
-            req, timeout=timeout
-        ) as resp:
-            out = json.loads(resp.read().decode("utf-8"))
-    except (urllib.error.URLError, OSError, ValueError, TimeoutError):
+        _validate_loopback_url(base_url)
+        with _open_local(req, timeout) as resp:
+            out = _read_json_object(resp)
+    except (urllib.error.URLError, OSError, ValueError, TimeoutError, UnicodeError):
         return None
     token = out.get("session_token")
     return str(token) if token else None

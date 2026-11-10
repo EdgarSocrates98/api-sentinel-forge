@@ -120,6 +120,20 @@ def test_notice_command_never_invokes_cli(tmp_path: Path) -> None:
     asyncio.run(go())
 
 
+def test_untrusted_log_text_is_not_parsed_as_rich_markup(tmp_path: Path) -> None:
+    async def go() -> None:
+        app = _pilot_app(tmp_path)
+        async with app.run_test() as pilot:
+            await app._refresh("commands")
+            await pilot.pause()
+            app._logline("[red]external payload[/]")
+            await pilot.pause()
+            lines = app.query_one("#out").lines
+            assert "[red]external payload[/]" in str(lines[-1])
+
+    asyncio.run(go())
+
+
 def test_wizard_required_field_blocks() -> None:
     cmd = next(
         c for c in CATALOG if c.label.startswith("incident ack")

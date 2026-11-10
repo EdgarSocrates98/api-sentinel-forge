@@ -11,6 +11,7 @@ Design rules inherited from the core invariants:
 
 from __future__ import annotations
 
+from rich.text import Text
 from textual import work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -269,7 +270,10 @@ class SentinelApp(App[None]):
 
     def _open_wizard(self, cmd: Command) -> None:
         if cmd.notice:
-            self._logline(f"[yellow]{cmd.label}[/]\n{cmd.notice}")
+            self._logline(
+                f"[yellow]{cmd.label}[/]\n{cmd.notice}",
+                markup=True,
+            )
             return
         if not cmd.fields:
             self._run_command(cmd, {})
@@ -280,26 +284,36 @@ class SentinelApp(App[None]):
 
         self.push_screen(WizardScreen(cmd), _on_wizard_done)
 
-    def _logline(self, text: str) -> None:
+    def _logline(self, text: str, *, markup: bool = False) -> None:
+        """Write one line without interpreting untrusted output as markup.
+
+        CLI output, exception text, observations and provider responses are
+        external data.  Passing them as a ``Text`` renderable keeps Rich's
+        trusted presentation markup available for static UI messages while
+        preventing markup or terminal-control payloads from being parsed.
+        """
         import contextlib
 
         # off the commands panel there is no log sink — drop silently.
         with contextlib.suppress(Exception):
-            self.query_one("#out", RichLog).write(text)
+            renderable = Text.from_markup(text) if markup else Text(text)
+            self.query_one("#out", RichLog).write(renderable)
 
     @work(thread=True)
     def _run_command(self, cmd: Command, values: dict[str, str]) -> None:
         argv = build_argv(cmd, values, ws=self.ws_arg)
-        self._logline(f"[bold cyan]$ api-sentinel {' '.join(argv)}[/]")
+        self._logline(f"$ api-sentinel {' '.join(argv)}")
         result = CliRunner().invoke(cli_app, argv)
         out = result.output.strip() or "(no output)"
         status = "[green]ok[/]" if result.exit_code == 0 else (
             f"[red]exit {result.exit_code}[/]"
         )
-        self._logline(f"{status}\n{out}")
+        self._logline(status, markup=True)
+        self._logline(out)
         if result.exit_code != 0 and result.exception:
-            self._logline(f"[red]{type(result.exception).__name__}: "
-                    f"{result.exception}[/]")
+            self._logline(
+                f"{type(result.exception).__name__}: {result.exception}"
+            )
         # Refresh data panels the command may have touched — but never the
         # commands panel itself: rebuilding it would wipe the output log.
         if getattr(self, "_current", "dash") != "commands":

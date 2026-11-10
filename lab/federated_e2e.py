@@ -44,6 +44,7 @@ import shutil
 import socket
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 import urllib.error
@@ -58,16 +59,41 @@ ROOT = Path(__file__).resolve().parent.parent
 RUN = ROOT / "lab" / "run" / "fed"
 DEMO_API = ROOT / "lab" / "demo_api"
 FIXTURES = ROOT / "lab" / "fixtures"
-EVIDENCE = ROOT / "docs" / "cycles" / "cycle-10.1" / "evidence"
+EVIDENCE = ROOT / "docs" / "cycles" / "cycle-10.2" / "evidence"
 VENV_PY = ROOT / ".venv" / "Scripts" / "python.exe"
-SYSTEM_PY_PLAYWRIGHT = Path(r"C:\Python314\python.exe")
-PORTAL_REPO = ROOT.parent / "forge-portal"
-PORTAL_BUNDLE = PORTAL_REPO / "dist" / "forge-portal-app" / "browser"
-THEFORGE = ROOT.parent / "the-forge" / ".venv" / "Scripts" / "theforge.exe"
-AWS_EXE = Path(
-    r"C:\Users\edgar\AppData\Local\Programs\Amazon\AWSCLIV2\aws.exe"
+
+
+def _configured_path(env_name: str, fallback: Path) -> Path:
+    """Resolve an optional checkout/tool without making host paths required."""
+    value = os.environ.get(env_name)
+    return Path(value) if value else fallback
+
+
+def _configured_executable(
+    env_name: str, command: str, fallback: Path
+) -> Path:
+    value = os.environ.get(env_name)
+    if value:
+        return Path(value)
+    discovered = shutil.which(command)
+    return Path(discovered) if discovered else fallback
+
+
+SYSTEM_PY_PLAYWRIGHT = _configured_executable(
+    "FORGE_PLAYWRIGHT_PYTHON", "python", Path(sys.executable)
 )
-ATLAS_DB = Path(r"C:\Users\edgar\AppData\Local\code-atlas\atlas.db")
+PORTAL_REPO = _configured_path("FORGE_PORTAL_DIR", ROOT.parent / "forge-portal")
+PORTAL_BUNDLE = PORTAL_REPO / "dist" / "forge-portal-app" / "browser"
+THEFORGE = _configured_executable(
+    "THEFORGE_BIN", "theforge",
+    ROOT.parent / "the-forge" / ".venv" / "Scripts" / "theforge.exe",
+)
+AWS_EXE = _configured_executable(
+    "AWS_CLI", "aws", ROOT / "missing-optional-aws-cli"
+)
+ATLAS_DB = _configured_path(
+    "CODE_ATLAS_DB", Path.home() / ".local" / "code-atlas" / "atlas.db"
+)
 ATLAS_REPO_KEY = (
     "git-remote:https://github.com/EdgarSocrates98/api-sentinel-forge.git"
     "@lab/fixtures/atlas-repo"
@@ -75,9 +101,15 @@ ATLAS_REPO_KEY = (
 ATLAS_SERVICE_IDENTITY = "service.app#app"  # indexed fixture api_service
 EXPECTED_AWS_ACCOUNT = "702561771161"
 
-DEMO_PORT = 8320
-DEP_PORT = 8330
-SENTINEL_PORT = 8317
+def _free_port() -> int:
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        return int(sock.getsockname()[1])
+
+
+DEMO_PORT = int(os.environ.get("FORGE_DEMO_PORT") or _free_port())
+DEP_PORT = int(os.environ.get("FORGE_DEP_PORT") or _free_port())
+SENTINEL_PORT = int(os.environ.get("FORGE_SENTINEL_PORT") or _free_port())
 TOKEN = "fed-e2e-token-" + "0" * 32  # env-channel only; never in URL/DOM
 
 
@@ -1141,7 +1173,12 @@ def s16_backup_restore(ws: Path) -> None:
         bdir = ((c.get("json") or {}).get("backup_dir") or "")
         st.check(c["rc"] == 0 and bdir and Path(bdir).is_dir(),
                  f"backup created: {bdir}")
-        ws2 = RUN / "ws-restored"
+        # Never reuse a restore destination between runs.  Reusing the old
+        # fixed directory made a valid restore refuse the live database and
+        # compared the current workspace with stale rows from a prior run.
+        # A fresh directory preserves the no-overwrite safety contract while
+        # keeping the S16 evidence deterministic and isolated.
+        ws2 = Path(tempfile.mkdtemp(prefix="ws-restored-", dir=RUN))
         r = CLI.run(["backup", "restore", "--from", bdir, "--json"], ws2)
         st.check(r["rc"] == 0 and (r.get("json") or {}).get("integrity") == "ok",
                  f"restore integrity={(r.get('json') or {}).get('integrity')}")
@@ -1219,7 +1256,7 @@ def _write_e18_evidence(
     }
     receipt = {
         "schema": "sentinel-evidence/FederatedE2EReceipt/v1",
-        "cycle": "10.1",
+        "cycle": "10.2",
         "generated_at": utcnow(),
         "generator": "lab/federated_e2e.py",
         "commit": COMMIT,
@@ -1247,7 +1284,7 @@ def _write_e18_evidence(
             })
     manifest = {
         "schema": "api-sentinel/EvidenceManifest/v1",
-        "cycle": "cycle-10.1",
+        "cycle": "cycle-10.2",
         "generated_at": utcnow(),
         "generator": "lab/federated_e2e.py",
         "commit": COMMIT,

@@ -1,0 +1,10 @@
+{
+  "schema": "api-sentinel/cycle-10.2/s16-proof/v1",
+  "status": "PASS",
+  "truth": "LOCAL_REAL",
+  "root_cause": "persistent restore destination reused between runs",
+  "fix": "tempfile.mkdtemp under the run root",
+  "integrity": "ok",
+  "parity": {"services": "PASS", "sources": "PASS", "incidents": "PASS"},
+  "force_used": false
+}

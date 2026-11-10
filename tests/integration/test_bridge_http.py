@@ -138,6 +138,23 @@ def lab_server():
 
 
 class TestLabTransport:
+    def test_missing_provider_is_refused_without_fake_fallback(
+        self, lab_server: str
+    ) -> None:
+        acl = HttpAgentSession(lab_server, "lab-bearer", timeout_seconds=5)
+        request = _request()
+        request = request.model_copy(
+            update={
+                "governance": request.governance.model_copy(
+                    update={"provider": None}
+                )
+            }
+        )
+        result = acl.open_session(request)
+        assert result.status == "refused"
+        assert "provider selection is required" in result.detail
+        assert "fake" in result.detail
+
     def test_delegated_on_201(self, lab_server: str) -> None:
         acl = HttpAgentSession(lab_server, "lab-bearer", timeout_seconds=5)
         r = acl.open_session(_request())
@@ -200,6 +217,19 @@ class TestLabTransport:
         r = acl.open_session(_request())
         assert r.status == "unavailable"
         assert "bridge_transport_unreachable" in r.unknowns
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "http://127.0.0.1:8471/?token=leak",
+            "http://user:pass@127.0.0.1:8471",
+            "http://127.0.0.1:8471/#fragment",
+            "http://192.0.2.1:8471",
+        ],
+    )
+    def test_unsafe_loopback_urls_are_rejected(self, url: str) -> None:
+        with pytest.raises(ValueError):
+            HttpAgentSession(url, "lab-bearer")
 
     def test_pair_exchange_flow(self, lab_server: str,
                                 monkeypatch, tmp_path: Path) -> None:
