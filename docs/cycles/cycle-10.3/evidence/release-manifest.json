@@ -3,10 +3,10 @@
   "status": "CONDITIONAL_GO",
   "truth": "LOCAL_REAL",
   "run_id": "20261110T230014Z-7286ba79",
-  "tested_product_head": "7d83d97b2a290732542d9db3f0bb258294e24ce7",
-  "core_ci_run_id": "42924480581",
-  "federated_ci_run_id": "42924480632",
-  "federated_bundle_run_id": "20261110T233447Z-3cb3cbc3",
+  "tested_product_head": "2231b70b403eda515c5f7a3fa9664802b304a533",
+  "core_ci_run_id": "42926089576",
+  "federated_ci_run_id": "42926089643",
+  "federated_bundle_run_id": "20261110T234647Z-a1ed6368",
   "federated_ci": "PASS",
   "reason": "local core, Windows Golden Path, hosted Windows/Linux core CI, and fixed-revision Linux federated CI pass on the tested product head; optional Atlas, browser, Bridge, and Lens resources remain blocked"
 }

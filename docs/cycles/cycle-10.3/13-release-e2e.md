@@ -7,7 +7,7 @@ pre-fix wheel is also excluded.
 
 Corrected Windows run `20261110T230014Z-7286ba79` is retained as local runtime
 evidence: 14 PASS, 0 FAIL, 4 BLOCKED. The canonical distributed bundle is the
-Linux CI artifact from run `42924480632`, bundle run
-`20261110T233447Z-3cb3cbc3`: 14 PASS, 0 FAIL, 4 BLOCKED, 18/18 steps, 28
+Linux CI artifact from run `42926089643`, bundle run
+`20261110T234647Z-a1ed6368`: 14 PASS, 0 FAIL, 4 BLOCKED, 18/18 steps, 28
 manifest entries, and independent verification passed after download outside
 the runner.

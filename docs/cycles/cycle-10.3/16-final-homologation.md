@@ -1,8 +1,8 @@
 # Final homologation
 
 Status: **CONDITIONAL GO** with explicit external/runtime limitations. Core
-hosted CI run `42924480581` and fixed-revision federated run `42924480632`
-passed against tested product head `7d83d97b2a290732542d9db3f0bb258294e24ce7`.
+hosted CI run `42926089576` and fixed-revision federated run `42926089643`
+passed against tested product head `2231b70b403eda515c5f7a3fa9664802b304a533`.
 
 Windows Golden Path `20261110T230014Z-7286ba79`: 14 PASS, 0 FAIL, 4 BLOCKED;
 S16 deep parity PASS; S18 bundle verification PASS with 28 manifest entries
@@ -20,7 +20,7 @@ before implementation is authorized.
 
 | Repository | Baseline main SHA | Final tested Sentinel SHA | CI / PR | Status |
 |---|---|---|---|---|
-| api-sentinel-forge | `643f394ae4d3e2246092afc8ccb1a3482354762d` | `7d83d97b2a290732542d9db3f0bb258294e24ce7` | PR #6; runs `42924480581`, `42924480632` PASS | CONDITIONAL |
+| api-sentinel-forge | `643f394ae4d3e2246092afc8ccb1a3482354762d` | `2231b70b403eda515c5f7a3fa9664802b304a533` | PR #6; runs `42926089576`, `42926089643` PASS | CONDITIONAL |
 | the-forge | `4f0726f742822224c2fafa0ee9f7aa36b2a778f6` | fixed peer SHA | main CI PASS | PASS peer baseline |
 | forge-portal | `63518efd8fdf1ee458e346fcdcb3e61bbcde8b6a` | fixed peer SHA | main CI PASS | browser runtime blocked locally |
 | forge-doctor-api | `3a5a9a860318cb277292a23007879a1e2bf45b9b` | fixed peer SHA | quality CI PASS | PASS peer baseline |
@@ -43,7 +43,7 @@ new Forge, context gateway, Bridge, Atlas, Lens, or Portal engine was created.
 | Windows fresh wheel | `uv run python lab/federated_e2e.py` / `20261110T230014Z-7286ba79` | 14 PASS, 0 FAIL, 4 BLOCKED | LOCAL_REAL; external resources named |
 | Bundle checkout verification | `lab/verify_evidence.py` | 28 entries, 18 steps PASS | LOCAL_REAL |
 | Bundle copied-root verification | isolated temp checkout | PASS | LOCAL_REAL |
-| Linux | hosted core + federated runs `42924480581` / `42924480632` | PASS with 4 BLOCKED | Atlas/browser/provider resources unavailable |
+| Linux | hosted core + federated runs `42926089576` / `42926089643` | PASS with 4 BLOCKED | Atlas/browser/provider resources unavailable |
 | Bridge/Lens providers | no authorized provider | BLOCKED | no fake PASS |
 
 ## Remaining release risks

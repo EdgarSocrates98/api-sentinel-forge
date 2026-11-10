@@ -7,6 +7,6 @@ audit rows are excluded from data parity, because backup/restore journals are
 legitimate history changes.
 
 Final status: PASS in the Windows run `20261110T230014Z-7286ba79` and the
-Linux federated run `20261110T233447Z-3cb3cbc3`: 23 tables were checked for
+Linux federated run `20261110T234647Z-a1ed6368`: 23 tables were checked for
 schema/row parity, SQLite integrity and foreign keys passed, and the blob
 inventory/hash set matched (0 blobs in this fixture).
