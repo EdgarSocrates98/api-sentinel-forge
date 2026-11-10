@@ -197,7 +197,13 @@ class Step:
         ORACLE.append(self.record)
         mark = {"pass": "PASS", "fail": "FAIL", "blocked": "BLOCK",
                 "not_run": "SKIP"}.get(self.status, self.status)
-        print(f"[{self.sid:<4} {mark:<5} {truth:<16}] {self.name} {detail}")
+        line = f"[{self.sid:<4} {mark:<5} {truth:<16}] {self.name} {detail}"
+        try:
+            print(line)
+        except UnicodeEncodeError:
+            # Console codec (e.g. cp1252 under redirected stdio) can't take
+            # the step's arrows — degrade the *rendering*, never the record.
+            print(line.encode("ascii", "replace").decode("ascii"))
 
 
 def run_cmd(
@@ -1321,6 +1327,12 @@ def main() -> int:
     parser.add_argument("--steps", type=str, default="",
                         help="CSV subset of step ids to run (e.g. S2,S3)")
     args = parser.parse_args()
+
+    # Redirected stdio on Windows is cp1252 — never let an unencodable
+    # character crash a step report (S5 was failed by the console, not
+    # by the pipeline).
+    sys.stdout.reconfigure(errors="replace")
+    sys.stderr.reconfigure(errors="replace")
 
     RUN.mkdir(parents=True, exist_ok=True)
     ART_DIR.mkdir(parents=True, exist_ok=True)
