@@ -40,6 +40,9 @@ dev = [
 mcp = [
     "mcp>=1.9",
 ]
+tui = [
+    "textual>=3.0",
+]
 
 [dependency-groups]
 # Auto-installed by `uv sync` (uv-native dev workflow).

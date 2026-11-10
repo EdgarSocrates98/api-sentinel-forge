@@ -27,6 +27,7 @@ from api_sentinel.application.use_cases import (
 from api_sentinel.capabilities import list_capabilities, status_report
 from api_sentinel.cli.install import install_command
 from api_sentinel.domain import (
+    ChangeKind,
     NotFoundError,
     SentinelError,
     SystemClock,
@@ -765,11 +766,17 @@ def handoff_doctor(
     ensure_workspace(ws)
     uow = _uow(ws)
     config = _load_cfg(ws)
-    acl = (
-        DoctorACL(mode=DoctorMode(mode), timeout_seconds=timeout)
-        if mode
-        else doctor_acl_from_config(config)
-    )
+    try:
+        acl = (
+            DoctorACL(mode=DoctorMode(mode), timeout_seconds=timeout)
+            if mode
+            else doctor_acl_from_config(config)
+        )
+    except ValueError as exc:
+        raise ValidationError(
+            f"invalid --mode: {mode!r}",
+            details={"expected": [m.value for m in DoctorMode]},
+        ) from exc
     if timeout != 30.0 and not mode:
         acl = DoctorACL(mode=acl.mode, timeout_seconds=timeout)
     caps = (
@@ -960,6 +967,13 @@ def changes_record(
         if "=" in pair:
             k, v = pair.split("=", 1)
             details[k.strip()] = v.strip()
+    try:
+        ChangeKind(kind)
+    except ValueError as exc:
+        raise ValidationError(
+            f"invalid --kind: {kind!r}",
+            details={"expected": [k.value for k in ChangeKind]},
+        ) from exc
     event = RecordChange(uow, SystemClock()).execute(
         service_id=service_id,
         kind=kind,
@@ -1841,6 +1855,22 @@ def mcp_serve(
     ws = _ws(workspace, user_scope)
     ensure_workspace(ws)
     serve_stdio(ws)
+
+
+@app.command()
+def tui(
+    workspace: _WS = None,
+    user_scope: _USER_SCOPE = False,
+) -> None:
+    """Interactive TUI — dashboard + command wizard (tui extra).
+
+    Textual shell over the governed CLI: live panels for services,
+    incidents, SLOs, health and integrations, plus a guided wizard that
+    runs every command through the same validation as the plain CLI.
+    """
+    from api_sentinel.tui import run
+
+    run(workspace=workspace, user_scope=user_scope)
 
 
 def _dispatch() -> int:
