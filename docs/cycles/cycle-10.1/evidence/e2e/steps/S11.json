@@ -1,0 +1,61 @@
+{
+  "id": "S11",
+  "command": "theforge init \u2192 theforge ask 'run api.anomaly-detection run'",
+  "input": {},
+  "output": {
+    "asserts": [
+      {
+        "check": "theforge binary: E:\\projetos\\FORJAS\\the-forge\\.venv\\Scripts\\theforge.exe",
+        "ok": true
+      },
+      {
+        "check": "theforge run artifacts: 2",
+        "ok": true
+      },
+      {
+        "check": "provider execute status=ok",
+        "ok": true
+      }
+    ],
+    "ask_rc": 0,
+    "ask_out": "    \"role\": \"primary\"\n      }\n    ],\n    \"shadow\": null,\n    \"status\": \"routed\",\n    \"task_id\": \"20261110T014524Z-7056bffe\",\n    \"unknowns\": []\n  },\n  \"error\": null,\n  \"error_family\": null,\n  \"installation\": null,\n  \"result\": {\n    \"artifacts\": [],\n    \"assumptions\": [],\n    \"context_request\": null,\n    \"created_at\": \"2026-11-10T01:45:32Z\",\n    \"evidence\": [],\n    \"findings\": [],\n    \"limitations\": [],\n    \"metrics\": {\n      \"context_bytes\": {\n        \"kind\": \"measured\",\n        \"value\": 0.0\n      },\n      \"duration_ms\": {\n        \"kind\": \"measured\",\n        \"value\": 2448.138\n      },\n      \"tokens\": {\n        \"kind\": \"unknown\",\n        \"value\": null\n      }\n    },\n    \"native_trace\": null,\n    \"producer\": {\n      \"id\": \"api-sentinel-forge\",\n      \"version\": \"0.1.0\"\n    },\n    \"provider_economy\": null,\n    \"provider_receipt\": null,\n    \"schema\": \"theforge/ExecutionResult/v1\",\n    \"status\": \"ok\",\n    \"unknowns\": [\n      \"service_id required: 2 services registered (svc_01M70EJMY02EXJC4WFEWQPRJX2, svc_01M70EX2N0KGV3Y5ZTKWCKVPYA) \u00e2\u20ac\u201d the forge/v1 wire carries no parameter channel; scope is ambiguous, never guessed\"\n    ]\n  },\n  \"run_id\": \"20261110T014524Z-7056bffe\",\n  \"status\": \"ok\"\n}\n",
+    "result_status": "ok",
+    "findings": 0,
+    "detail": "provider executed through real forge/v1 bridge"
+  },
+  "process": {},
+  "ts": "2026-11-10T01:45:19.735296+00:00",
+  "status": "pass",
+  "commit": "9252677e2257198b8f995a408879889ce2fb1879",
+  "version": "",
+  "provider": "the-forge",
+  "workspace": "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\proj",
+  "artifacts": [
+    "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\artifacts\\theforge-20261110T014524Z-7056bffe\\budget.json",
+    "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\artifacts\\theforge-20261110T014524Z-7056bffe\\complexity.json",
+    "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\artifacts\\theforge-20261110T014524Z-7056bffe\\context.json",
+    "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\artifacts\\theforge-20261110T014524Z-7056bffe\\receipt.json",
+    "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\artifacts\\theforge-20261110T014524Z-7056bffe\\result.json",
+    "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\artifacts\\theforge-20261110T014524Z-7056bffe\\risk.json",
+    "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\artifacts\\theforge-20261110T014524Z-7056bffe\\routing.json",
+    "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\artifacts\\theforge-20261110T014524Z-7056bffe\\task.json",
+    "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\artifacts\\theforge-20261110T014524Z-7056bffe\\telemetry.json",
+    "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\artifacts\\theforge-20261110T014524Z-7056bffe\\verification.json"
+  ],
+  "hashes": {
+    "budget.json": "sha256:5c47795944b8a2b7555a6b2cae95faffb188d1e2ca87d53e333647285303695e",
+    "complexity.json": "sha256:3f01c20ab4274b16dc61724289fee7699a50260da4b982b87a2ff632a5ddbce7",
+    "context.json": "sha256:e90fb0257005da7ecb8f4b6de23d48139b0d58240620225f55846c8d32cc85b1",
+    "receipt.json": "sha256:e5031f8eb2e8c6f3fe4f6e36b46cd87936d8ada3fdfeeaa3289d524ef32104d1",
+    "result.json": "sha256:4ba0ebbc415b8ad4b21a43d3b4ba70961fbe585e92c051730d816219f56f5966",
+    "risk.json": "sha256:c74f438c66dcb7c322a83f5090214d98fffec1c4645510413ceb1f4857d16015",
+    "routing.json": "sha256:7ed2518952e64200c566d69b13278b07c758d15ef2319f8022f10e549aa14694",
+    "task.json": "sha256:7dd2a2cf66b33aeac3a96aca68bb1dad4f4477fecf59efa3e5fc67c1093ed69a",
+    "telemetry.json": "sha256:3a1305b1c82da8cb8441a5419ce49cdb7ba9fffdeb6d811fbb18687a68dac8f6",
+    "verification.json": "sha256:573edbc092ba6be4ebeb4beea25399186f2e99a448778e8647cb39e195ff8256"
+  },
+  "errors": [],
+  "limitations": [],
+  "truth": "INTEGRATION_REAL",
+  "finished_at": "2026-11-10T01:45:32.640898+00:00"
+}

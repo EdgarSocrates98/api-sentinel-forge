@@ -1,0 +1,37 @@
+{
+  "id": "S9",
+  "command": "handoff doctor --service-id svc_01M70EJMY02EXJC4WFEWQPRJX2 --context-root E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\doctor-ctx (demo openapi as the real spec)",
+  "input": {},
+  "output": {
+    "mode": "in_process",
+    "status": "completed",
+    "detail": "status=completed",
+    "asserts": [
+      {
+        "check": "doctor status=completed (real in-process DoctorBoundary)",
+        "ok": true
+      }
+    ]
+  },
+  "process": {},
+  "ts": "2026-11-10T01:45:10.376761+00:00",
+  "status": "pass",
+  "commit": "9252677e2257198b8f995a408879889ce2fb1879",
+  "version": "",
+  "provider": "forge-doctor-api",
+  "workspace": "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\proj\\.api-sentinel",
+  "artifacts": [
+    "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\proj\\.api-sentinel\\receipts\\rcpt_aws_01M70EXGAME5217HHB4GHR0JR1.aws.receipt.json",
+    "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\proj\\.api-sentinel\\receipts\\rcpt_hnd_h_01M70ES0GG7E3J004S12T35PV9.receipt.json",
+    "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\proj\\.api-sentinel\\receipts\\rcpt_hnd_h_01M71J2W4Q2HTQH8R7XZMB5YH3.receipt.json"
+  ],
+  "hashes": {
+    "receipt:rcpt_aws_01M70EXGAME5217HHB4GHR0JR1.aws.receipt.json": "sha256:180c10ad510fdb2af363594a6f975d784a1a8090f344df3b2fa98a18f1930337",
+    "receipt:rcpt_hnd_h_01M70ES0GG7E3J004S12T35PV9.receipt.json": "sha256:8bf286da07725749e9a34a87cce9e299a03088e624b3ed268de4079e55998236",
+    "receipt:rcpt_hnd_h_01M71J2W4Q2HTQH8R7XZMB5YH3.receipt.json": "sha256:256ffb45ffab5c4043de1075e7baac5442d75194dc3ef4e27e1cb2a9281aacf9"
+  },
+  "errors": [],
+  "limitations": [],
+  "truth": "INTEGRATION_REAL",
+  "finished_at": "2026-11-10T01:45:18.964768+00:00"
+}

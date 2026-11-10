@@ -1,0 +1,42 @@
+{
+  "id": "S3",
+  "command": "install --yes \u2192 services --register \u2192 sources --register",
+  "input": {},
+  "output": {
+    "asserts": [
+      {
+        "check": "install rc=0",
+        "ok": true
+      },
+      {
+        "check": "service registered: svc_01M70EJMY02EXJC4WFEWQPRJX2",
+        "ok": true
+      },
+      {
+        "check": "sentinel.db materialized",
+        "ok": true
+      },
+      {
+        "check": "source registered: src_01M71HV5NR9VQAM445AKH8KV5S",
+        "ok": true
+      }
+    ],
+    "atlas_link": "linked",
+    "service_id": "svc_01M70EJMY02EXJC4WFEWQPRJX2",
+    "source_id": "src_01M71HV5NR9VQAM445AKH8KV5S",
+    "detail": "svc=svc_01M70EJMY02EXJC4WFEWQPRJX2 src=src_01M71HV5NR9VQAM445AKH8KV5S"
+  },
+  "process": {},
+  "ts": "2026-11-10T01:40:55.709422+00:00",
+  "status": "pass",
+  "commit": "9252677e2257198b8f995a408879889ce2fb1879",
+  "version": "",
+  "provider": "api-sentinel-forge",
+  "workspace": "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\proj\\.api-sentinel",
+  "artifacts": [],
+  "hashes": {},
+  "errors": [],
+  "limitations": [],
+  "truth": "LOCAL_REAL",
+  "finished_at": "2026-11-10T01:41:00.372575+00:00"
+}

@@ -29,6 +29,16 @@ blocked and not-run.
 | C101-F010 | Packaging/install validation | **VERIFIED** — `uv build` wheel+sdist; wheel installed into a clean venv; `api-sentinel --help` lists full command surface; `api-sentinel doctor` reports honest `unavailable`/unknowns on an uninitialized workspace | `dist/api_sentinel_forge-0.1.0-*.whl`; smoke transcript (this report) |
 | C101-F011 | forge/v1 adapter conformance | **VERIFIED** — live probe through the real stdio seam covers ops + negative cases | `docs/cycles/cycle-10.1/evidence/theforge-conformance.json` |
 | C101-F012 | Boundary `forge/v1` parameter handling | **VERIFIED** — contract-faithful; no drift found | same probe |
+| C101-F013 *(new)* | Backup/restore parity: restored workspace shows fewer entities (services 2→1, sources 5→1, incidents 2→1) and no `integrity` field in restore output | **OPEN** — real defect captured by S16; *not* remediated in this branch, *not* claimed fixed | `evidence/e2e/steps/S16.json` |
+
+## Federated E2E S1–S18 (this branch, commit 9252677+)
+
+S1–S11 PASS (local-real/integration-real), S12 BLOCK (Bridge governed
+request `delegated`; live consumption tier absent), S13 BLOCK (Lens: no
+refs manifest configured — named unavailable), S14 PASS, S15 PASS,
+**S16 FAIL (C101-F013, open)**, S17 PASS, S18 PASS. Step files:
+`evidence/e2e/steps/`; self-verified receipt + sha256 manifest per
+`lab/verify_evidence.py`.
 
 ## Gates
 
@@ -40,7 +50,7 @@ blocked and not-run.
 | `uv build` | PASS — wheel + sdist |
 | Wheel install + `doctor` | PASS — honest unavailable states |
 | Bench matrix | PASS — no regression vs cycle-10 |
-| Federated E2E S1–S18 | see `lab/run/e2e-cycle101.log` + receipt/manifest |
+| Federated E2E S1–S18 | 15/18 pass, S12/S13 blocked (named), S16 **fail → C101-F013 (open)**; receipt+manifest **verified OK (44 entries, 18 steps)** |
 
 ## Truth table
 

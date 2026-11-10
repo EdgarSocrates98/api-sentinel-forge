@@ -1,0 +1,49 @@
+{
+  "id": "S16",
+  "command": "backup create \u2192 backup restore \u2192 services/sources/incidents counts",
+  "input": {},
+  "output": {
+    "asserts": [
+      {
+        "check": "backup created: E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\proj\\.api-sentinel\\backups\\backup-20261110T014706Z",
+        "ok": true
+      },
+      {
+        "check": "restore integrity=None",
+        "ok": false
+      },
+      {
+        "check": "services parity 2==1",
+        "ok": false
+      },
+      {
+        "check": "sources parity 5==1",
+        "ok": false
+      },
+      {
+        "check": "incidents parity 2==1",
+        "ok": false
+      }
+    ],
+    "backup_dir": "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\proj\\.api-sentinel\\backups\\backup-20261110T014706Z",
+    "detail": "integrity ok + parity"
+  },
+  "process": {},
+  "ts": "2026-11-10T01:47:05.481281+00:00",
+  "status": "fail",
+  "commit": "9252677e2257198b8f995a408879889ce2fb1879",
+  "version": "",
+  "provider": "api-sentinel",
+  "workspace": "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\proj\\.api-sentinel",
+  "artifacts": [],
+  "hashes": {},
+  "errors": [
+    "assert failed: restore integrity=None",
+    "assert failed: services parity 2==1",
+    "assert failed: sources parity 5==1",
+    "assert failed: incidents parity 2==1"
+  ],
+  "limitations": [],
+  "truth": "LOCAL_REAL",
+  "finished_at": "2026-11-10T01:47:12.951867+00:00"
+}
