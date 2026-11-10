@@ -3,5 +3,5 @@
   "status": "CONDITIONAL_GO",
   "truth": "LOCAL_REAL",
   "run_id": "20261110T230014Z-7286ba79",
-  "reason": "local core and Windows Golden Path pass; hosted Linux/federated CI pending"
+  "reason": "local core, Windows Golden Path, and hosted Windows/Linux core CI pass; federated dispatch pending"
 }

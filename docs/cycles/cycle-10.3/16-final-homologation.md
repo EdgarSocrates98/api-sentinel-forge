@@ -1,7 +1,8 @@
 # Final homologation
 
 Status: **CONDITIONAL GO** for local-first evidence; final cycle closure is
-pending hosted Linux and federated CI runs.
+pending federated CI dispatch and peer revision execution. Core hosted CI run
+`42921827462` passed on Windows and Linux.
 
 Windows Golden Path `20261110T230014Z-7286ba79`: 14 PASS, 0 FAIL, 4 BLOCKED;
 S16 deep parity PASS; S18 bundle verification PASS with 28 manifest entries

@@ -1,6 +1,10 @@
 {
   "schema": "api-sentinel/Cycle103Evidence/v1",
-  "status": "NOT_RUN",
-  "truth": "NOT_RUN",
-  "reason": "workflow added; hosted dispatch pending after branch push"
+  "status": "PASS_WITH_LIMITATIONS",
+  "truth": "INTEGRATION_REAL",
+  "run_id": "42921827462",
+  "jobs": ["ubuntu-latest / py3.12", "windows-latest / py3.12"],
+  "core_ci": "PASS",
+  "federated_workflow": "NOT_RUN",
+  "reason": "workflow_dispatch requires workflow on default branch; pre-merge request returned 404"
 }

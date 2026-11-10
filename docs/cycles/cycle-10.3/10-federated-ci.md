@@ -5,5 +5,9 @@ authorized federated-local job using fixed peer revisions. Provider-backed
 Bridge/Lens and AWS lanes remain explicit optional states; they must never be
 reported as PASS when credentials/providers are absent.
 
-Current repository CI baseline was PASS on the recorded main commit. The
-Cycle 10.3 workflow change is pending final local validation and hosted run.
+The PR CI run `42921827462` passed on both `ubuntu-latest / py3.12` and
+`windows-latest / py3.12`, including Ruff, Mypy, 634-test offline suite,
+wheel/sdist build, and post-install doctor smoke. The dedicated
+`federated-ci.yml` workflow is present in this branch but cannot be dispatched
+until it exists on the repository's default branch; GitHub returned 404 for a
+pre-merge dispatch request. This is recorded as an external limitation.
