@@ -3,9 +3,12 @@
 Two modes, both optional and honest:
 
 - ``in_process``: `forge_doctor_api` importable in this interpreter — the
-  Sentinel builds a Doctor `ForgeRequest` through the boundary's public
-  `build_request`/`DoctorBoundary` seam, bounded by `timeout_seconds`.
-  The Sentinel *never* reimplements the analysis.
+  Sentinel ships the `ForgeRequest` to a dedicated child process
+  (``python -m api_sentinel.integrations.doctor._worker``) that calls the
+  boundary's public `DoctorBoundary.handle` seam. The child runs under a
+  hard wall-clock budget: on breach it is terminated, then killed — a
+  blocked Doctor can never stall the Sentinel (C101-F001). The Sentinel
+  *never* reimplements the analysis.
 - ``handoff_file``: emit the versioned `api-sentinel/InvestigationHandoff/v1`
   envelope plus a ForgeRequest-shaped request under `handoffs/` for a
   separately-run Doctor to consume, then ingest the returned bundle.
@@ -18,9 +21,11 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
+import subprocess
+import sys
+import tempfile
 import time
-from concurrent.futures import ThreadPoolExecutor
-from concurrent.futures import TimeoutError as FuturesTimeout
 from dataclasses import dataclass
 from datetime import UTC
 from enum import StrEnum
@@ -32,6 +37,15 @@ from api_sentinel.domain import ContractError, ValidationError
 from api_sentinel.infrastructure.security.paths import (
     read_text_bounded,
     safe_slot,
+)
+from api_sentinel.infrastructure.security.redact import redact
+from api_sentinel.integrations.doctor._worker import (
+    EXIT_FAILED,
+    EXIT_INVALID_RESPONSE,
+    EXIT_OK,
+    EXIT_UNAVAILABLE,
+    EXIT_USAGE,
+    MAX_REQUEST_BYTES,
 )
 from api_sentinel.integrations.doctor.translate import (
     DOCTOR_FORGE,
@@ -50,6 +64,22 @@ from api_sentinel.integrations.receipts import (
 )
 
 DOCTOR_MODULE = "forge_doctor_api"
+
+# Child-process contract — the worker module is the *smallest compatible
+# wrapper*: a private entrypoint that rebuilds the Doctor boundary inside
+# an interpreter the parent can terminate. Credentials are stripped from
+# the child environment; cwd is a validated scratch dir, never the
+# caller's tree.
+_WORKER_MODULE = "api_sentinel.integrations.doctor._worker"
+_CHILD_ENV_KEEP = {
+    "PATH", "SystemRoot", "WINDIR", "SystemDrive", "ComSpec", "PATHEXT",
+    "TEMP", "TMP", "TMPDIR", "HOME", "USERPROFILE", "PYTHONUTF8",
+    "PYTHONIOENCODING", "PYTHONPATH", "VIRTUAL_ENV", "NUMBER_OF_PROCESSORS",
+    "OS", "LANG", "LC_ALL", "LC_CTYPE",
+}
+_TERMINATE_GRACE_SECONDS = 3.0
+_KILL_GRACE_SECONDS = 3.0
+_STDIO_TAIL_BYTES = 4096
 
 
 class DoctorMode(StrEnum):
@@ -181,8 +211,15 @@ class DoctorACL:
                 detail="in_process mode requires context_root (a "
                        "Doctor ProjectContext root); none provided",
             )
+        if not context_root.is_dir():
+            return DoctorResult(
+                handoff_id=handoff.handoff_id,
+                mode=self._mode,
+                status="refused",
+                detail=f"context_root is not a directory: {context_root}",
+            )
         try:
-            return self._run_doctor_typed(
+            return self._delegate_via_process(
                 handoff, request_dict, context_root=context_root
             )
         except IntegrationRefused as exc:
@@ -192,13 +229,6 @@ class DoctorACL:
                 status="refused",
                 detail=str(exc.reason),
             )
-        except FuturesTimeout:
-            return DoctorResult(
-                handoff_id=handoff.handoff_id,
-                mode=self._mode,
-                status="timed_out",
-                detail=f"in-process delegation exceeded {self._timeout}s",
-            )
         except Exception as exc:
             return DoctorResult(
                 handoff_id=handoff.handoff_id,
@@ -207,51 +237,203 @@ class DoctorACL:
                 detail=f"{type(exc).__name__}: {exc}",
             )
 
-    def _run_doctor_typed(
+    # -- process-isolated delegation (C101-F001) -------------------------
+
+    def _worker_argv(self, request_path: Path, out_dir: Path) -> list[str]:
+        """argv for the delegation child — a list, never a shell string."""
+        return [
+            sys.executable, "-m", _WORKER_MODULE,
+            str(request_path), str(out_dir),
+        ]
+
+    def _child_env(self) -> dict[str, str]:
+        """Restricted environment — credentials never reach the child."""
+        env = {k: v for k, v in os.environ.items() if k in _CHILD_ENV_KEEP}
+        env.setdefault("PYTHONUTF8", "1")
+        env.setdefault("PYTHONIOENCODING", "utf-8")
+        return env
+
+    def _terminate_child(self, proc: subprocess.Popen[bytes]) -> str:
+        """terminate → grace → kill → grace; returns how it ended.
+
+        A child that dies between the timeout check and terminate/kill is
+        still a dead child — signal OSError is not a failure of cleanup.
+        """
+        import contextlib
+
+        with contextlib.suppress(OSError):
+            proc.terminate()
+        try:
+            proc.wait(timeout=_TERMINATE_GRACE_SECONDS)
+            return "terminated"
+        except subprocess.TimeoutExpired:
+            pass
+        with contextlib.suppress(OSError):
+            proc.kill()
+        try:
+            proc.wait(timeout=_KILL_GRACE_SECONDS)
+            return "killed"
+        except subprocess.TimeoutExpired:
+            return "stuck"
+
+    def _stdio_tail(self, path: Path) -> str:
+        """Bounded, redacted tail of captured child output."""
+        try:
+            data = path.read_bytes()[-_STDIO_TAIL_BYTES:]
+        except OSError:
+            return ""
+        if not data:
+            return ""
+        return redact(data.decode("utf-8", errors="replace")).text.strip()
+
+    def _delegate_via_process(
         self,
         handoff: InvestigationHandoffV1,
         request_dict: dict[str, Any],
         *,
         context_root: Path,
     ) -> DoctorResult:
-        """Run the real Doctor boundary under the injected timeout.
+        """Delegate through the Doctor boundary inside a dedicated child.
 
-        Optional-dependency imports stay inside this method (guarded by
-        `doctor_importable()`); mypy stubs are absent by design — the
-        package is consumed through its public seam, never vendored.
+        Hard-budget semantics: `self._timeout` bounds total child
+        wall-clock (spawn + boundary + write). A breach terminates, then
+        kills the child and yields a named `timed_out` — never a hang,
+        never a fabricated bundle.
         """
-        from forge_doctor_api.handoff.boundary import DoctorBoundary
-
-        # C10-F009: `ProjectContext` lives at `core.context` since Doctor
-        # 0.3.x; `handoff.context` is the legacy location kept as a fallback
-        # for older installs. Prefer the canonical path; never guess. The
-        # legacy path resolves dynamically — the module exists but carries
-        # no `ProjectContext` at 0.3.x, so a static import would type-error.
-        try:
-            from forge_doctor_api.core.context import ProjectContext
-
-            make_context = ProjectContext.from_root
-        except ImportError:  # legacy <0.3 layout
-            _legacy_ctx = importlib.import_module(
-                "forge_doctor_api.handoff.context"
+        payload = json.dumps(
+            {"request": request_dict, "context_root": str(context_root)},
+            default=str,
+        )
+        if len(payload.encode("utf-8")) > MAX_REQUEST_BYTES:
+            raise IntegrationRefused(
+                DOCTOR_FORGE,
+                f"doctor request exceeds {MAX_REQUEST_BYTES} bytes",
             )
-            make_context = _legacy_ctx.ProjectContext.from_root
-        from forge_doctor_api.handoff.protocol import ForgeRequest
+        # Best-effort cleanup: on Windows a killed child's inherited
+        # stdio handles can linger past wait() for a few ms — every
+        # artifact is already read before teardown, so a scratch dir
+        # left in the system temp is harmless, never a failure.
+        with tempfile.TemporaryDirectory(
+            prefix="sentinel-doctor-", ignore_cleanup_errors=True
+        ) as td:
+            scratch = Path(td)
+            request_path = scratch / "request.json"
+            out_dir = scratch / "out"
+            out_dir.mkdir()
+            request_path.write_text(payload, encoding="utf-8")
+            stdout_path = scratch / "child.stdout.log"
+            stderr_path = scratch / "child.stderr.log"
+            timed_out = False
+            with (
+                stdout_path.open("wb") as out_fp,
+                stderr_path.open("wb") as err_fp,
+            ):
+                proc = subprocess.Popen(  # noqa: S603 — argv list, fixed interpreter, no shell
+                    self._worker_argv(request_path, out_dir),
+                    cwd=scratch,
+                    env=self._child_env(),
+                    stdout=out_fp,
+                    stderr=err_fp,
+                )
+                try:
+                    rc = proc.wait(timeout=self._timeout)
+                except subprocess.TimeoutExpired:
+                    timed_out = True
+                    ended = self._terminate_child(proc)
+                    rc = -1
+            stderr_tail = self._stdio_tail(stderr_path)
+            if timed_out:
+                if ended == "stuck":
+                    return DoctorResult(
+                        handoff_id=handoff.handoff_id,
+                        mode=self._mode,
+                        status="failed",
+                        detail="process_termination_failure: child survived "
+                               "terminate+kill escalation",
+                    )
+                return DoctorResult(
+                    handoff_id=handoff.handoff_id,
+                    mode=self._mode,
+                    status="timed_out",
+                    detail=f"execution_timeout: child exceeded "
+                           f"{self._timeout}s wall-clock; {ended}"
+                           + (f"; stderr: {stderr_tail[:200]}"
+                              if stderr_tail else ""),
+                )
+            return self._result_from_exit(
+                handoff, rc, out_dir, stderr_tail
+            )
 
-        request = ForgeRequest.parse(request_dict)
-        boundary = DoctorBoundary(context=make_context(context_root))
-        with ThreadPoolExecutor(max_workers=1) as pool:
-            future = pool.submit(boundary.handle, request)
-            bundle = future.result(timeout=self._timeout)
-        raw: dict[str, Any] = bundle.to_dict()
-        ingest = ingest_doctor_bundle_json(json.dumps(raw))
+    def _result_from_exit(
+        self,
+        handoff: InvestigationHandoffV1,
+        rc: int,
+        out_dir: Path,
+        stderr_tail: str,
+    ) -> DoctorResult:
+        """Map worker exit + artifacts to a named result — never guess."""
+        meta_detail = self._worker_meta(out_dir)
+        tail = f"; stderr: {stderr_tail[:200]}" if stderr_tail else ""
+        if rc == EXIT_OK:
+            bundle_path = out_dir / "bundle.json"
+            if not bundle_path.is_file():
+                return DoctorResult(
+                    handoff_id=handoff.handoff_id,
+                    mode=self._mode,
+                    status="failed",
+                    detail="invalid_response: worker exited 0 without a "
+                           "bundle",
+                )
+            try:
+                text = read_text_bounded(bundle_path, name="doctor bundle")
+                ingest = ingest_doctor_bundle_json(text)
+            except (ContractError, ValidationError) as exc:
+                return DoctorResult(
+                    handoff_id=handoff.handoff_id,
+                    mode=self._mode,
+                    status="failed",
+                    detail=f"invalid_response: {exc}",
+                )
+            return DoctorResult(
+                handoff_id=handoff.handoff_id,
+                mode=self._mode,
+                status="completed",
+                ingest=ingest,
+                detail="delegated through DoctorBoundary in an isolated "
+                       "child process",
+            )
+        if rc == EXIT_UNAVAILABLE:
+            return DoctorResult(
+                handoff_id=handoff.handoff_id,
+                mode=self._mode,
+                status="unavailable",
+                detail=f"{meta_detail or 'provider_unavailable'}{tail}",
+            )
+        reason = {
+            EXIT_USAGE: "invalid_request",
+            EXIT_INVALID_RESPONSE: "invalid_response",
+            EXIT_FAILED: "provider_failed",
+        }.get(rc, "provider_failed")
         return DoctorResult(
             handoff_id=handoff.handoff_id,
             mode=self._mode,
-            status="completed",
-            ingest=ingest,
-            detail="delegated in-process through DoctorBoundary",
+            status="failed",
+            detail=f"{reason}: {meta_detail or f'worker exit {rc}'}{tail}",
         )
+
+    def _worker_meta(self, out_dir: Path) -> str:
+        """Read the worker's side record — bounded, parse-tolerant."""
+        meta_path = out_dir / "meta.json"
+        if not meta_path.is_file():
+            return ""
+        try:
+            meta = json.loads(
+                read_text_bounded(meta_path, name="worker meta")
+            )
+        except (ContractError, ValidationError, ValueError):
+            return ""
+        detail = meta.get("detail") if isinstance(meta, dict) else None
+        return str(detail)[:400] if detail else ""
 
     def _delegate_file(
         self,

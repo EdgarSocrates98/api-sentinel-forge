@@ -1,0 +1,55 @@
+{
+  "id": "S1",
+  "command": "uv build \u2192 uv venv \u2192 uv pip install wheel[api,aws]",
+  "input": {},
+  "output": {
+    "build_rc": 0,
+    "asserts": [
+      {
+        "check": "wheel built",
+        "ok": true
+      },
+      {
+        "check": "fresh venv python exists: E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\boot-venv\\Scripts\\python.exe",
+        "ok": true
+      },
+      {
+        "check": "build+venv rc=0",
+        "ok": true
+      },
+      {
+        "check": "wheel+extras+forge_doctor_api installed into boot venv",
+        "ok": true
+      },
+      {
+        "check": "api-sentinel.exe exists: E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\boot-venv\\Scripts\\api-sentinel.exe",
+        "ok": true
+      },
+      {
+        "check": "import resolves inside boot venv site-packages, not src/",
+        "ok": true
+      }
+    ],
+    "import_probe": "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\boot-venv\\Lib\\site-packages\\api_sentinel\\__init__.py\nFalse\n",
+    "detail": "wheel=sha256:fc47b89f0e4bcf964\u2026"
+  },
+  "process": {
+    "python": "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\boot-venv\\Scripts\\python.exe",
+    "cli": "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\boot-venv\\Scripts\\api-sentinel.exe",
+    "isolation": "no PYTHONPATH; no src/ on sys.path (wheel only)"
+  },
+  "ts": "2026-11-10T01:40:11.068739+00:00",
+  "status": "pass",
+  "commit": "9252677e2257198b8f995a408879889ce2fb1879",
+  "version": "version=0.1.0",
+  "provider": "api-sentinel-forge",
+  "workspace": "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed",
+  "artifacts": [],
+  "hashes": {
+    "wheel": "sha256:fc47b89f0e4bcf9644f63a5a5c6a158a61f3e7b4c62d77b52a2be93d6c4f8eb4"
+  },
+  "errors": [],
+  "limitations": [],
+  "truth": "LOCAL_REAL",
+  "finished_at": "2026-11-10T01:40:47.352112+00:00"
+}

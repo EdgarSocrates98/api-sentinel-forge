@@ -1,0 +1,81 @@
+{
+  "id": "S14",
+  "command": "serve sentinel ws \u2192 stdlib same-origin /sentinel proxy \u2192 playwright (system python) through the real bundle",
+  "input": {},
+  "output": {
+    "asserts": [
+      {
+        "check": "portal bundle present: E:\\projetos\\FORJAS\\forge-portal\\dist\\forge-portal-app\\browser",
+        "ok": true
+      },
+      {
+        "check": "playwright python: C:\\Python314\\python.exe",
+        "ok": true
+      },
+      {
+        "check": "sentinel /v1 up on 8317",
+        "ok": true
+      },
+      {
+        "check": "same-origin proxy \u2192 real /v1/services returns the demo service",
+        "ok": true
+      },
+      {
+        "check": "browser steps all ok (4/4)",
+        "ok": true
+      }
+    ],
+    "playwright_rc": 0,
+    "playwright": {
+      "steps": [
+        {
+          "name": "connection",
+          "ok": true,
+          "detail": "Connected:\napi-sentinel 0.1.0 \u00b7 AVAILABLE"
+        },
+        {
+          "name": "services render",
+          "ok": true,
+          "detail": "Skip to content\nForge Portal\nagentic engineering, simplified\n\nOVERVIEW\n\nDashboard\nGuide\nForge family\n\nEXPLORE\n\nForges\nAgents\nSkills\nMCP\nKnowledge\nProduct Forge\nMatch\n\nOPERATE\n\nTasks\nInstallation\nProfiles\nAI hosts\nConfiguration\n\nANALYZE\n\nGraph Studio\nObservability\nExecution\nLab\nVersions\n\nSETTINGS\n\nSe"
+        },
+        {
+          "name": "incidents render",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "name": "token not in DOM",
+          "ok": true,
+          "detail": ""
+        }
+      ],
+      "artifacts": [
+        "portal-services.png",
+        "portal-incidents.png"
+      ]
+    },
+    "playwright_err": "",
+    "portal_base": "http://127.0.0.1:55228",
+    "proxy_base": "http://127.0.0.1:55228/sentinel",
+    "detail": "browser steps 4/4"
+  },
+  "process": {},
+  "ts": "2026-11-10T01:45:33.581112+00:00",
+  "status": "pass",
+  "commit": "9252677e2257198b8f995a408879889ce2fb1879",
+  "version": "",
+  "provider": "forge-portal",
+  "workspace": "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\proj\\.api-sentinel",
+  "artifacts": [
+    "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\artifacts\\portal\\portal-incidents.png",
+    "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\artifacts\\portal\\portal-services.png"
+  ],
+  "hashes": {
+    "portal-incidents.png": "sha256:50d0fd4c98cb8c39bc6dd8b977a2512ec4979a5a08a9677143865379d4527c1c",
+    "portal-services.png": "sha256:0780dcd8bc23e398f21cdc1831dbaebf68e327b239d6e7507414b9636d2d1283"
+  },
+  "errors": [],
+  "limitations": [],
+  "truth": "INTEGRATION_REAL",
+  "finished_at": "2026-11-10T01:45:43.879119+00:00"
+}

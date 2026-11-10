@@ -1,0 +1,42 @@
+{
+  "id": "S2",
+  "command": "dependency.py + app.py (uvicorn)",
+  "input": {},
+  "output": {
+    "asserts": [
+      {
+        "check": "dependency /health up on 8330",
+        "ok": true
+      },
+      {
+        "check": "demo /healthz up on 8320",
+        "ok": true
+      },
+      {
+        "check": "real OpenAPI served (6 paths)",
+        "ok": true
+      }
+    ],
+    "openapi_paths": "6",
+    "work_probe": "pending",
+    "detail": "pids dep=44896 app=39440"
+  },
+  "process": {
+    "dep_pid": 44896,
+    "app_pid": 39440,
+    "dep_port": 8330,
+    "demo_port": 8320
+  },
+  "ts": "2026-11-10T01:40:47.353112+00:00",
+  "status": "pass",
+  "commit": "9252677e2257198b8f995a408879889ce2fb1879",
+  "version": "",
+  "provider": "demo_api",
+  "workspace": "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed",
+  "artifacts": [],
+  "hashes": {},
+  "errors": [],
+  "limitations": [],
+  "truth": "LOCAL_REAL",
+  "finished_at": "2026-11-10T01:40:55.709422+00:00"
+}

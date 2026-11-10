@@ -87,6 +87,9 @@ class SourceAssessment(FrozenModel):
     bad: float
     sli: float | None
     quality: QualityState
+    source_kind: str | None = None
+    """TelemetrySource.kind when known (simulated|fixture|real|…) — recorded
+    so a conclusion is never silently read as production telemetry."""
 
 
 class SloCoverage(FrozenModel):
@@ -161,12 +164,16 @@ def _aggregate_sli(
     return sli_value(good, eligible), good, bad
 
 
+_SIMULATED_KINDS = frozenset({"simulated", "fixture", "synthetic", "demo"})
+
+
 def evaluate_slo(
     *,
     definition: SloDefinition,
     observations: Iterable[ObservationLike],
     window: TimeWindow,
     evaluated_at: datetime,
+    source_kinds: dict[str, str] | None = None,
 ) -> SloAssessment:
     """Reproducible evaluation: pure function of inputs + injected time.
 
@@ -175,7 +182,15 @@ def evaluate_slo(
     — largest eligible population, then `source_id` — and every source's view
     is reported under `per_source` with a `multiple_sources_not_summed`
     limitation rather than mixed into one number.
+
+    `source_kinds` carries TelemetrySource provenance (kind per source_id).
+    A non-production kind (`simulated`/`fixture`/`synthetic`/`demo`) never
+    changes the math — it *labels* it: `simulated_source_data` marks any
+    contributing synthetic source and `simulated_primary_source` marks the
+    primary, so a MET on simulated traffic can never masquerade as real
+    production health (C101-F009).
     """
+    kinds = source_kinds or {}
     scoped = [o for o in observations if o.service_id == definition.service_id]
     aggregates = compute_window_aggregates(
         scoped,
@@ -204,8 +219,12 @@ def evaluate_slo(
     )
 
     per_source = []
+    simulated_sources: list[str] = []
     for a in sorted(aggregates, key=lambda x: x.source_id):
         src_sli, src_good, src_bad = _aggregate_sli(definition, a)
+        kind = kinds.get(a.source_id)
+        if kind is not None and kind.lower() in _SIMULATED_KINDS:
+            simulated_sources.append(a.source_id)
         per_source.append(
             SourceAssessment(
                 source_id=a.source_id,
@@ -214,7 +233,12 @@ def evaluate_slo(
                 bad=src_bad,
                 sli=src_sli,
                 quality=a.quality,
+                source_kind=kind,
             )
+        )
+    if simulated_sources:
+        limitations.append(
+            "simulated_source_data:" + ",".join(simulated_sources)
         )
 
     primary: WindowAggregate | None = None
@@ -225,6 +249,8 @@ def evaluate_slo(
             )
         # Deterministic primary: largest eligible population, then source_id.
         primary = min(aggregates, key=lambda a: (-a.eligible_requests, a.source_id))
+        if primary.source_id in simulated_sources:
+            limitations.append("simulated_primary_source")
 
     state: AssessmentState
     sli: float | None = None

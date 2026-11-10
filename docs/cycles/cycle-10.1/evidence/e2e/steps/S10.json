@@ -1,0 +1,64 @@
+{
+  "id": "S10",
+  "command": "correlate --service-id svc_01M70EJMY02EXJC4WFEWQPRJX2 with integrations.atlas.db_path=C:\\Users\\edgar\\AppData\\Local\\code-atlas\\atlas.db (incident context: inc_38464e6ddd5c92a64d009392)",
+  "input": {},
+  "output": {
+    "asserts": [
+      {
+        "check": "real atlas.db present: C:\\Users\\edgar\\AppData\\Local\\code-atlas\\atlas.db",
+        "ok": true
+      },
+      {
+        "check": "correlate rc=0",
+        "ok": true
+      },
+      {
+        "check": "structural edges from real atlas.db: 3",
+        "ok": true
+      }
+    ],
+    "structural_edges": 3,
+    "sample": [
+      {
+        "kind": "structural",
+        "from_ref": "service.app#app",
+        "to_ref": "GET /orders",
+        "evidence": "CONTAINS (domain:api)",
+        "provenance": "declared",
+        "confidence": ""
+      },
+      {
+        "kind": "structural",
+        "from_ref": "service.app#app",
+        "to_ref": "POST /orders",
+        "evidence": "CONTAINS (domain:api)",
+        "provenance": "declared",
+        "confidence": ""
+      },
+      {
+        "kind": "structural",
+        "from_ref": "service.app#app",
+        "to_ref": "GET /orders/{order_id}",
+        "evidence": "CONTAINS (domain:api)",
+        "provenance": "declared",
+        "confidence": ""
+      }
+    ],
+    "status": "OBSERVED",
+    "unknowns": [],
+    "detail": "3 structural edges"
+  },
+  "process": {},
+  "ts": "2026-11-10T01:45:18.965769+00:00",
+  "status": "pass",
+  "commit": "9252677e2257198b8f995a408879889ce2fb1879",
+  "version": "",
+  "provider": "code-atlas",
+  "workspace": "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\proj\\.api-sentinel",
+  "artifacts": [],
+  "hashes": {},
+  "errors": [],
+  "limitations": [],
+  "truth": "INTEGRATION_REAL",
+  "finished_at": "2026-11-10T01:45:19.735296+00:00"
+}

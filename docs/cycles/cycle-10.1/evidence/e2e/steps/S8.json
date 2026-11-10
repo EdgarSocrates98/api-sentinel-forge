@@ -1,0 +1,57 @@
+{
+  "id": "S8",
+  "command": "detect \u2192 incidents \u2192 incident show \u2192 investigate",
+  "input": {},
+  "output": {
+    "asserts": [
+      {
+        "check": "anomalies raised: 4 (['error_ratio_over_limit', 'source_silence'])",
+        "ok": true
+      },
+      {
+        "check": "incident exists: inc_38464e6ddd5c92a64d009392",
+        "ok": true
+      },
+      {
+        "check": "incident show rc=0",
+        "ok": true
+      },
+      {
+        "check": "investigate rc=0",
+        "ok": true
+      },
+      {
+        "check": "bounded context pack emitted",
+        "ok": true
+      }
+    ],
+    "anomaly_kinds": [
+      "error_ratio_over_limit",
+      "source_silence"
+    ],
+    "evaluations_outcomes": {
+      "budget_burn_acceleration": "clean",
+      "error_ratio_over_limit": "fired",
+      "p95_over_latency_target": "clean",
+      "source_silence": "fired",
+      "status_unexpected_on_operation": "clean",
+      "timeout_growth_after_deploy": "clean"
+    },
+    "investigation_status": "delegated",
+    "session_ref": "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\proj\\.api-sentinel\\agent_sessions\\asr_68382437df920d2cbef329d5\\session_request.json",
+    "detail": "inc=inc_38464e6ddd5c92a64d009392"
+  },
+  "process": {},
+  "ts": "2026-11-10T01:45:06.609545+00:00",
+  "status": "pass",
+  "commit": "9252677e2257198b8f995a408879889ce2fb1879",
+  "version": "",
+  "provider": "api-sentinel",
+  "workspace": "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\proj\\.api-sentinel",
+  "artifacts": [],
+  "hashes": {},
+  "errors": [],
+  "limitations": [],
+  "truth": "LOCAL_REAL",
+  "finished_at": "2026-11-10T01:45:10.375747+00:00"
+}

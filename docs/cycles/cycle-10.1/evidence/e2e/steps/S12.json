@@ -1,0 +1,36 @@
+{
+  "id": "S12",
+  "command": "investigate (S8) session transport state + import probe",
+  "input": {},
+  "output": {
+    "bridge_importable": false,
+    "session_status": "delegated",
+    "session_ref": "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\proj\\.api-sentinel\\agent_sessions\\asr_68382437df920d2cbef329d5\\session_request.json",
+    "emitted_requests": 3,
+    "detail": "status=delegated (session_request emitted=True)"
+  },
+  "process": {},
+  "ts": "2026-11-10T01:45:32.640898+00:00",
+  "status": "blocked",
+  "commit": "9252677e2257198b8f995a408879889ce2fb1879",
+  "version": "",
+  "provider": "forge-agent-bridge",
+  "workspace": "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\proj\\.api-sentinel",
+  "artifacts": [
+    "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\proj\\.api-sentinel\\agent_sessions\\asr_102c86f2249d40feaa704852\\session_request.json",
+    "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\proj\\.api-sentinel\\agent_sessions\\asr_4cba5506680a64ae730f596f\\session_request.json",
+    "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\proj\\.api-sentinel\\agent_sessions\\asr_68382437df920d2cbef329d5\\session_request.json"
+  ],
+  "hashes": {
+    "session_request:asr_102c86f2249d40feaa704852": "sha256:157bd32d2dd9e9d379d4575a7c988fd2e36cceeb8e6e57cebe5dd8592ccdfd25",
+    "session_request:asr_4cba5506680a64ae730f596f": "sha256:dd595471fcf42ffd567329f7900400b21d753a9f7ac81f0e8659bb8d6bcccf57",
+    "session_request:asr_68382437df920d2cbef329d5": "sha256:0aa6fe0539e37ba1113a7882ba92a119f14c5ee6989af05713d75620ae188405"
+  },
+  "errors": [],
+  "limitations": [
+    "agent provider execution is out of this wave's scope (Grill Gate: no real agent-provider session); the emitted session_request.json is transport, never execution",
+    "operator instructions for a real run: install forge-agent-bridge, then `api-sentinel investigate --incident-id <id> --provider <p>` \u2014 the Bridge owns execution, approvals and budget"
+  ],
+  "truth": "BLOCKED",
+  "finished_at": "2026-11-10T01:45:32.777898+00:00"
+}

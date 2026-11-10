@@ -1,0 +1,36 @@
+{
+  "id": "S18",
+  "command": "assemble self-including receipt + S1-S18 step files + hash manifest + verify_evidence.py",
+  "input": {},
+  "output": {
+    "asserts": [
+      {
+        "check": "receipt embeds every step including S18 itself",
+        "ok": true
+      },
+      {
+        "check": "independent manifest verification agrees",
+        "ok": true
+      }
+    ],
+    "verifier_rc": 0,
+    "verifier_tail": "manifest entries: 44; steps: 18\nverification: OK (44 entries, 18 steps)\n"
+  },
+  "process": {},
+  "ts": "2026-11-10T01:47:58.457440+00:00",
+  "status": "pass",
+  "commit": "9252677e2257198b8f995a408879889ce2fb1879",
+  "version": "",
+  "provider": "api-sentinel",
+  "workspace": "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\proj\\.api-sentinel",
+  "artifacts": [
+    "E:\\projetos\\FORJAS\\api-sentinel-forge\\docs\\cycles\\cycle-10.1\\evidence\\federated-e2e-receipt.json",
+    "E:\\projetos\\FORJAS\\api-sentinel-forge\\docs\\cycles\\cycle-10.1\\evidence\\federated-e2e-manifest.json",
+    "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\steps\\S18.json"
+  ],
+  "hashes": {},
+  "errors": [],
+  "limitations": [],
+  "truth": "LOCAL_REAL",
+  "finished_at": "2026-11-10T01:47:58.457440+00:00"
+}

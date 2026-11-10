@@ -1,0 +1,45 @@
+{
+  "id": "S5",
+  "command": "GET /metrics/export \u2192 api-sentinel ingest --json",
+  "input": {},
+  "output": {
+    "waited_for_window_close_s": 55.6,
+    "asserts": [
+      {
+        "check": "ingest rc=0",
+        "ok": true
+      },
+      {
+        "check": "accepted=4 skipped=0",
+        "ok": true
+      }
+    ],
+    "export_url": "http://127.0.0.1:8320/metrics/export?service_id=svc_01M70EJMY02EXJC4WFEWQPRJX2&source_id=src_01M71HV5NR9VQAM445AKH8KV5S",
+    "export_lines": 4,
+    "ingest_rc": 0,
+    "ingest": {
+      "batch_id": "batch_01M71HYZP10N0T2YQM4597VZFJ",
+      "accepted": 4,
+      "quarantined": 0,
+      "skipped_duplicates": 0
+    },
+    "detail": "accepted=4"
+  },
+  "process": {},
+  "ts": "2026-11-10T01:42:06.433553+00:00",
+  "status": "pass",
+  "commit": "9252677e2257198b8f995a408879889ce2fb1879",
+  "version": "",
+  "provider": "demo_api+api-sentinel",
+  "workspace": "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\proj\\.api-sentinel",
+  "artifacts": [
+    "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\artifacts\\export-healthy.jsonl"
+  ],
+  "hashes": {
+    "export-healthy.jsonl": "sha256:a95734eb2e4c8cfc1ccd556b9e1b498f5d16b5a5b757af0228011ce60919c640"
+  },
+  "errors": [],
+  "limitations": [],
+  "truth": "LOCAL_REAL",
+  "finished_at": "2026-11-10T01:43:04.436471+00:00"
+}

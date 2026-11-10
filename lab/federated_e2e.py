@@ -58,7 +58,7 @@ ROOT = Path(__file__).resolve().parent.parent
 RUN = ROOT / "lab" / "run" / "fed"
 DEMO_API = ROOT / "lab" / "demo_api"
 FIXTURES = ROOT / "lab" / "fixtures"
-EVIDENCE = ROOT / "docs" / "cycles" / "cycle-10" / "evidence"
+EVIDENCE = ROOT / "docs" / "cycles" / "cycle-10.1" / "evidence"
 VENV_PY = ROOT / ".venv" / "Scripts" / "python.exe"
 SYSTEM_PY_PLAYWRIGHT = Path(r"C:\Python314\python.exe")
 PORTAL_REPO = ROOT.parent / "forge-portal"
@@ -197,7 +197,13 @@ class Step:
         ORACLE.append(self.record)
         mark = {"pass": "PASS", "fail": "FAIL", "blocked": "BLOCK",
                 "not_run": "SKIP"}.get(self.status, self.status)
-        print(f"[{self.sid:<4} {mark:<5} {truth:<16}] {self.name} {detail}")
+        line = f"[{self.sid:<4} {mark:<5} {truth:<16}] {self.name} {detail}"
+        try:
+            print(line)
+        except UnicodeEncodeError:
+            # Console codec (e.g. cp1252 under redirected stdio) can't take
+            # the step's arrows — degrade the *rendering*, never the record.
+            print(line.encode("ascii", "replace").decode("ascii"))
 
 
 def run_cmd(
@@ -1184,43 +1190,125 @@ def s17_security(ws: Path, ids: dict[str, str]) -> Path:
     return RUN / "security-results.json"
 
 
+def _write_e18_evidence(
+    record: dict[str, object],
+    receipt_path: Path,
+    manifest_path: Path,
+    step_path: Path,
+    aws_result: dict[str, object] | None,
+) -> None:
+    """Write the S18 artifact triad — receipt + step file + manifest.
+
+    Order and content are deterministic: the S18 record carried inside the
+    receipt is the *same* record written to ``steps/S18.json`` — the
+    receipt is self-including, never missing its own step (C101-F002).
+    The manifest hashes the final bytes of every evidence artifact.
+    """
+    step_path.parent.mkdir(parents=True, exist_ok=True)
+    step_path.write_text(
+        json.dumps(record, indent=2, default=str), encoding="utf-8"
+    )
+    steps_all = [*ORACLE, record]
+    summary = {
+        "total": len(steps_all),
+        "passed": sum(1 for s in steps_all if s["status"] == "pass"),
+        "failed": sum(1 for s in steps_all if s["status"] == "fail"),
+        "blocked": sum(1 for s in steps_all if s["status"] == "blocked"),
+        "not_run": sum(1 for s in steps_all if s["status"] == "not_run"),
+        "truth_labels": sorted({str(s["truth"]) for s in steps_all}),
+    }
+    receipt = {
+        "schema": "sentinel-evidence/FederatedE2EReceipt/v1",
+        "cycle": "10.1",
+        "generated_at": utcnow(),
+        "generator": "lab/federated_e2e.py",
+        "commit": COMMIT,
+        "steps": steps_all,
+        "summary": summary,
+    }
+    if aws_result is not None:
+        receipt["aws_validation"] = aws_result
+    receipt_path.write_text(
+        json.dumps(receipt, indent=2, default=str), encoding="utf-8"
+    )
+    files = []
+    for p in sorted(step_path.parent.glob("S*.json")):
+        files.append({
+            "path": str(p.relative_to(ROOT)),
+            "sha256": sha256(p),
+            "bytes": p.stat().st_size,
+        })
+    for p in [*sorted(ART_DIR.rglob("*")), receipt_path]:
+        if p.is_file():
+            files.append({
+                "path": str(p.relative_to(ROOT)),
+                "sha256": sha256(p),
+                "bytes": p.stat().st_size,
+            })
+    manifest = {
+        "schema": "api-sentinel/EvidenceManifest/v1",
+        "cycle": "cycle-10.1",
+        "generated_at": utcnow(),
+        "generator": "lab/federated_e2e.py",
+        "commit": COMMIT,
+        "files": files,
+    }
+    manifest_path.write_text(
+        json.dumps(manifest, indent=2, default=str), encoding="utf-8"
+    )
+
+
 def s18_receipt(ws: Path, aws_result: dict[str, object] | None = None) -> Path:
-    st = Step("S18", "consolidated federated receipt + evidence manifest")
-    st.begin(command="assemble receipt + hash all artifacts + update manifest",
+    st = Step("S18", "consolidated federated receipt + evidence manifest "
+                     "+ independent verification")
+    st.begin(command="assemble self-including receipt + S1-S18 step files "
+                     "+ hash manifest + verify_evidence.py",
              provider="api-sentinel", workspace=str(ws))
+    receipt_path = EVIDENCE / "federated-e2e-receipt.json"
+    manifest_path = EVIDENCE / "federated-e2e-manifest.json"
+    step_path = STEPS_DIR / "S18.json"
     try:
         EVIDENCE.mkdir(parents=True, exist_ok=True)
-        receipt = {
-            "schema": "sentinel-evidence/FederatedE2EReceipt/v1",
-            "cycle": 10, "wave": 4,
-            "generated_at": utcnow(),
-            "generator": "lab/federated_e2e.py",
-            "commit": COMMIT,
-            "workspace": str(ws),
-            "steps": ORACLE,
-            "summary": {
-                "total": len(ORACLE),
-                "passed": sum(1 for s in ORACLE if s["status"] == "pass"),
-                "failed": sum(1 for s in ORACLE if s["status"] == "fail"),
-                "blocked": sum(1 for s in ORACLE if s["status"] == "blocked"),
-                "not_run": sum(1 for s in ORACLE if s["status"] == "not_run"),
-                "truth_labels": sorted(
-                    {str(s["truth"]) for s in ORACLE}),
-            },
-        }
-        if aws_result is not None:
-            receipt["aws_validation"] = aws_result
-        out = EVIDENCE / "federated-e2e-receipt.json"
-        out.write_text(json.dumps(receipt, indent=2, default=str),
-                       encoding="utf-8")
-        st.record["hashes"]["federated-e2e-receipt.json"] = sha256(out)
-        st.record["artifacts"].append(str(out))
-        st.note(receipt=str(out), summary=receipt["summary"])
-        st.finish("pass" if st.ok else "fail", "LOCAL_REAL", str(out))
+        st.record["artifacts"] = [
+            str(receipt_path), str(manifest_path), str(step_path),
+        ]
+        st.record["truth"] = "LOCAL_REAL"
+        st.record["finished_at"] = utcnow()
+        _write_e18_evidence(
+            st.record, receipt_path, manifest_path, step_path, aws_result
+        )
+        st.check(
+            len((json.loads(receipt_path.read_text(encoding="utf-8"))
+                 )["steps"]) == len(ORACLE) + 1,
+            "receipt embeds every step including S18 itself",
+        )
+        # Independent verification — a second process recomputes every
+        # hash and cross-checks receipt ↔ manifest ↔ step files.
+        v = run_cmd(
+            [sys.executable, str(ROOT / "lab" / "verify_evidence.py"),
+             "--receipt", str(receipt_path),
+             "--manifest", str(manifest_path),
+             "--root", str(ROOT)],
+            timeout=120,
+        )
+        st.note(verifier_rc=v["rc"],
+                verifier_tail=(v.get("stdout") or "")[-800:])
+        st.check(v["rc"] == 0, "independent manifest verification agrees")
+        st.status = "pass" if st.ok else "fail"
+        if st.status != st.record["status"]:
+            st.record["status"] = st.status
+            st.record["errors"] = st.record["errors"]
+            _write_e18_evidence(
+                st.record, receipt_path, manifest_path, step_path,
+                aws_result,
+            )
+        ORACLE.append(st.record)
+        mark = {"pass": "PASS", "fail": "FAIL"}.get(st.status, st.status)
+        print(f"[S18  {mark:<5} LOCAL_REAL     ] {st.name}")
     except Exception as exc:
         st.record["errors"].append(f"{type(exc).__name__}: {exc}")
         st.finish("fail", "LOCAL_REAL")
-    return EVIDENCE / "federated-e2e-receipt.json"
+    return receipt_path
 
 
 def _kill_all() -> None:
@@ -1239,6 +1327,12 @@ def main() -> int:
     parser.add_argument("--steps", type=str, default="",
                         help="CSV subset of step ids to run (e.g. S2,S3)")
     args = parser.parse_args()
+
+    # Redirected stdio on Windows is cp1252 — never let an unencodable
+    # character crash a step report (S5 was failed by the console, not
+    # by the pipeline).
+    sys.stdout.reconfigure(errors="replace")
+    sys.stderr.reconfigure(errors="replace")
 
     RUN.mkdir(parents=True, exist_ok=True)
     ART_DIR.mkdir(parents=True, exist_ok=True)

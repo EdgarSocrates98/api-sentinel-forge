@@ -1,0 +1,50 @@
+{
+  "id": "S17",
+  "command": "lab/security_battery.py against the served API + workspace",
+  "input": {},
+  "output": {
+    "battery_rc": 0,
+    "tail": " LOCAL_REAL  ] session replay (same idempotency key) \u00e2\u2020\u2019 deduped\n[SEC-CLD-01 HELD  LOCAL_REAL  ] mutating AWS ops refused pre-transport (mechanical proof)\n[SEC-CLD-02 HELD  LOCAL_REAL  ] put_metric_data refused before any call\n[SEC-CLD-03 HELD  SIMULATED   ] cross-account credential \u00e2\u2020\u2019 STS preflight refuses\n[SEC-CLD-04 HELD  SIMULATED   ] wrong region scope \u00e2\u2020\u2019 named refusal\n[SEC-CLD-05 HELD  SIMULATED   ] expired credentials \u00e2\u2020\u2019 named refusal\n[SEC-CLD-06 HELD  SIMULATED   ] AccessDenied on identity \u00e2\u2020\u2019 named refusal\n[SEC-CLD-07 HELD  LOCAL_REAL  ] credential-shaped source config refused (env holds creds, never config)\n[SEC-CLD-08 HELD  LOCAL_REAL  ] no endpoint-override surface in session config (SSRF vector absent by construction)\n[SEC-CLD-09 HELD  SIMULATED   ] permanent throttling \u00e2\u2020\u2019 bounded named failure (never hangs)\n[SEC-CLD-10 HELD  SIMULATED   ] budget 0 \u00e2\u2020\u2019 refusal before any egress\n[SEC-CLD-11 HELD  SIMULATED   ] bounded lab013 window \u00e2\u2020\u2019 real paginated collect or honest empty/partial\n[SEC-CLD-12 HELD  LOCAL_REAL  ] missing/expired profile \u00e2\u2020\u2019 typed IntegrationUnavailable, no fabricated inventory\n[SEC-CLD-13 HELD  LOCAL_REAL  ] no credential material persisted in workspace artifacts\n[SEC-UI-01  HELD  LOCAL_REAL  ] served Portal bundle embeds no credential material\n[SEC-UI-02  HELD  LOCAL_REAL  ] bearer token never rendered into the DOM (S14 browser check)\n\nbattery: 40/40 held, 0 breached \u00e2\u2020\u2019 E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\security-results.json\n",
+    "battery_err": "",
+    "asserts": [
+      {
+        "check": "battery ran to completion",
+        "ok": true
+      },
+      {
+        "check": "battery coverage total=40",
+        "ok": true
+      },
+      {
+        "check": "zero control breaches (0)",
+        "ok": true
+      }
+    ],
+    "total": 40,
+    "held": 40,
+    "breached": 0,
+    "not_applicable": 0,
+    "truth_labels": [
+      "LOCAL_REAL",
+      "SIMULATED"
+    ],
+    "detail": "see evidence/security-results.json"
+  },
+  "process": {},
+  "ts": "2026-11-10T01:47:12.951867+00:00",
+  "status": "pass",
+  "commit": "9252677e2257198b8f995a408879889ce2fb1879",
+  "version": "",
+  "provider": "api-sentinel",
+  "workspace": "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\proj\\.api-sentinel",
+  "artifacts": [
+    "E:\\projetos\\FORJAS\\api-sentinel-forge\\lab\\run\\fed\\security-results.json"
+  ],
+  "hashes": {
+    "security-results.json": "sha256:f8ceffecb073523b9851a724f17227f80fbe88e731175eed747b3442651e6e19"
+  },
+  "errors": [],
+  "limitations": [],
+  "truth": "LOCAL_REAL",
+  "finished_at": "2026-11-10T01:47:58.456417+00:00"
+}
