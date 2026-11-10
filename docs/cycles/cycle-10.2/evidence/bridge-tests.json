@@ -1,0 +1,1 @@
+{"schema":"api-sentinel/cycle-10.2/bridge/v1","suite":"tests/integration/test_bridge_http.py","result":"PASS","controls":["provider required","loopback URL","no redirects","no proxy","bounded JSON","identity checks"]}

@@ -1,0 +1,1 @@
+{"schema":"api-sentinel/cycle-10.2/lens/v1","suite":"tests/integration/test_lens_real.py","result":"PASS_CONTRACT_OR_BLOCKED_EXTERNAL","truth":"fixture/imported refs only when provider unavailable","external_provider":"BLOCKED"}

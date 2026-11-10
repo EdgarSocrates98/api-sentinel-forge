@@ -1,0 +1,13 @@
+{
+  "schema": "api-sentinel/cycle-10.2/baseline/v1",
+  "repository": "api-sentinel-forge",
+  "branch": "main",
+  "commit": "f8996d8fa9b78da8acd4260a36901133e8f1060c",
+  "environment": "Windows",
+  "python": "3.14.6",
+  "tests": {"passed": 626, "failed": 0, "skipped": 3},
+  "ruff": "PASS",
+  "mypy": "PASS",
+  "build": {"wheel": "PASS", "sdist": "PASS", "version": "0.1.0"},
+  "limitations": ["Linux baseline delegated to CI"]
+}

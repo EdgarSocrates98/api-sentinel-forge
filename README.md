@@ -86,3 +86,13 @@ lab/                sample API + reproducible scenarios (grows per cycle)
 ## License
 
 Apache-2.0 — see `LICENSE`.
+# Cycle 10.2 operational status
+
+The local-first recovery and security gates are documented in
+[`docs/cycles/cycle-10.2/`](docs/cycles/cycle-10.2/). Use `api-sentinel install`
+to create a workspace, `api-sentinel tui` for the terminal dashboard, and
+`api-sentinel backup create` / `api-sentinel backup restore --from <dir>` for
+verified recovery. Restore refuses an occupied workspace unless `--force` is
+explicitly supplied. The current evidence is `CONDITIONAL GO`: optional
+Agent Bridge/Lens providers and Linux hosted verification remain named
+limitations.

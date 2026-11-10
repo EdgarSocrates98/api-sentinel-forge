@@ -1,0 +1,8 @@
+{
+  "schema": "api-sentinel/cycle-10.2/recovery/v1",
+  "unit_and_security_recovery": "PASS",
+  "s16_focused": "PASS",
+  "s16_assertions": ["backup created", "restore integrity=ok", "services parity", "sources parity", "incidents parity"],
+  "restore_destination": "unique temporary directory per run",
+  "negative_cases": ["corrupt backup", "missing payload", "occupied destination", "failed migration", "crash-mid-ingest"]
+}

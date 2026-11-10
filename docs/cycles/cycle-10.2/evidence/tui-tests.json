@@ -1,0 +1,1 @@
+{"schema":"api-sentinel/cycle-10.2/tui/v1","suite":"tests/integration/test_tui.py","result":"PASS","security_regression":"literal Rich markup payload preserved"}
