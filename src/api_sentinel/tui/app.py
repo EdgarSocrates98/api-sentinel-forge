@@ -34,9 +34,10 @@ from textual.widgets import (
 from typer.testing import CliRunner
 
 from api_sentinel.cli import app as cli_app
+from api_sentinel.infrastructure.security.redact import redact
 from api_sentinel.workspace import Workspace
 
-from .catalog import CATALOG, Command, Field, build_argv
+from .catalog import CATALOG, Command, Field, build_argv, display_argv
 from .data import (
     PanelData,
     load_audit,
@@ -296,22 +297,31 @@ class SentinelApp(App[None]):
 
         # off the commands panel there is no log sink — drop silently.
         with contextlib.suppress(Exception):
+            if not markup:
+                text = redact(text).text
             renderable = Text.from_markup(text) if markup else Text(text)
             self.query_one("#out", RichLog).write(renderable)
+
+    def _logline_from_worker(self, text: str, *, markup: bool = False) -> None:
+        """Schedule widget access on Textual's app thread."""
+        self.call_from_thread(
+            lambda: self._logline(text, markup=markup)
+        )
 
     @work(thread=True)
     def _run_command(self, cmd: Command, values: dict[str, str]) -> None:
         argv = build_argv(cmd, values, ws=self.ws_arg)
-        self._logline(f"$ api-sentinel {' '.join(argv)}")
+        display = display_argv(cmd, values, ws=self.ws_arg)
+        self._logline_from_worker(f"$ api-sentinel {' '.join(display)}")
         result = CliRunner().invoke(cli_app, argv)
         out = result.output.strip() or "(no output)"
         status = "[green]ok[/]" if result.exit_code == 0 else (
             f"[red]exit {result.exit_code}[/]"
         )
-        self._logline(status, markup=True)
-        self._logline(out)
+        self._logline_from_worker(status, markup=True)
+        self._logline_from_worker(out)
         if result.exit_code != 0 and result.exception:
-            self._logline(
+            self._logline_from_worker(
                 f"{type(result.exception).__name__}: {result.exception}"
             )
         # Refresh data panels the command may have touched — but never the

@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/logo.png" alt="API Sentinel Forge - Logo" width="420">
+</p>
+
 # API Sentinel Forge
 
 **Observe. Correlate. Diagnose. Verify.**

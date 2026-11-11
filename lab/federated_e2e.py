@@ -42,6 +42,7 @@ import json
 import os
 import shutil
 import socket
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -49,18 +50,23 @@ import threading
 import time
 import urllib.error
 import urllib.request
+import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
+from runtime import resolve_entrypoint, resolve_python
 
 ROOT = Path(__file__).resolve().parent.parent
-RUN = ROOT / "lab" / "run" / "fed"
+RUN_BASE = ROOT / "lab" / "run" / "fed"
+RUN = RUN_BASE
 DEMO_API = ROOT / "lab" / "demo_api"
 FIXTURES = ROOT / "lab" / "fixtures"
-EVIDENCE = ROOT / "docs" / "cycles" / "cycle-10.2" / "evidence"
-VENV_PY = ROOT / ".venv" / "Scripts" / "python.exe"
+EVIDENCE = ROOT / "docs" / "cycles" / "cycle-10.3" / "evidence"
+VENV_PY = resolve_python(ROOT)
+SKIP_TRAFFIC_SLEEP = False
+BUNDLE_ROOT: Path | None = None
 
 
 def _configured_path(env_name: str, fallback: Path) -> Path:
@@ -358,9 +364,30 @@ def export_and_ingest(
     return out
 
 
+def semantic_row_differences(
+    before: dict[str, object], after: dict[str, object]
+) -> list[str]:
+    """Return table names whose complete row sets differ.
+
+    The caller supplies snapshots with audit history already excluded. This
+    deliberately catches same-count/different-content restores.
+    """
+    left = before.get("rows")
+    right = after.get("rows")
+    if not isinstance(left, dict) or not isinstance(right, dict):
+        return ["<invalid-snapshot>"]
+    differences: list[str] = []
+    for table in sorted(set(left) | set(right)):
+        if left.get(table) != right.get(table):
+            differences.append(str(table))
+    return differences
+
+
 def wait_closed_window(min_extra_seconds: float = 2.0) -> float:
     """Sleep until the current 60s window closes (export only ships closed
     windows). Returns seconds slept."""
+    if SKIP_TRAFFIC_SLEEP:
+        return 0.0
     now = time.time()
     wait = (60 - now % 60) + min_extra_seconds
     time.sleep(wait)
@@ -388,22 +415,24 @@ def s1_bootstrap() -> Path:
         if wheels:
             st.record["hashes"]["wheel"] = sha256(wheels[-1])
         v = run_cmd(["uv", "venv", str(RUN / "boot-venv")], cwd=ROOT)
-        boot_py = RUN / "boot-venv" / "Scripts" / "python.exe"
+        boot_py = resolve_python(ROOT, venv=RUN / "boot-venv")
         st.check(boot_py.exists(), f"fresh venv python exists: {boot_py}")
         st.check(b["rc"] == 0 and v["rc"] == 0, "build+venv rc=0")
         if wheels and boot_py.exists():
             # the wheel + its extras AND the real Forge Doctor engine —
             # S9's in-process delegation needs `forge_doctor_api`
             # importable in the interpreter that runs the CLI.
-            doctor_src = ROOT.parent / "forge-doctor-api"
+            doctor_src = _configured_path(
+                "FORGE_DOCTOR_DIR", ROOT.parent / "forge-doctor-api"
+            )
             i = run_cmd(
                 ["uv", "pip", "install", "--python", str(boot_py),
                  f"{wheels[-1]}[api,aws]", str(doctor_src)],
                 cwd=ROOT, timeout=600)
             st.check(i["rc"] == 0, "wheel+extras+forge_doctor_api installed "
                                    "into boot venv")
-            cli = RUN / "boot-venv" / "Scripts" / "api-sentinel.exe"
-            st.check(cli.exists(), f"api-sentinel.exe exists: {cli}")
+            cli = resolve_entrypoint("api-sentinel", python=boot_py)
+            st.check(cli.exists(), f"api-sentinel entrypoint exists: {cli}")
             ver = run_cmd([str(cli), "version"]) if cli.exists() else {"rc": 1, "stdout": ""}
             st.record["version"] = (ver.get("stdout") or "").strip()
             st.record["process"] = {
@@ -426,7 +455,7 @@ def s1_bootstrap() -> Path:
     except Exception as exc:
         st.record["errors"].append(f"{type(exc).__name__}: {exc}")
         st.finish("fail", "LOCAL_REAL")
-    return RUN / "boot-venv" / "Scripts" / "python.exe"
+    return resolve_python(ROOT, venv=RUN / "boot-venv")
 
 
 def s2_demo_start(boot_py: Path) -> dict[str, object]:
@@ -520,7 +549,7 @@ def s3_register(proj: Path) -> dict[str, str]:
                 " u.services.put(s);u.commit()\n"
                 "print('linked')\n"
             )
-            boot_py = RUN / "boot-venv" / "Scripts" / "python.exe"
+            boot_py = resolve_python(ROOT, venv=RUN / "boot-venv")
             w = run_cmd([str(boot_py), "-c", script])
             st.record["output"]["atlas_link"] = (w.get("stdout") or "").strip()
         st.note(service_id=svc, source_id=src)
@@ -753,7 +782,14 @@ def s10_atlas(ws: Path, ids: dict[str, str], incident_id: str) -> None:
                 f"    repository: {ATLAS_REPO_KEY}\n"
             )
             cfg.write_text(text, encoding="utf-8")
-        st.check(ATLAS_DB.is_file(), f"real atlas.db present: {ATLAS_DB}")
+        if not ATLAS_DB.is_file():
+            st.record["limitations"].append(
+                f"Code Atlas database unavailable at {ATLAS_DB}; no provider claim made"
+            )
+            st.note(structural_edges=0, status="BLOCKED",
+                    reason="optional Code Atlas database unavailable")
+            st.finish("blocked", "BLOCKED", "real atlas.db unavailable")
+            return
         c = CLI.run(
             ["correlate", "--service-id", ids["service_id"], "--json"], ws)
         d = c.get("json") or {}
@@ -815,7 +851,7 @@ def s12_bridge(ws: Path, inv: dict[str, object]) -> None:
     st.begin(command="investigate (S8) session transport state + import probe",
              provider="forge-agent-bridge", workspace=str(ws))
     try:
-        boot_py = RUN / "boot-venv" / "Scripts" / "python.exe"
+        boot_py = resolve_python(ROOT, venv=RUN / "boot-venv")
         probe = run_cmd(
             [str(boot_py), "-c",
              "import importlib.util;"
@@ -852,7 +888,7 @@ def s13_lens(ws: Path) -> None:
     st.begin(command="integrations status + forge_lens probe + refs manifest check",
              provider="forge-lens", workspace=str(ws))
     try:
-        boot_py = RUN / "boot-venv" / "Scripts" / "python.exe"
+        boot_py = resolve_python(ROOT, venv=RUN / "boot-venv")
         probe = run_cmd(
             [str(boot_py), "-c",
              "import importlib.util;"
@@ -897,6 +933,21 @@ def _proxy_handler(bundle: Path, sentinel_base: str, prefix: str = "/sentinel"):
         def log_message(self, *a):
             pass
 
+        def _write_payload(self, payload: bytes) -> None:
+            """Ignore a client disconnect after the response is committed.
+
+            Playwright may close a page immediately after receiving the
+            assertion response.  On Windows that is reported as
+            ``ConnectionAbortedError`` (and as a broken pipe/reset on Unix),
+            none of which is a proxy failure or a reason to leave a noisy
+            traceback in the E2E server log.
+            """
+            try:
+                self.wfile.write(payload)
+            except (BrokenPipeError, ConnectionResetError,
+                    ConnectionAbortedError):
+                return
+
         def _proxy(self):
             path = self.path[len(prefix):] or "/"
             body = None
@@ -926,7 +977,7 @@ def _proxy_handler(bundle: Path, sentinel_base: str, prefix: str = "/sentinel"):
             self.send_header("Content-Type", ctype)
             self.send_header("Content-Length", str(len(payload)))
             self.end_headers()
-            self.wfile.write(payload)
+            self._write_payload(payload)
 
         def do_GET(self):
             if self.path.startswith(prefix):
@@ -941,7 +992,7 @@ def _proxy_handler(bundle: Path, sentinel_base: str, prefix: str = "/sentinel"):
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(len(payload)))
                 self.end_headers()
-                self.wfile.write(payload)
+                self._write_payload(payload)
                 return
             return super().do_GET()
 
@@ -1013,10 +1064,28 @@ def s14_portal(ws: Path, ids: dict[str, str]) -> None:
                      "playwright (system python) through the real bundle",
              provider="forge-portal", workspace=str(ws))
     try:
-        st.check(PORTAL_BUNDLE.is_dir(),
-                 f"portal bundle present: {PORTAL_BUNDLE}")
-        st.check(SYSTEM_PY_PLAYWRIGHT.exists(),
-                 f"playwright python: {SYSTEM_PY_PLAYWRIGHT}")
+        if not PORTAL_BUNDLE.is_dir():
+            st.record["limitations"].append(
+                f"Portal bundle unavailable at {PORTAL_BUNDLE}"
+            )
+            st.finish("blocked", "BLOCKED", "Portal bundle unavailable")
+            return
+        if not SYSTEM_PY_PLAYWRIGHT.exists():
+            st.record["limitations"].append(
+                f"browser runtime unavailable at {SYSTEM_PY_PLAYWRIGHT}"
+            )
+            st.finish("blocked", "BLOCKED", "browser runtime unavailable")
+            return
+        playwright_probe = run_cmd(
+            [str(SYSTEM_PY_PLAYWRIGHT), "-c", "import playwright"], timeout=30
+        )
+        if playwright_probe["rc"] != 0:
+            st.record["limitations"].append(
+                "Playwright is not installed in the selected browser runtime"
+            )
+            st.note(playwright_probe=playwright_probe)
+            st.finish("blocked", "BLOCKED", "Playwright runtime unavailable")
+            return
         # real sentinel serve process
         env = dict(os.environ, API_SENTINEL_TOKEN=TOKEN,
                    PYTHONUTF8="1", PYTHONIOENCODING="utf-8")
@@ -1182,12 +1251,68 @@ def s16_backup_restore(ws: Path) -> None:
         r = CLI.run(["backup", "restore", "--from", bdir, "--json"], ws2)
         st.check(r["rc"] == 0 and (r.get("json") or {}).get("integrity") == "ok",
                  f"restore integrity={(r.get('json') or {}).get('integrity')}")
-        for what in ("services", "sources", "incidents"):
-            n1 = CLI.run([what, "--json"], ws).get("json") or []
-            n2 = CLI.run([what, "--json"], ws2).get("json") or []
-            st.check(len(n1) == len(n2), f"{what} parity {len(n1)}=={len(n2)}")
-        st.note(backup_dir=bdir)
-        st.finish("pass" if st.ok else "fail", "LOCAL_REAL", "integrity ok + parity")
+        backup_db = Path(bdir) / "sentinel.db"
+
+        def db_snapshot(path: Path) -> dict[str, object]:
+            conn = sqlite3.connect(str(path))
+            try:
+                integrity = str(conn.execute("PRAGMA integrity_check").fetchone()[0])
+                fk = [tuple(row) for row in conn.execute("PRAGMA foreign_key_check")]
+                tables = [
+                    row[0] for row in conn.execute(
+                        "SELECT name FROM sqlite_master WHERE type='table' "
+                        "AND name NOT LIKE 'sqlite_%' ORDER BY name"
+                    )
+                ]
+                rows: dict[str, object] = {}
+                schema: dict[str, object] = {}
+                for table in tables:
+                    columns = [
+                        tuple(row) for row in conn.execute(
+                            f"PRAGMA table_info([{table}])"
+                        )
+                    ]
+                    schema[table] = columns
+                    if table == "audit_events":
+                        continue  # backup/restore journals are legitimate deltas
+                    rows[table] = sorted(
+                        [tuple(row) for row in conn.execute(
+                            f"SELECT * FROM [{table}]"  # noqa: S608
+                        )], key=repr
+                    )
+                return {"integrity": integrity, "fk": fk,
+                        "schema": schema, "rows": rows, "tables": tables}
+            finally:
+                conn.close()
+
+        before = db_snapshot(backup_db)
+        after = db_snapshot(ws2 / "sentinel.db")
+        st.check(before["integrity"] == "ok", "backup database integrity=ok")
+        st.check(after["integrity"] == "ok", "restored database integrity=ok")
+        st.check(not before["fk"] and not after["fk"], "foreign keys valid")
+        st.check(before["tables"] == after["tables"], "table set parity")
+        st.check(before["schema"] == after["schema"], "table schema parity")
+        differences = semantic_row_differences(before, after)
+        before_rows = before["rows"]
+        after_rows = after["rows"]
+        for table in sorted(set(before_rows) | set(after_rows)):  # type: ignore[arg-type]
+            st.check(table not in differences, f"semantic row parity {table}")
+
+        def blob_hashes(root: Path) -> dict[str, str]:
+            return {
+                str(p.relative_to(root)).replace("\\", "/"): sha256(p)
+                for p in sorted(root.rglob("*")) if p.is_file()
+            } if root.is_dir() else {}
+
+        expected_blobs = blob_hashes(Path(bdir) / "blobs")
+        restored_blobs = blob_hashes(ws2 / "blobs")
+        st.check(expected_blobs == restored_blobs, "blob set and hash parity")
+        st.note(backup_dir=bdir, semantic_parity=True,
+                table_count=len(before["tables"]),
+                blob_count=len(expected_blobs),
+                audit_delta="allowed: backup/restore append operational journal")
+        st.finish("pass" if st.ok else "fail", "LOCAL_REAL",
+                  "integrity + schema + rows + blobs parity")
     except Exception as exc:
         st.record["errors"].append(f"{type(exc).__name__}: {exc}")
         st.finish("fail", "LOCAL_REAL")
@@ -1227,6 +1352,49 @@ def s17_security(ws: Path, ids: dict[str, str]) -> Path:
     return RUN / "security-results.json"
 
 
+def _sanitize_bundle_value(value: object) -> object:
+    """Remove host-specific paths and the lab token before hashing evidence."""
+    if isinstance(value, dict):
+        return {str(k): _sanitize_bundle_value(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_sanitize_bundle_value(v) for v in value]
+    if isinstance(value, str):
+        result = value.replace(str(ROOT), "<checkout>")
+        result = result.replace(str(Path.home()), "<home>")
+        return result.replace(TOKEN, "<redacted-token>")
+    return value
+
+
+def _copy_bundle_inputs(bundle_root: Path) -> tuple[Path, Path]:
+    """Copy a run's mutable files into its portable, self-contained bundle."""
+    bundle_steps = bundle_root / "steps"
+    bundle_artifacts = bundle_root / "artifacts"
+    bundle_steps.mkdir(parents=True, exist_ok=True)
+    bundle_artifacts.mkdir(parents=True, exist_ok=True)
+    for source in sorted(STEPS_DIR.glob("S*.json")):
+        (bundle_steps / source.name).write_text(
+            json.dumps(_sanitize_bundle_value(json.loads(source.read_text(encoding="utf-8"))),
+                       indent=2, default=str),
+            encoding="utf-8",
+        )
+    for source in sorted(ART_DIR.rglob("*")):
+        if not source.is_file():
+            continue
+        target = bundle_artifacts / source.relative_to(ART_DIR)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if source.resolve() == target.resolve():
+            continue
+        if source.suffix.lower() in {".json", ".jsonl", ".txt", ".log"}:
+            with contextlib.suppress(UnicodeDecodeError):
+                target.write_text(
+                    str(_sanitize_bundle_value(source.read_text(encoding="utf-8"))),
+                    encoding="utf-8",
+                )
+                continue
+        shutil.copy2(source, target)
+    return bundle_steps, bundle_artifacts
+
+
 def _write_e18_evidence(
     record: dict[str, object],
     receipt_path: Path,
@@ -1241,11 +1409,15 @@ def _write_e18_evidence(
     receipt is self-including, never missing its own step (C101-F002).
     The manifest hashes the final bytes of every evidence artifact.
     """
+    bundle_root = step_path.parent.parent
     step_path.parent.mkdir(parents=True, exist_ok=True)
+    bundle_steps, bundle_artifacts = _copy_bundle_inputs(bundle_root)
+    safe_oracle = [_sanitize_bundle_value(s) for s in ORACLE]
+    safe_record = _sanitize_bundle_value(record)
     step_path.write_text(
-        json.dumps(record, indent=2, default=str), encoding="utf-8"
+        json.dumps(safe_record, indent=2, default=str), encoding="utf-8"
     )
-    steps_all = [*ORACLE, record]
+    steps_all = [*safe_oracle, safe_record]
     summary = {
         "total": len(steps_all),
         "passed": sum(1 for s in steps_all if s["status"] == "pass"),
@@ -1256,7 +1428,7 @@ def _write_e18_evidence(
     }
     receipt = {
         "schema": "sentinel-evidence/FederatedE2EReceipt/v1",
-        "cycle": "10.2",
+        "cycle": "10.3",
         "generated_at": utcnow(),
         "generator": "lab/federated_e2e.py",
         "commit": COMMIT,
@@ -1268,23 +1440,44 @@ def _write_e18_evidence(
     receipt_path.write_text(
         json.dumps(receipt, indent=2, default=str), encoding="utf-8"
     )
+    runtime_path = bundle_root / "environment" / "runtime.json"
+    runtime_path.parent.mkdir(parents=True, exist_ok=True)
+    runtime_path.write_text(json.dumps({
+        "schema": "api-sentinel/Cycle103Runtime/v1",
+        "run_id": bundle_root.name,
+        "commit": COMMIT,
+        "platform": sys.platform,
+        "python": sys.version.split()[0],
+        "profile": "federated-local",
+        "truth": "LOCAL_REAL",
+    }, indent=2), encoding="utf-8")
+    bundle_meta = bundle_root / "bundle.json"
+    bundle_meta.write_text(json.dumps({
+        "schema": "api-sentinel/EvidenceBundle/v1",
+        "cycle": "10.3",
+        "run_id": bundle_root.name,
+        "commit": COMMIT,
+        "receipt": "federated-e2e-receipt.json",
+        "manifest": "federated-e2e-manifest.json",
+    }, indent=2), encoding="utf-8")
     files = []
-    for p in sorted(step_path.parent.glob("S*.json")):
+    for p in sorted(bundle_steps.glob("S*.json")):
         files.append({
-            "path": str(p.relative_to(ROOT)),
+            "path": str(p.relative_to(bundle_root)).replace("\\", "/"),
             "sha256": sha256(p),
             "bytes": p.stat().st_size,
         })
-    for p in [*sorted(ART_DIR.rglob("*")), receipt_path]:
+    for p in [*sorted(bundle_artifacts.rglob("*")), runtime_path,
+              bundle_meta, receipt_path]:
         if p.is_file():
             files.append({
-                "path": str(p.relative_to(ROOT)),
+                "path": str(p.relative_to(bundle_root)).replace("\\", "/"),
                 "sha256": sha256(p),
                 "bytes": p.stat().st_size,
             })
     manifest = {
         "schema": "api-sentinel/EvidenceManifest/v1",
-        "cycle": "cycle-10.2",
+        "cycle": "cycle-10.3",
         "generated_at": utcnow(),
         "generator": "lab/federated_e2e.py",
         "commit": COMMIT,
@@ -1301,44 +1494,70 @@ def s18_receipt(ws: Path, aws_result: dict[str, object] | None = None) -> Path:
     st.begin(command="assemble self-including receipt + S1-S18 step files "
                      "+ hash manifest + verify_evidence.py",
              provider="api-sentinel", workspace=str(ws))
-    receipt_path = EVIDENCE / "federated-e2e-receipt.json"
-    manifest_path = EVIDENCE / "federated-e2e-manifest.json"
-    step_path = STEPS_DIR / "S18.json"
+    bundle_root = BUNDLE_ROOT or ROOT
+    if bundle_root == ROOT:
+        receipt_path = EVIDENCE / "federated-e2e-receipt.json"
+        manifest_path = EVIDENCE / "federated-e2e-manifest.json"
+        step_path = STEPS_DIR / "S18.json"
+        verify_root = ROOT
+    else:
+        receipt_path = bundle_root / "federated-e2e-receipt.json"
+        manifest_path = bundle_root / "federated-e2e-manifest.json"
+        step_path = bundle_root / "steps" / "S18.json"
+        verify_root = bundle_root
     try:
         EVIDENCE.mkdir(parents=True, exist_ok=True)
         st.record["artifacts"] = [
             str(receipt_path), str(manifest_path), str(step_path),
         ]
         st.record["truth"] = "LOCAL_REAL"
+        # S18 is self-including.  Seed it with a valid terminal status before
+        # the first verification; a transient ``running`` status would make
+        # an otherwise valid bundle fail the independent verifier.
+        st.status = "pass"
+        st.record["status"] = "pass"
+        st.record["output"]["asserts"] = [{
+            "check": "receipt embeds every step including S18 itself",
+            "ok": True,
+        }]
         st.record["finished_at"] = utcnow()
         _write_e18_evidence(
             st.record, receipt_path, manifest_path, step_path, aws_result
         )
-        st.check(
-            len((json.loads(receipt_path.read_text(encoding="utf-8"))
-                 )["steps"]) == len(ORACLE) + 1,
-            "receipt embeds every step including S18 itself",
-        )
+        embedded = len(json.loads(
+            receipt_path.read_text(encoding="utf-8")
+        )["steps"]) == len(ORACLE) + 1
+        st.record["output"]["asserts"][0]["ok"] = embedded
+        if not embedded:
+            st.ok = False
+            st.record["errors"].append(
+                "assert failed: receipt embeds every step including S18 itself"
+            )
         # Independent verification — a second process recomputes every
         # hash and cross-checks receipt ↔ manifest ↔ step files.
         v = run_cmd(
             [sys.executable, str(ROOT / "lab" / "verify_evidence.py"),
              "--receipt", str(receipt_path),
              "--manifest", str(manifest_path),
-             "--root", str(ROOT)],
+             "--root", str(verify_root)],
             timeout=120,
         )
         st.note(verifier_rc=v["rc"],
                 verifier_tail=(v.get("stdout") or "")[-800:])
-        st.check(v["rc"] == 0, "independent manifest verification agrees")
-        st.status = "pass" if st.ok else "fail"
-        if st.status != st.record["status"]:
-            st.record["status"] = st.status
-            st.record["errors"] = st.record["errors"]
-            _write_e18_evidence(
-                st.record, receipt_path, manifest_path, step_path,
-                aws_result,
+        st.record["output"]["asserts"].append({
+            "check": "independent manifest verification agrees",
+            "ok": v["rc"] == 0,
+        })
+        if v["rc"] != 0:
+            st.ok = False
+            st.record["errors"].append(
+                "assert failed: independent manifest verification agrees"
             )
+        st.status = "pass" if st.ok else "fail"
+        st.record["status"] = st.status
+        _write_e18_evidence(
+            st.record, receipt_path, manifest_path, step_path, aws_result,
+        )
         ORACLE.append(st.record)
         mark = {"pass": "PASS", "fail": "FAIL"}.get(st.status, st.status)
         print(f"[S18  {mark:<5} LOCAL_REAL     ] {st.name}")
@@ -1358,23 +1577,35 @@ def _kill_all() -> None:
 
 
 def main() -> int:
+    global ART_DIR, BUNDLE_ROOT, RUN, SKIP_TRAFFIC_SLEEP, STEPS_DIR
+
+    # argparse renders the module docstring for --help.  Configure the
+    # console before parsing so Windows cp1252 cannot make help itself fail.
+    sys.stdout.reconfigure(errors="replace")
+    sys.stderr.reconfigure(errors="replace")
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--traffic-seconds", type=float, default=66.0,
                         help="per-phase burst duration (needs ≥1 closed 60s window)")
     parser.add_argument("--steps", type=str, default="",
                         help="CSV subset of step ids to run (e.g. S2,S3)")
+    parser.add_argument(
+        "--skip-traffic-sleep", action="store_true",
+        help="diagnostic mode: do not wait for a closed 60s export window",
+    )
     args = parser.parse_args()
 
-    # Redirected stdio on Windows is cp1252 — never let an unencodable
-    # character crash a step report (S5 was failed by the console, not
-    # by the pipeline).
-    sys.stdout.reconfigure(errors="replace")
-    sys.stderr.reconfigure(errors="replace")
-
+    SKIP_TRAFFIC_SLEEP = bool(args.skip_traffic_sleep)
+    run_id = f"{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}-{uuid.uuid4().hex[:8]}"
+    RUN = RUN_BASE / run_id
+    BUNDLE_ROOT = EVIDENCE / "bundles" / run_id
+    STEPS_DIR = RUN / "steps"
+    ART_DIR = RUN / "artifacts"
+    ORACLE.clear()
+    PROCS.clear()
     RUN.mkdir(parents=True, exist_ok=True)
     ART_DIR.mkdir(parents=True, exist_ok=True)
     STEPS_DIR.mkdir(parents=True, exist_ok=True)
-    print(f"federated_e2e — run root: {RUN}\ncommit: {COMMIT}")
+    print(f"federated_e2e — run root: {RUN}\ncommit: {COMMIT}\nrun_id: {run_id}")
 
     proj = RUN / "proj"
     ws = proj / ".api-sentinel"
@@ -1390,10 +1621,8 @@ def main() -> int:
         if not only or "S1" in only:
             boot_py = s1_bootstrap()
         else:
-            boot_py = RUN / "boot-venv" / "Scripts" / "python.exe"
-            CLI.path = RUN / "boot-venv" / "Scripts" / "api-sentinel.exe"
-            if not CLI.path.exists():
-                CLI.path = VENV_PY.parent / "api-sentinel.exe"
+            boot_py = resolve_python(ROOT, venv=RUN / "boot-venv")
+            CLI.path = resolve_entrypoint("api-sentinel", python=boot_py)
         if not only or "S2" in only:
             s2_demo_start(boot_py)
         ids = (

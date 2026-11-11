@@ -1,0 +1,30 @@
+{
+  "schema": "api-sentinel/Cycle103Evidence/v1",
+  "status": "PASS_WITH_LIMITATIONS",
+  "truth": "INTEGRATION_REAL",
+  "head": "5df1c6e2f90d6ff9d7da2e5be6594a0d220f383d",
+  "core_run_id": "42934058383",
+  "federated_run_id": "42934058334",
+  "jobs": [
+    "ubuntu-latest / py3.12",
+    "windows-latest / py3.12",
+    "fixed-revision federated local Golden Path"
+  ],
+  "core_ci": "PASS",
+  "federated_workflow": "PASS",
+  "federated_job": "PASS",
+  "artifact": "cycle-10.3-federated-evidence",
+  "artifact_id": "13816749115",
+  "bundle_run_id": "20261111T004728Z-e2be3cce",
+  "golden_path": {
+    "passed": 14,
+    "failed": 0,
+    "blocked": 4,
+    "blocked_steps": ["S10", "S12", "S13", "S14"]
+  },
+  "limitations": [
+    "S10 requires an Atlas database resource.",
+    "S12 and S13 require authorized Bridge/Lens providers.",
+    "S14 requires a Playwright browser runtime."
+  ]
+}

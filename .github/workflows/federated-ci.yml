@@ -1,0 +1,115 @@
+name: federated-ci
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  THE_FORGE_SHA: 4f0726f742822224c2fafa0ee9f7aa36b2a778f6
+  FORGE_DOCTOR_SHA: 3a5a9a860318cb277292a23007879a1e2bf45b9b
+  CODE_ATLAS_SHA: c164ea5e2232d2660ad4c9bcf60f63469b604c2c
+  FORGE_BRIDGE_SHA: 995e59ea9bbaeee3e9a3c920d94294f2f7ddb9ba
+  FORGE_LENS_SHA: cd9bba04bf19568b7a9116fea99ca09145c24b53
+  FORGE_PORTAL_SHA: 63518efd8fdf1ee458e346fcdcb3e61bbcde8b6a
+
+jobs:
+  federated-local:
+    name: fixed-revision federated local Golden Path
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Sentinel
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          # The bundle must identify the exact submitted head, never the
+          # synthetic pull-request merge revision.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Checkout fixed peers
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: EdgarSocrates98/the-forge
+          ref: ${{ env.THE_FORGE_SHA }}
+          path: peers/the-forge
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: EdgarSocrates98/forge-doctor-api
+          ref: ${{ env.FORGE_DOCTOR_SHA }}
+          path: peers/forge-doctor-api
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: EdgarSocrates98/code-atlas-forge
+          ref: ${{ env.CODE_ATLAS_SHA }}
+          path: peers/code-atlas-forge
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: EdgarSocrates98/forge-agent-bridge
+          ref: ${{ env.FORGE_BRIDGE_SHA }}
+          path: peers/forge-agent-bridge
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: EdgarSocrates98/forge-lens
+          ref: ${{ env.FORGE_LENS_SHA }}
+          path: peers/forge-lens
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: EdgarSocrates98/forge-portal
+          ref: ${{ env.FORGE_PORTAL_SHA }}
+          path: peers/forge-portal
+
+      - name: Assert peer revisions
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C peers/the-forge rev-parse HEAD)" = "$THE_FORGE_SHA"
+          test "$(git -C peers/forge-doctor-api rev-parse HEAD)" = "$FORGE_DOCTOR_SHA"
+          test "$(git -C peers/code-atlas-forge rev-parse HEAD)" = "$CODE_ATLAS_SHA"
+          test "$(git -C peers/forge-agent-bridge rev-parse HEAD)" = "$FORGE_BRIDGE_SHA"
+          test "$(git -C peers/forge-lens rev-parse HEAD)" = "$FORGE_LENS_SHA"
+          test "$(git -C peers/forge-portal rev-parse HEAD)" = "$FORGE_PORTAL_SHA"
+
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff
+        with:
+          enable-cache: true
+      - run: uv python install 3.12
+      - name: Install Sentinel and real local peers
+        shell: bash
+        run: |
+          uv sync --locked --all-extras --python 3.12
+          uv pip install --python .venv/bin/python peers/the-forge peers/forge-doctor-api
+
+      - name: Run fixed-revision federated Golden Path
+        id: e2e
+        shell: bash
+        env:
+          FORGE_DOCTOR_DIR: ${{ github.workspace }}/peers/forge-doctor-api
+          FORGE_PORTAL_DIR: ${{ github.workspace }}/peers/forge-portal
+          THEFORGE_BIN: ${{ github.workspace }}/.venv/bin/theforge
+        run: |
+          set -euo pipefail
+          uv run python lab/federated_e2e.py
+          bundle=$(find docs/cycles/cycle-10.3/evidence/bundles -mindepth 1 -maxdepth 1 -type d | sort | tail -1)
+          test -n "$bundle"
+          echo "bundle=$bundle" >> "$GITHUB_OUTPUT"
+
+      - name: Verify produced bundle independently
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle="${{ steps.e2e.outputs.bundle }}"
+          test -n "$bundle"
+          uv run python lab/verify_evidence.py \
+            --receipt "$bundle/federated-e2e-receipt.json" \
+            --manifest "$bundle/federated-e2e-manifest.json" \
+            --root "$bundle"
+
+      - name: Upload federated evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cycle-10.3-federated-evidence
+          path: ${{ steps.e2e.outputs.bundle }}

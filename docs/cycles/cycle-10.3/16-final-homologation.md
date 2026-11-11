@@ -1,0 +1,55 @@
+# Final homologation
+
+Status: **CONDITIONAL GO** with explicit external/runtime limitations. Core
+hosted CI run `42934058383` and fixed-revision federated run `42934058334`
+passed against tested product head `5df1c6e2f90d6ff9d7da2e5be6594a0d220f383d`.
+
+Windows Golden Path `20261111T003852Z-2bba1df4`: 16 PASS, 0 FAIL, 2 BLOCKED;
+S10 Atlas, S14 Portal/browser and S16 deep parity PASS; S18 bundle
+verification PASS with 30 manifest entries and 18 steps, including an
+independent copied-bundle verification.
+
+The final report must use one of `GO`, `CONDITIONAL GO`, or `NO-GO` and map
+each gate to an exact commit, workflow run, artifact, and command. The Cycle
+is not complete while any mandatory local gate fails or lacks evidence.
+
+Cycle 11 remains planning-only. Each candidate must identify the existing
+owner, duplication risk, integration, negative tests, and E2E acceptance
+before implementation is authorized.
+
+## Repository matrix
+
+| Repository | Baseline main SHA | Final tested Sentinel SHA | CI / PR | Status |
+|---|---|---|---|---|
+| api-sentinel-forge | `643f394ae4d3e2246092afc8ccb1a3482354762d` | `5df1c6e2f90d6ff9d7da2e5be6594a0d220f383d` | PR #6; runs `42934058383`, `42934058334` PASS | CONDITIONAL |
+| the-forge | `4f0726f742822224c2fafa0ee9f7aa36b2a778f6` | fixed peer SHA | main CI PASS | PASS peer baseline |
+| forge-portal | `63518efd8fdf1ee458e346fcdcb3e61bbcde8b6a` | fixed peer SHA | main CI PASS | browser runtime blocked locally |
+| forge-doctor-api | `3a5a9a860318cb277292a23007879a1e2bf45b9b` | fixed peer SHA | quality CI PASS | PASS peer baseline |
+| code-atlas-forge | `c164ea5e2232d2660ad4c9bcf60f63469b604c2c` | fixed peer SHA | CI/release PASS | Atlas DB blocked locally |
+| forge-agent-bridge | `e4748b66b385aa0f2a7b55913f59efcc93719c5a` | tested contract pin `995e59e` | CI `42930318793` PASS; federated pin unchanged because drift is docs/logo only | provider blocked |
+| forge-lens | `cd9bba04bf19568b7a9116fea99ca09145c24b53` | fixed peer SHA | CI PASS | provider blocked |
+
+## Security and contract findings
+
+The confirmed Cycle 10.3 findings were addressed in the Sentinel branch:
+portable executable resolution; self-contained sanitized evidence; canonical
+verifier containment; semantic S16 parity; TUI worker scheduling and argv
+redaction; bounded Bridge error reads; and fixed-revision federated CI. No
+new Forge, context gateway, Bridge, Atlas, Lens, or Portal engine was created.
+
+## E2E and release matrix
+
+| Environment | Command / run | Result | Truth / limitation |
+|---|---|---|---|
+| Windows fresh wheel | `uv run python lab/federated_e2e.py` / `20261111T003852Z-2bba1df4` | 16 PASS, 0 FAIL, 2 BLOCKED | LOCAL_REAL; Bridge/Lens providers named |
+| Bundle checkout verification | `lab/verify_evidence.py` | 30 entries, 18 steps PASS | LOCAL_REAL |
+| Bundle copied-root verification | isolated temp checkout | PASS | LOCAL_REAL |
+| Linux | hosted core + federated runs `42934058383` / `42934058334` | PASS with 4 BLOCKED | Atlas/browser/provider resources unavailable |
+| Bridge/Lens providers | no authorized provider | BLOCKED | no fake PASS |
+
+## Remaining release risks
+
+Atlas database presence, Playwright installation, and authorized Bridge/Lens
+provider runs remain external/runtime limitations. The release state remains
+conditional until those resources are available or the operator explicitly
+accepts the documented scope.
