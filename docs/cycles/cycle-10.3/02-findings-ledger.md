@@ -9,7 +9,7 @@
 | C103-F005 | P2 | TUI | FIXED_LOCAL | Worker RichLog writes are scheduled through Textual's app thread. |
 | C103-F006 | P2 | TUI/catalog | FIXED_LOCAL | Execution/display argv are separated; sensitive flags are masked. |
 | C103-F007 | P2 | Bridge | FIXED_LOCAL | Error body reads are capped at 1 MiB and redacted. |
-| C103-F008 | P1 | CI | FIXED_HOSTED | `federated-ci.yml` passed on tested product head `2231b70` in run `42926089643` with fixed peer SHAs and independent bundle verification. |
+| C103-F008 | P1 | CI | FIXED_HOSTED | `federated-ci.yml` passed on tested product head `83dbc03` in run `42927110685` with fixed peer SHAs and independent bundle verification. |
 | C103-F009 | P1 | Release/evidence | FIXED_LOCAL | Bundle independently verified from checkout and copied root. |
 | C103-F010 | P2 | External integrations | CONFIRMED_EXTERNAL | S12/S13 are honestly BLOCKED without provider credentials/manifests; keep optional and explicit. |
 | C103-F011 | P2 | Runner UX | FIXED_LOCAL | stdio is configured before argparse; Windows `--help` exits 0. |

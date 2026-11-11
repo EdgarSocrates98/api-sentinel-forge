@@ -28,8 +28,8 @@ verification passed. The blocked states are S10 (Atlas database), S12/S13
 
 `CONDITIONAL GO` for local-first behavior. Core Windows/Linux CI and the
 fixed-revision federated workflow are now green on tested product head
-`2231b70b403eda515c5f7a3fa9664802b304a533`. Its Linux bundle is artifact
-`13813848225` from run `42926089643`. The remaining limitations are
+`83dbc0315d719906731dccbfd599221719915d7e`. Its Linux bundle is artifact
+`13813619080` from run `42927110685`. The remaining limitations are
 honest blocked external/runtime resources (Atlas database, Playwright, Bridge
 provider, and Lens provider). No merge, tag, release, or publication was
 performed.
