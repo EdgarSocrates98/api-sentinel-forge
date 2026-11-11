@@ -2,11 +2,11 @@
   "schema": "api-sentinel/Cycle103ReleaseManifest/v1",
   "status": "CONDITIONAL_GO",
   "truth": "LOCAL_REAL",
-  "run_id": "20261110T230014Z-7286ba79",
-  "tested_product_head": "83dbc0315d719906731dccbfd599221719915d7e",
-  "core_ci_run_id": "42927110689",
-  "federated_ci_run_id": "42927110685",
-  "federated_bundle_run_id": "20261110T235432Z-e24b641b",
+  "run_id": "20261111T003852Z-2bba1df4",
+  "tested_product_head": "5df1c6e2f90d6ff9d7da2e5be6594a0d220f383d",
+  "core_ci_run_id": "42934058383",
+  "federated_ci_run_id": "42934058334",
+  "federated_bundle_run_id": "20261111T004728Z-e2be3cce",
   "federated_ci": "PASS",
-  "reason": "local core, Windows Golden Path, hosted Windows/Linux core CI, and fixed-revision Linux federated CI pass on the tested product head; optional Atlas, browser, Bridge, and Lens resources remain blocked"
+  "reason": "local core and Windows Golden Path pass with real Atlas/browser when installed; hosted Windows/Linux core CI and fixed-revision Linux federated CI pass on the tested product head; optional hosted Atlas, browser, Bridge, and Lens resources remain blocked"
 }

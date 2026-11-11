@@ -19,17 +19,18 @@ Baseline evidence: `evidence/baseline.json`.
 
 ## Corrected local evidence
 
-Golden Path run `20261110T230014Z-7286ba79` used a fresh wheel venv and real
-traffic: 14 PASS, 0 FAIL, 4 BLOCKED. S16 deep parity and S18 independent
-verification passed. The blocked states are S10 (Atlas database), S12/S13
-(Bridge/Lens provider resources), and S14 (Playwright runtime).
+Golden Path run `20261111T003852Z-2bba1df4` used a fresh wheel venv, real
+traffic, real Code Atlas and real Portal/browser: 16 PASS, 0 FAIL, 2 BLOCKED.
+S16 deep parity and S18 independent verification passed. The blocked states
+are S12/S13 (Bridge/Lens provider resources).
 
 ## Release decision
 
 `CONDITIONAL GO` for local-first behavior. Core Windows/Linux CI and the
-fixed-revision federated workflow are now green on tested product head
-`83dbc0315d719906731dccbfd599221719915d7e`. Its Linux bundle is artifact
-`13813619080` from run `42927110685`. The remaining limitations are
-honest blocked external/runtime resources (Atlas database, Playwright, Bridge
-provider, and Lens provider). No merge, tag, release, or publication was
-performed.
+fixed-revision federated workflow are green on tested product head
+`5df1c6e2f90d6ff9d7da2e5be6594a0d220f383d`. Its Linux bundle is artifact
+`13816749115` from run `42934058334`; independent verification reports 28
+manifest entries and 18 steps. The hosted run honestly blocks S10, S12, S13,
+and S14 because those optional resources are unavailable there; Windows local
+evidence proves S10 and S14 when the resources are installed. No merge, tag,
+release, or publication was performed.
