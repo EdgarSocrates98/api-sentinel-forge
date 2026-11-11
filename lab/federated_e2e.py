@@ -933,6 +933,21 @@ def _proxy_handler(bundle: Path, sentinel_base: str, prefix: str = "/sentinel"):
         def log_message(self, *a):
             pass
 
+        def _write_payload(self, payload: bytes) -> None:
+            """Ignore a client disconnect after the response is committed.
+
+            Playwright may close a page immediately after receiving the
+            assertion response.  On Windows that is reported as
+            ``ConnectionAbortedError`` (and as a broken pipe/reset on Unix),
+            none of which is a proxy failure or a reason to leave a noisy
+            traceback in the E2E server log.
+            """
+            try:
+                self.wfile.write(payload)
+            except (BrokenPipeError, ConnectionResetError,
+                    ConnectionAbortedError):
+                return
+
         def _proxy(self):
             path = self.path[len(prefix):] or "/"
             body = None
@@ -962,7 +977,7 @@ def _proxy_handler(bundle: Path, sentinel_base: str, prefix: str = "/sentinel"):
             self.send_header("Content-Type", ctype)
             self.send_header("Content-Length", str(len(payload)))
             self.end_headers()
-            self.wfile.write(payload)
+            self._write_payload(payload)
 
         def do_GET(self):
             if self.path.startswith(prefix):
@@ -977,7 +992,7 @@ def _proxy_handler(bundle: Path, sentinel_base: str, prefix: str = "/sentinel"):
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(len(payload)))
                 self.end_headers()
-                self.wfile.write(payload)
+                self._write_payload(payload)
                 return
             return super().do_GET()
 
