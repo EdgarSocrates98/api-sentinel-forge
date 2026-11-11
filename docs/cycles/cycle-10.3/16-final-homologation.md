@@ -26,7 +26,7 @@ before implementation is authorized.
 | forge-portal | `63518efd8fdf1ee458e346fcdcb3e61bbcde8b6a` | fixed peer SHA | main CI PASS | browser runtime blocked locally |
 | forge-doctor-api | `3a5a9a860318cb277292a23007879a1e2bf45b9b` | fixed peer SHA | quality CI PASS | PASS peer baseline |
 | code-atlas-forge | `c164ea5e2232d2660ad4c9bcf60f63469b604c2c` | fixed peer SHA | CI/release PASS | Atlas DB blocked locally |
-| forge-agent-bridge | `995e59ea9bbaeee3e9a3c920d94294f2f7ddb9ba` | fixed peer SHA | CI PASS | provider blocked |
+| forge-agent-bridge | `e4748b66b385aa0f2a7b55913f59efcc93719c5a` | tested contract pin `995e59e` | CI `42930318793` PASS; federated pin unchanged because drift is docs/logo only | provider blocked |
 | forge-lens | `cd9bba04bf19568b7a9116fea99ca09145c24b53` | fixed peer SHA | CI PASS | provider blocked |
 
 ## Security and contract findings

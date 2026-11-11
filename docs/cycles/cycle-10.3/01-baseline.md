@@ -30,3 +30,19 @@ The exact local results are recorded in `evidence/baseline.json`:
 
 The baseline is not a release decision. Linux remains unexecuted locally and
 must be proven by hosted CI or an authorized Linux environment.
+
+## Final remote revalidation
+
+The remote state was re-queried before final acceptance. Six repositories
+remain at the historical heads above. `forge-agent-bridge` advanced only with
+the documentation/logo commits `291ac31e` and `e4748b66`; the comparison
+contains no runtime or contract changes. Cycle 10.3 federated CI therefore
+keeps the fixed tested peer `995e59e`, while recording the current remote main
+explicitly:
+
+| Repository | Current remote main | Latest relevant CI |
+|---|---|---|
+| Forge Agent Bridge | `e4748b66b385aa0f2a7b55913f59efcc93719c5a` | CI `42930318793`, PASS |
+
+This is a `FIXED_ALREADY` documentation-only drift, not a reason to open a
+peer PR or change the federated contract pin.
