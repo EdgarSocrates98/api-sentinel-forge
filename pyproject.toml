@@ -126,6 +126,12 @@ ignore_missing_imports = true
 module = ["forge_doctor_api", "forge_doctor_api.*"]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+# Vendored obsidian engine — byte-identical to the canonical copy; its
+# platform-specific (msvcrt) typing stays in the canonical repo.
+module = ["api_sentinel._forge_obsidian", "api_sentinel._forge_obsidian.*"]
+ignore_errors = true
+
 [tool.pytest.ini_options]
 markers = ["slow: heavyweight integration tests (clean venv etc.)"]
 testpaths = ["tests"]
