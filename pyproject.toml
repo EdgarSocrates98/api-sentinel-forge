@@ -94,6 +94,9 @@ select = [
 "tests/**" = ["S101"]
 # vendored forge_obsidian engine — byte-parity; linted in the canonical repo.
 "src/api_sentinel/_forge_obsidian/**" = ["ALL"]
+# Vendored shared forge-context engine — byte-identical to the canonical
+# the-forge copy; linted there.
+"src/api_sentinel/_forgecontext.py" = ["ALL"]
 "scripts/**" = ["T20"]
 # lab fixtures are deliberately plain sample service code that Code Atlas
 # indexes — they are not shipped product code, so security rules do not
