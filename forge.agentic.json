@@ -51,6 +51,7 @@
     "mcp",
     "serve"
   ],
+  "mcp_verify_tool": "sentinel_health",
   "host_adapters": [
     "claude",
     "devin",
