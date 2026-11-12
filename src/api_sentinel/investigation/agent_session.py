@@ -128,8 +128,7 @@ class AgentSessionPort(Protocol):
     rejections. The Bridge owns execution, providers, approvals and cost.
     """
 
-    def open_session(self, request: AgentSessionRequest) -> AgentSessionResult:
-        ...
+    def open_session(self, request: AgentSessionRequest) -> AgentSessionResult: ...
 
 
 def session_result_summary(result: AgentSessionResult) -> dict[str, Any]:

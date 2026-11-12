@@ -1,4 +1,5 @@
 """Lab consumer — literal HTTP calls into orders-api."""
+
 import requests
 
 

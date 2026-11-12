@@ -183,9 +183,7 @@ def _observations_to_jsonl(observations: list[RuntimeObservationV1]) -> bytes:
         observations,
         key=lambda o: (o.window.start.isoformat(), o.observation_id),
     )
-    return "\n".join(
-        o.model_dump_json(by_alias=True) for o in ordered
-    ).encode("utf-8")
+    return "\n".join(o.model_dump_json(by_alias=True) for o in ordered).encode("utf-8")
 
 
 @dataclass
@@ -233,9 +231,7 @@ class CollectAwsSource:
                 details={"supported": list(AWS_SOURCE_KINDS)},
             )
         if not source.enabled:
-            raise ValidationError(
-                f"telemetry source is disabled: {source.source_id}"
-            )
+            raise ValidationError(f"telemetry source is disabled: {source.source_id}")
         # credentials-shaped config keys are refused before any session
         # work — the environment holds credentials, never Sentinel config
         session_config = AwsSessionConfig.from_source_config(source.config)
@@ -295,12 +291,8 @@ class CollectAwsSource:
             )
             collected_obs = result.observations
             ingest_stats = self._ingest(source, collected_obs)
-            checkpoint = self._write_checkpoint(
-                source, window_end, len(collected_obs)
-            )
-            unknowns = (
-                plan_unknowns + result.unknowns + result.messages
-            )
+            checkpoint = self._write_checkpoint(source, window_end, len(collected_obs))
+            unknowns = plan_unknowns + result.unknowns + result.messages
             if not collected_obs:
                 outcome = "empty"
                 detail = "no datapoints returned for the window"
@@ -342,20 +334,28 @@ class CollectAwsSource:
             self._audit(source, outcome, meter, detail)
             if receipts_dir is not None:
                 path = self._receipt(
-                    receipts_dir, report, identity, meter, outcome,
-                    detail, unknowns,
+                    receipts_dir,
+                    report,
+                    identity,
+                    meter,
+                    outcome,
+                    detail,
+                    unknowns,
                 )
-                report = report.model_copy(
-                    update={"receipt_path": str(path)}
-                )
+                report = report.model_copy(update={"receipt_path": str(path)})
             return report
         except SentinelError as exc:
             outcome = _failure_outcome(exc)
             self._audit(source, outcome, meter, exc.message)
             if receipts_dir is not None:
                 self._refusal_receipt(
-                    receipts_dir, source, identity, meter,
-                    window_start, window_end, outcome,
+                    receipts_dir,
+                    source,
+                    identity,
+                    meter,
+                    window_start,
+                    window_end,
+                    outcome,
                     f"{exc.code}: {exc.message}",
                 )
             raise
@@ -364,8 +364,13 @@ class CollectAwsSource:
             self._audit(source, "failed", meter, str(exc))
             if receipts_dir is not None:
                 self._refusal_receipt(
-                    receipts_dir, source, identity, meter,
-                    window_start, window_end, "failed",
+                    receipts_dir,
+                    source,
+                    identity,
+                    meter,
+                    window_start,
+                    window_end,
+                    "failed",
                     f"{type(exc).__name__}: {exc}",
                 )
             raise
@@ -400,18 +405,13 @@ class CollectAwsSource:
             budget=budget,
             detailed_metrics=detailed,
         )
-        queries = apigateway_metric_queries(
-            inventory, period_seconds=period
-        )
+        queries = apigateway_metric_queries(inventory, period_seconds=period)
         unknowns = list(inventory.unknowns)
         if detailed:
             unknowns.append(
-                "detailed_metrics:per-route queries are opt-in and "
-                "cost-bearing (docs/14)"
+                "detailed_metrics:per-route queries are opt-in and cost-bearing (docs/14)"
             )
-        return _CollectWork(
-            queries=queries, unknowns=unknowns, inventory=inventory
-        )
+        return _CollectWork(queries=queries, unknowns=unknowns, inventory=inventory)
 
     # -- ingest / checkpoint / audit / receipt ---------------------------------
 
@@ -424,9 +424,7 @@ class CollectAwsSource:
         aligned so period windows are regular, not flagged irregular."""
         by_period: dict[int, list[RuntimeObservationV1]] = {}
         for obs in observations:
-            period = int(
-                (obs.window.end - obs.window.start).total_seconds()
-            )
+            period = int((obs.window.end - obs.window.start).total_seconds())
             by_period.setdefault(period, []).append(obs)
         accepted = quarantined = skipped = 0
         batch_ids: list[str] = []
@@ -451,9 +449,7 @@ class CollectAwsSource:
             "batch_ids": batch_ids,
         }
 
-    def _resume_start(
-        self, source: TelemetrySource, requested_start: datetime
-    ) -> datetime | None:
+    def _resume_start(self, source: TelemetrySource, requested_start: datetime) -> datetime | None:
         """Checkpoint resume: never re-fetch a window already collected."""
         with self._uow as uow:
             cp = uow.checkpoints.get(source.source_id)
@@ -565,12 +561,8 @@ class CollectAwsSource:
         receipt = AwsCollectReceipt(
             receipt_id=self._ids.new("rcpt_aws"),
             source_id=source.source_id,
-            account_masked=(
-                identity.masked_account if identity else "unknown"
-            ),
-            account_hash=(
-                identity.account_digest if identity else "unknown"
-            ),
+            account_masked=(identity.masked_account if identity else "unknown"),
+            account_hash=(identity.account_digest if identity else "unknown"),
             region=identity.region if identity else "unknown",
             window_start=window_start,
             window_end=window_end,

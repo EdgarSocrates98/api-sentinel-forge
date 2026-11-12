@@ -126,9 +126,7 @@ class VerificationResult(FrozenModel):
         )
 
 
-def verification_id_for(
-    *, incident_id: str, hypothesis_id: str, at: datetime
-) -> str:
+def verification_id_for(*, incident_id: str, hypothesis_id: str, at: datetime) -> str:
     canonical = f"{incident_id}|{hypothesis_id}|{at.isoformat()}"
     return "ver_" + hashlib.sha256(canonical.encode()).hexdigest()[:24]
 
@@ -160,10 +158,7 @@ def default_verification_plan(
         VerificationStep(
             step_id="re_detect",
             kind="re_detect",
-            check=(
-                "re-run the incident's detection rule(s) over the "
-                "post-change window"
-            ),
+            check=("re-run the incident's detection rule(s) over the post-change window"),
             expected_signal=(
                 "the grouping rule(s) evaluate clean on the post-change "
                 "window — the condition no longer fires"
@@ -184,10 +179,7 @@ def default_verification_plan(
             VerificationStep(
                 step_id="atlas_resolve",
                 kind="atlas_resolve",
-                check=(
-                    "resolve the service's declared structural identity "
-                    "via Code Atlas"
-                ),
+                check=("resolve the service's declared structural identity via Code Atlas"),
                 expected_signal=(
                     "the structural counterpart resolves and corroborates "
                     "the hypothesis's claimed path"
@@ -204,17 +196,11 @@ def default_verification_plan(
             VerificationStep(
                 step_id="doctor_handoff",
                 kind="doctor_handoff",
-                check=(
-                    "delegate a bounded diagnosis of the incident scope "
-                    "to Forge Doctor API"
-                ),
+                check=("delegate a bounded diagnosis of the incident scope to Forge Doctor API"),
                 expected_signal=(
-                    "findings return with evidence corroborating the "
-                    "hypothesis's mechanism"
+                    "findings return with evidence corroborating the hypothesis's mechanism"
                 ),
-                falsification=(
-                    "findings contradict the hypothesis's claimed mechanism"
-                ),
+                falsification=("findings contradict the hypothesis's claimed mechanism"),
                 scope="read:api-evidence",
             )
         )
@@ -251,9 +237,7 @@ class DetectionReDetector:
     the fixing path.
     """
 
-    def __init__(
-        self, uow: UnitOfWork, registry: DetectorRegistry | None = None
-    ) -> None:
+    def __init__(self, uow: UnitOfWork, registry: DetectorRegistry | None = None) -> None:
         self._uow = uow
         self._registry = registry or DetectorRegistry()
 
@@ -271,14 +255,10 @@ class DetectionReDetector:
                 service_id=incident.service_id,
                 now=now,
                 observations=observations,
-                slo_assessments=uow.slo_assessments.list_for_service(
-                    incident.service_id
-                ),
+                slo_assessments=uow.slo_assessments.list_for_service(incident.service_id),
                 sources=uow.sources.list(incident.service_id),
                 releases=uow.releases.list(incident.service_id),
-                recent_anomalies=uow.anomalies.list_for_service(
-                    incident.service_id
-                ),
+                recent_anomalies=uow.anomalies.list_for_service(incident.service_id),
                 baselines=summarize_baselines(
                     observations,
                     service_id=incident.service_id,
@@ -299,9 +279,7 @@ class DetectionReDetector:
             )
             evaluated += 1
             for draft in evaluation.anomalies:
-                group = group_key_for(
-                    draft.service_id, draft.operation_id, detector.detector_id
-                )
+                group = group_key_for(draft.service_id, draft.operation_id, detector.detector_id)
                 if group == incident.group_key:
                     return (
                         True,
@@ -339,21 +317,15 @@ class VerificationExecutor:
         self._doctor = doctor
         self._ws_root = workspace_root
 
-    def execute(
-        self, plan: VerificationPlan, *, now: datetime
-    ) -> VerificationResult:
-        receipts = [
-            self._run_step(step, plan, now) for step in plan.steps
-        ]
+    def execute(self, plan: VerificationPlan, *, now: datetime) -> VerificationResult:
+        receipts = [self._run_step(step, plan, now) for step in plan.steps]
         verdict = self._verdict(receipts)
         if not plan.steps:
             verdict = VERDICT_INCONCLUSIVE
         detail = {
             VERDICT_VERIFIED: "independent evidence supports the hypothesis",
             VERDICT_REFUTED: "independent evidence contradicts the hypothesis",
-            VERDICT_INCONCLUSIVE: (
-                "no decisive independent evidence — hypothesis unchanged"
-            ),
+            VERDICT_INCONCLUSIVE: ("no decisive independent evidence — hypothesis unchanged"),
         }[verdict]
         return VerificationResult(
             verification_id=plan.verification_id,
@@ -435,23 +407,17 @@ class VerificationExecutor:
                 kind=step.kind,
                 status="falsified",
                 detail=detail,
-                evidence_refs=[
-                    f"redetect:{window.start.isoformat()}..{window.end.isoformat()}"
-                ],
+                evidence_refs=[f"redetect:{window.start.isoformat()}..{window.end.isoformat()}"],
             )
         return StepReceipt(
             step_id=step.step_id,
             kind=step.kind,
             status="supporting",
             detail=detail,
-            evidence_refs=[
-                f"redetect:{window.start.isoformat()}..{window.end.isoformat()}"
-            ],
+            evidence_refs=[f"redetect:{window.start.isoformat()}..{window.end.isoformat()}"],
         )
 
-    def _atlas_resolve(
-        self, step: VerificationStep, plan: VerificationPlan
-    ) -> StepReceipt:
+    def _atlas_resolve(self, step: VerificationStep, plan: VerificationPlan) -> StepReceipt:
         if self._structural is None:
             return StepReceipt(
                 step_id=step.step_id,
@@ -461,11 +427,7 @@ class VerificationExecutor:
             )
         with self._uow as uow:
             incident = uow.incidents.get(plan.incident_id)
-            service = (
-                uow.services.get(incident.service_id)
-                if incident is not None
-                else None
-            )
+            service = uow.services.get(incident.service_id) if incident is not None else None
         if service is None:
             return StepReceipt(
                 step_id=step.step_id,
@@ -542,9 +504,7 @@ class VerificationExecutor:
             handoff,
             target=incident.service_id,
             capabilities=["api.diagnose"],
-            handoffs_dir=(
-                (self._ws_root / "handoffs") if self._ws_root else None
-            ),
+            handoffs_dir=((self._ws_root / "handoffs") if self._ws_root else None),
             now_iso=now.isoformat(),
         )
         status_map = {
@@ -557,10 +517,7 @@ class VerificationExecutor:
         }
         refs = [r for r in (result.request_ref, result.response_ref) if r]
         if result.ingest is not None:
-            refs.extend(
-                f"doctor:{f.get('id', 'finding')}"
-                for f in result.ingest.findings[:20]
-            )
+            refs.extend(f"doctor:{f.get('id', 'finding')}" for f in result.ingest.findings[:20])
         return StepReceipt(
             step_id=step.step_id,
             kind=step.kind,
@@ -585,8 +542,7 @@ def verification_journal_event(
         from_status=incident.status,
         to_status=incident.status,
         note=(
-            f"verification {result.verification_id} → {result.verdict} "
-            f"for {result.hypothesis_id}"
+            f"verification {result.verification_id} → {result.verdict} for {result.hypothesis_id}"
         ),
         details={
             "verification_id": result.verification_id,
@@ -643,9 +599,7 @@ class RunVerification:
             incident = uow.incidents.get(incident_id)
             if incident is None:
                 raise NotFoundError(f"incident not found: {incident_id}")
-            if not any(
-                h.hypothesis_id == hypothesis_id for h in incident.hypotheses
-            ):
+            if not any(h.hypothesis_id == hypothesis_id for h in incident.hypotheses):
                 raise NotFoundError(
                     f"hypothesis not found: {hypothesis_id}",
                     details={"incident_id": incident_id},
@@ -664,10 +618,7 @@ class RunVerification:
             incident = uow.incidents.get(incident_id)
             if incident is None:
                 raise NotFoundError(f"incident not found: {incident_id}")
-            if not any(
-                v.verification_id == result.verification_id
-                for v in incident.verifications
-            ):
+            if not any(v.verification_id == result.verification_id for v in incident.verifications):
                 updated = incident.model_copy(
                     update={
                         "verifications": [
@@ -677,13 +628,9 @@ class RunVerification:
                         "revision": incident.revision + 1,
                     }
                 )
-                uow.incidents.put(
-                    updated, expected_revision=incident.revision
-                )
+                uow.incidents.put(updated, expected_revision=incident.revision)
                 uow.incident_events.append(
-                    verification_journal_event(
-                        updated, result, at=self._now, actor=actor
-                    )
+                    verification_journal_event(updated, result, at=self._now, actor=actor)
                 )
             uow.commit()
         return result

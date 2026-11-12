@@ -43,9 +43,7 @@ from api_sentinel.workspace import Workspace, ensure_workspace
 NOW = datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
 
 
-def _seed_workspace(
-    ws_root: Path, ids: SequentialIdFactory
-) -> tuple[str, str, str]:
+def _seed_workspace(ws_root: Path, ids: SequentialIdFactory) -> tuple[str, str, str]:
     """A real workspace: service + source + observations + evidence blob.
 
     `ids` is shared with the operations calls so journaled audit ids stay
@@ -85,12 +83,8 @@ def _seed_workspace(
         )
         for i in range(3)
     ]
-    pipeline = IngestionPipeline(
-        SqliteUnitOfWork(ws.db_path), clock, ids, lambda t: t
-    )
-    pipeline.ingest(
-        source=src, kind="jsonl", content="\n".join(lines).encode()
-    )
+    pipeline = IngestionPipeline(SqliteUnitOfWork(ws.db_path), clock, ids, lambda t: t)
+    pipeline.ingest(source=src, kind="jsonl", content="\n".join(lines).encode())
     evidence = StoreEvidence(
         SqliteUnitOfWork(ws.db_path), clock, ids, FileBlobStore(ws.blobs_dir)
     ).execute(
@@ -128,12 +122,7 @@ def _dump_tables(db_path: Path) -> dict[str, tuple[tuple[object, ...], ...]]:
 def _audit_actions(db_path: Path) -> list[str]:
     conn = sqlite3.connect(str(db_path))
     try:
-        return [
-            r[0]
-            for r in conn.execute(
-                "SELECT action FROM audit_events ORDER BY at, audit_id"
-            )
-        ]
+        return [r[0] for r in conn.execute("SELECT action FROM audit_events ORDER BY at, audit_id")]
     finally:
         conn.close()
 
@@ -199,9 +188,7 @@ class TestBackupRestore:
         ids = SequentialIdFactory()
         ws = Workspace(root=tmp_path / "ws", scope="project")
         _seed_workspace(ws.root, ids)
-        backup = create_backup(
-            ws, clock=FixedClock(NOW), ids=ids
-        )
+        backup = create_backup(ws, clock=FixedClock(NOW), ids=ids)
         with pytest.raises(ConflictError):
             restore_backup(
                 backup.backup_dir,
@@ -214,9 +201,7 @@ class TestBackupRestore:
         ids = SequentialIdFactory()
         ws = Workspace(root=tmp_path / "ws", scope="project")
         _seed_workspace(ws.root, ids)
-        backup = create_backup(
-            ws, clock=FixedClock(NOW), ids=ids
-        )
+        backup = create_backup(ws, clock=FixedClock(NOW), ids=ids)
         result = restore_backup(
             backup.backup_dir,
             ws,
@@ -234,9 +219,7 @@ class TestBackupRestore:
         ids = SequentialIdFactory()
         ws = Workspace(root=tmp_path / "ws", scope="project")
         _seed_workspace(ws.root, ids)
-        backup = create_backup(
-            ws, clock=FixedClock(NOW), ids=ids
-        )
+        backup = create_backup(ws, clock=FixedClock(NOW), ids=ids)
         db_copy = backup.backup_dir / "sentinel.db"
         payload = bytearray(db_copy.read_bytes())
         payload[-17] ^= 0xFF

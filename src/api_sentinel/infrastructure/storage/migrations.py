@@ -42,8 +42,7 @@ def migrate(conn: sqlite3.Connection, migrations_dir: Path | None = None) -> lis
         # zero files discovered is a packaging/config bug, not "nothing to
         # do" — fail loudly instead of leaving a table-less db
         raise StorageError(
-            f"no migration files discovered under "
-            f"{(migrations_dir or MIGRATIONS_DIR)}"
+            f"no migration files discovered under {(migrations_dir or MIGRATIONS_DIR)}"
         )
     applied = applied_versions(conn)
     now_applied: list[int] = []

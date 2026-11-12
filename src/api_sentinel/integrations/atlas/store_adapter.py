@@ -116,17 +116,13 @@ class DbStructuralContext:
         try:
             conn.row_factory = sqlite3.Row
             tables = {
-                r[0]
-                for r in conn.execute(
-                    "select name from sqlite_master where type='table'"
-                )
+                r[0] for r in conn.execute("select name from sqlite_master where type='table'")
             }
             missing = [t for t in _REQUIRED_TABLES if t not in tables]
             if missing:
                 raise IntegrationRefused(
                     ATLAS_FORGE,
-                    f"{p} is not an Atlas domain store "
-                    f"(missing tables: {', '.join(missing)})",
+                    f"{p} is not an Atlas domain store (missing tables: {', '.join(missing)})",
                 )
             repo = cls._resolve_repository(conn, repository)
             snap = cls._resolve_snapshot(conn, repo["id"], snapshot_id)
@@ -135,24 +131,18 @@ class DbStructuralContext:
             conn.close()
 
     @classmethod
-    def _resolve_repository(
-        cls, conn: sqlite3.Connection, selector: str | None
-    ) -> sqlite3.Row:
-        repos: list[sqlite3.Row] = conn.execute(
-            "select * from repositories"
-        ).fetchall()
+    def _resolve_repository(cls, conn: sqlite3.Connection, selector: str | None) -> sqlite3.Row:
+        repos: list[sqlite3.Row] = conn.execute("select * from repositories").fetchall()
         if selector:
             matched = [
                 r
                 for r in repos
-                if selector
-                in (r["root_handle"], r["identity_key"], r["origin"], str(r["id"]))
+                if selector in (r["root_handle"], r["identity_key"], r["origin"], str(r["id"]))
             ]
             if not matched:
                 raise IntegrationRefused(
                     ATLAS_FORGE,
-                    f"no Atlas repository matches {selector!r} "
-                    f"({len(repos)} registered)",
+                    f"no Atlas repository matches {selector!r} ({len(repos)} registered)",
                 )
             if len(matched) > 1:
                 raise IntegrationRefused(
@@ -199,8 +189,7 @@ class DbStructuralContext:
             if snap is None:
                 raise IntegrationRefused(
                     ATLAS_FORGE,
-                    f"snapshot {snapshot_id} not found for repository "
-                    f"{repository_id}",
+                    f"snapshot {snapshot_id} not found for repository {repository_id}",
                 )
             return snap
         snap = conn.execute(
@@ -232,8 +221,7 @@ class DbStructuralContext:
         occ_entity_ids = {
             r["entity_id"]
             for r in conn.execute(
-                "select distinct entity_id from domain_entity_occurrences "
-                "where snapshot_id=?",
+                "select distinct entity_id from domain_entity_occurrences where snapshot_id=?",
                 (snap_id,),
             )
         }
@@ -254,29 +242,24 @@ class DbStructuralContext:
         occ_map = {
             r["id"]: r["entity_id"]
             for r in conn.execute(
-                "select id, entity_id from domain_entity_occurrences "
-                "where snapshot_id=?",
+                "select id, entity_id from domain_entity_occurrences where snapshot_id=?",
                 (snap_id,),
             )
         }
-        id_to_entity = {
-            e.entity_id: e for e in entities.values()
-        }
+        id_to_entity = {e.entity_id: e for e in entities.values()}
         edges: list[StructuralEdge] = []
         for r in conn.execute(
             "select * from domain_relations where snapshot_id=?",
             (snap_id,),
         ):
-            from_ref = cls._ref_name(
-                r["from_entity_occ_id"], occ_map, id_to_entity
-            ) or f"atlas-symbol:{r['from_symbol_occ_id']}"
-            to_ref = (
-                cls._ref_name(r["to_entity_occ_id"], occ_map, id_to_entity)
-                or (
-                    f"unresolved:{r['to_unresolved']}"
-                    if r["to_unresolved"]
-                    else f"atlas-symbol:{r['to_symbol_occ_id']}"
-                )
+            from_ref = (
+                cls._ref_name(r["from_entity_occ_id"], occ_map, id_to_entity)
+                or f"atlas-symbol:{r['from_symbol_occ_id']}"
+            )
+            to_ref = cls._ref_name(r["to_entity_occ_id"], occ_map, id_to_entity) or (
+                f"unresolved:{r['to_unresolved']}"
+                if r["to_unresolved"]
+                else f"atlas-symbol:{r['to_symbol_occ_id']}"
             )
             ev = json.loads(r["evidence_ids"] or "[]")
             edges.append(

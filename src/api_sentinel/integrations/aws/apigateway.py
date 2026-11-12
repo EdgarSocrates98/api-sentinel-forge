@@ -110,9 +110,7 @@ def _rest_apis_pages(
             break
         if pages >= budget.max_pages_per_call:
             inventory.truncated = True
-            inventory.unknowns.append(
-                "page_cap:get_rest_apis chain truncated"
-            )
+            inventory.unknowns.append("page_cap:get_rest_apis chain truncated")
             break
     return apis
 
@@ -132,9 +130,7 @@ def _rest_stages(
         max_retries=budget.max_retries,
         operation="apigateway:GetStages",
     )
-    return sorted(
-        str(s["stageName"]) for s in resp.get("item") or [] if s.get("stageName")
-    )
+    return sorted(str(s["stageName"]) for s in resp.get("item") or [] if s.get("stageName"))
 
 
 def _rest_resources(
@@ -171,9 +167,7 @@ def _rest_resources(
             break
         if pages >= budget.max_pages_per_call:
             inventory.truncated = True
-            inventory.unknowns.append(
-                f"page_cap:get_resources for {api_id} truncated"
-            )
+            inventory.unknowns.append(f"page_cap:get_resources for {api_id} truncated")
             break
     if len(routes) > budget.max_detailed_routes_per_api:
         inventory.unknowns.append(
@@ -235,9 +229,7 @@ def _http_stages(
         max_retries=budget.max_retries,
         operation="apigatewayv2:GetStages",
     )
-    return sorted(
-        str(s["StageName"]) for s in resp.get("Items") or [] if s.get("StageName")
-    )
+    return sorted(str(s["StageName"]) for s in resp.get("Items") or [] if s.get("StageName"))
 
 
 def _http_routes(
@@ -275,9 +267,7 @@ def _http_routes(
             break
         if pages >= budget.max_pages_per_call:
             inventory.truncated = True
-            inventory.unknowns.append(
-                f"page_cap:get_routes for {api_id} truncated"
-            )
+            inventory.unknowns.append(f"page_cap:get_routes for {api_id} truncated")
             break
     if len(routes) > budget.max_detailed_routes_per_api:
         inventory.unknowns.append(
@@ -305,7 +295,10 @@ def discover_gateways(
     """
     inventory = GatewayInventory()
     for api in _rest_apis_pages(
-        rest_client, meter=meter, backoff=backoff, budget=budget,
+        rest_client,
+        meter=meter,
+        backoff=backoff,
+        budget=budget,
         inventory=inventory,
     ):
         api_id = str(api.get("id") or "")
@@ -313,22 +306,25 @@ def discover_gateways(
         if not api_id:
             inventory.unknowns.append("rest_api_without_id")
             continue
-        stages = _rest_stages(
-            rest_client, api_id, meter=meter, backoff=backoff, budget=budget
-        )
+        stages = _rest_stages(rest_client, api_id, meter=meter, backoff=backoff, budget=budget)
         for stage in stages:
             inventory.endpoints.append(
-                ApiGatewayEndpoint(
-                    api_id=api_id, api_name=name, api_type="REST", stage=stage
-                )
+                ApiGatewayEndpoint(api_id=api_id, api_name=name, api_type="REST", stage=stage)
             )
         if detailed_metrics:
             inventory.rest_routes[api_id] = _rest_resources(
-                rest_client, api_id, meter=meter, backoff=backoff,
-                budget=budget, inventory=inventory,
+                rest_client,
+                api_id,
+                meter=meter,
+                backoff=backoff,
+                budget=budget,
+                inventory=inventory,
             )
     for api in _http_apis_pages(
-        http_client, meter=meter, backoff=backoff, budget=budget,
+        http_client,
+        meter=meter,
+        backoff=backoff,
+        budget=budget,
         inventory=inventory,
     ):
         api_id = str(api.get("ApiId") or "")
@@ -341,19 +337,19 @@ def discover_gateways(
             # WS APIs carry different metrics/dims — out of scope, named.
             inventory.unknowns.append(f"websocket_api_skipped:{api_id}")
             continue
-        stages = _http_stages(
-            http_client, api_id, meter=meter, backoff=backoff, budget=budget
-        )
+        stages = _http_stages(http_client, api_id, meter=meter, backoff=backoff, budget=budget)
         for stage in stages:
             inventory.endpoints.append(
-                ApiGatewayEndpoint(
-                    api_id=api_id, api_name=name, api_type="HTTP", stage=stage
-                )
+                ApiGatewayEndpoint(api_id=api_id, api_name=name, api_type="HTTP", stage=stage)
             )
         if detailed_metrics:
             inventory.http_routes[api_id] = _http_routes(
-                http_client, api_id, meter=meter, backoff=backoff,
-                budget=budget, inventory=inventory,
+                http_client,
+                api_id,
+                meter=meter,
+                backoff=backoff,
+                budget=budget,
+                inventory=inventory,
             )
     return inventory
 
@@ -381,9 +377,7 @@ def apigateway_metric_queries(
             "aws.apigateway.api_type": ep.api_type,
             "aws.apigateway.stage": ep.stage,
         }
-        route_sets: list[tuple[dict[str, str], dict[str, str]]] = [
-            (base_dims, {})
-        ]
+        route_sets: list[tuple[dict[str, str], dict[str, str]]] = [(base_dims, {})]
         routes = (
             inventory.rest_routes.get(ep.api_id)
             if ep.api_type == "REST"
@@ -414,9 +408,7 @@ def apigateway_metric_queries(
             )
         for dims, extra_attrs in route_sets:
             for metric_name, (stat, scope) in sorted(table.items()):
-                unit = (
-                    _LATENCY_UNIT if "Latency" in metric_name else _COUNT_UNIT
-                )
+                unit = _LATENCY_UNIT if "Latency" in metric_name else _COUNT_UNIT
                 queries.append(
                     MetricQuery(
                         namespace=APIGW_NAMESPACE,

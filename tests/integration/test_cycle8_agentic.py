@@ -44,10 +44,7 @@ from api_sentinel.investigation.service import RunAgenticInvestigation
 from api_sentinel.investigation.verification import RunVerification
 
 NOW = datetime(2026, 1, 1, 0, 12, tzinfo=UTC)
-LAB = (
-    Path(__file__).resolve().parents[2]
-    / "lab" / "fixtures" / "lab-004-regressive-deploy"
-)
+LAB = Path(__file__).resolve().parents[2] / "lab" / "fixtures" / "lab-004-regressive-deploy"
 SERVICE_ID = "svc_lab_checkout"
 _IDS = SequentialIdFactory()
 
@@ -59,9 +56,7 @@ def _redactor(text: str) -> str:
 def _seed(db: Path) -> None:
     with SqliteUnitOfWork(db) as uow:
         env = uow.environments.get_by_name("lab") or uow.environments.put(
-            ServiceEnvironment(
-                environment_id="env_lab", name="lab", created_at=NOW
-            )
+            ServiceEnvironment(environment_id="env_lab", name="lab", created_at=NOW)
         )
         uow.services.put(
             ApiService(
@@ -87,9 +82,7 @@ def _seed(db: Path) -> None:
         )
         uow.sources.put(source)
         uow.commit()
-    result = IngestionPipeline(
-        SqliteUnitOfWork(db), FixedClock(NOW), _IDS, _redactor
-    ).ingest(
+    result = IngestionPipeline(SqliteUnitOfWork(db), FixedClock(NOW), _IDS, _redactor).ingest(
         source=source,
         kind="jsonl",
         content=(LAB / "observations.jsonl").read_bytes(),
@@ -98,15 +91,13 @@ def _seed(db: Path) -> None:
 
 
 def _import_manifest(db: Path):
-    return ImportDeployManifest(
-        SqliteUnitOfWork(db), NOW
-    ).execute(file=LAB / "deploy-manifest.json")
+    return ImportDeployManifest(SqliteUnitOfWork(db), NOW).execute(
+        file=LAB / "deploy-manifest.json"
+    )
 
 
 def _detect(db: Path):
-    return RunDetection(
-        SqliteUnitOfWork(db), FixedClock(NOW), _IDS
-    ).execute(
+    return RunDetection(SqliteUnitOfWork(db), FixedClock(NOW), _IDS).execute(
         service_id=SERVICE_ID,
         window_start=datetime(2026, 1, 1, 0, 4, tzinfo=UTC),
         window_end=datetime(2026, 1, 1, 0, 10, tzinfo=UTC),
@@ -124,46 +115,36 @@ class TestManifestImport:
         second = _import_manifest(db)
         assert second.imported == 0
         assert second.deduplicated == 2  # replay is a no-op, named honestly
-        changes = ListChanges(SqliteUnitOfWork(db)).execute(
-            service_id=SERVICE_ID
-        )
+        changes = ListChanges(SqliteUnitOfWork(db)).execute(service_id=SERVICE_ID)
         assert len(changes) == 2
         kinds = {c.kind.value for c in changes}
         assert kinds == {"deploy", "rollback"}
 
 
 class TestLab004EndToEnd:
-    def test_regressive_deploy_correlates_honestly(
-        self, tmp_path: Path
-    ) -> None:
+    def test_regressive_deploy_correlates_honestly(self, tmp_path: Path) -> None:
         db = tmp_path / "s.db"
         _seed(db)
         _import_manifest(db)
         report = _detect(db)
         (incident,) = report.incidents_created
-        assert incident.first_observed_at.isoformat() == (
-            "2026-01-01T00:04:00+00:00"
-        )
+        assert incident.first_observed_at.isoformat() == ("2026-01-01T00:04:00+00:00")
 
-        correlation = CorrelateIncidentChanges(
-            SqliteUnitOfWork(db)
-        ).execute(incident_id=incident.incident_id)
+        correlation = CorrelateIncidentChanges(SqliteUnitOfWork(db)).execute(
+            incident_id=incident.incident_id
+        )
         # the regressive deploy leads the candidates — ranked, not causal
         top = correlation.candidates[0]
         assert top.change.kind.value == "deploy"
         assert top.change.ref == "sha_a11ce99"
         assert top.delta_seconds == 30.0
         # the rollback lands after the anchor — excluded, honestly named
-        assert any(
-            c.change.kind.value == "rollback" for c in correlation.candidates
-        ) is False
+        assert any(c.change.kind.value == "rollback" for c in correlation.candidates) is False
         assert any("after_anchor" in u for u in correlation.unknowns)
         assert "proximity" in correlation.proximity_ne_cause
         assert "not root cause" in correlation.proximity_ne_cause
 
-    def test_investigation_pack_bounded_and_session_governed(
-        self, tmp_path: Path
-    ) -> None:
+    def test_investigation_pack_bounded_and_session_governed(self, tmp_path: Path) -> None:
         db = tmp_path / "s.db"
         ws = tmp_path / "ws"
         (ws / "agent_sessions").mkdir(parents=True)
@@ -187,13 +168,9 @@ class TestLab004EndToEnd:
         )
         pack = outcome.pack
         assert pack.size_bytes <= pack.budget_bytes
-        assert pack.instructions.scope["incident_id"] == (
-            incident.incident_id
-        )
+        assert pack.instructions.scope["incident_id"] == (incident.incident_id)
         # the deploy lands as change-event evidence inside the pack
-        change_items = [
-            i for i in pack.contents if i.kind.value == "change_event"
-        ]
+        change_items = [i for i in pack.contents if i.kind.value == "change_event"]
         assert change_items, "deploy evidence expected in the pack"
         assert all(i.role == "data" for i in pack.contents)
         # disclaimer travels with the pack
@@ -216,9 +193,7 @@ class TestLab004EndToEnd:
             handoffs = uow.handoff_records.list(to_forge="forge-agent-bridge")
             assert handoffs and handoffs[0].status.value == "delegated"
 
-    def test_unavailable_bridge_is_named_not_failed(
-        self, tmp_path: Path
-    ) -> None:
+    def test_unavailable_bridge_is_named_not_failed(self, tmp_path: Path) -> None:
         from api_sentinel.integrations.bridge.adapter import (
             UnavailableAgentSession,
         )
@@ -247,9 +222,7 @@ class TestLab004EndToEnd:
         assert outcome.session.governance.cost_limit_usd == 1.0
         assert outcome.investigation.status.value == "COMPLETED"
 
-    def test_verified_lifecycle_requires_independent_evidence(
-        self, tmp_path: Path
-    ) -> None:
+    def test_verified_lifecycle_requires_independent_evidence(self, tmp_path: Path) -> None:
         db = tmp_path / "s.db"
         ws = tmp_path / "ws"
         ws.mkdir()
@@ -258,16 +231,13 @@ class TestLab004EndToEnd:
         incident = _detect(db).incidents_created[0]
         deploy_ref = "sha_a11ce99"
         deploy_change = next(
-            c for c in ListChanges(SqliteUnitOfWork(db)).execute(
-                service_id=SERVICE_ID
-            )
+            c
+            for c in ListChanges(SqliteUnitOfWork(db)).execute(service_id=SERVICE_ID)
             if c.ref == deploy_ref
         )
 
         # 1. hypothesis lands at CORRELATED — evidence named, never cause
-        hypothesis, _ = AddHypothesis(
-            SqliteUnitOfWork(db), NOW, _IDS
-        ).execute(
+        hypothesis, _ = AddHypothesis(SqliteUnitOfWork(db), NOW, _IDS).execute(
             incident_id=incident.incident_id,
             text=(
                 f"deploy {deploy_ref} (2.7.0) introduced the 503 "
@@ -304,15 +274,10 @@ class TestLab004EndToEnd:
         )
         assert result.verdict == "VERIFIED"
         assert result.receipts, "verification must carry receipts"
-        assert any(
-            r.kind == "re_detect" and r.status == "supporting"
-            for r in result.receipts
-        )
+        assert any(r.kind == "re_detect" and r.status == "supporting" for r in result.receipts)
 
         # 4. now promotion is allowed — journaled
-        promoted, _ = PromoteHypothesis(
-            SqliteUnitOfWork(db), NOW
-        ).execute(
+        promoted, _ = PromoteHypothesis(SqliteUnitOfWork(db), NOW).execute(
             incident_id=incident.incident_id,
             hypothesis_id=hypothesis.hypothesis_id,
             verification_id=result.verification_id,
@@ -329,17 +294,13 @@ class TestLab004EndToEnd:
         db = tmp_path / "s.db"
         _seed(db)
         incident = _detect(db).incidents_created[0]
-        hypothesis, _ = AddHypothesis(
-            SqliteUnitOfWork(db), NOW, _IDS
-        ).execute(
+        hypothesis, _ = AddHypothesis(SqliteUnitOfWork(db), NOW, _IDS).execute(
             incident_id=incident.incident_id,
             text="config drift caused it",
             confidence="HYPOTHESIZED",
             evidence_for=[],
         )
-        demoted, _ = DemoteHypothesis(
-            SqliteUnitOfWork(db), NOW
-        ).execute(
+        demoted, _ = DemoteHypothesis(SqliteUnitOfWork(db), NOW).execute(
             incident_id=incident.incident_id,
             hypothesis_id=hypothesis.hypothesis_id,
             reason="post-fix window shows the same errors — contradicted",
@@ -365,16 +326,12 @@ class TestLab004EndToEnd:
             principal="edgar@local",
             workspace=str(ws),
         )
-        hypothesis, _ = AddHypothesis(
-            SqliteUnitOfWork(db), NOW, _IDS
-        ).execute(
+        hypothesis, _ = AddHypothesis(SqliteUnitOfWork(db), NOW, _IDS).execute(
             incident_id=incident.incident_id,
             text="deploy hypothesis",
             confidence="CORRELATED",
         )
-        RunVerification(
-            SqliteUnitOfWork(db), NOW, workspace_root=ws
-        ).execute(
+        RunVerification(SqliteUnitOfWork(db), NOW, workspace_root=ws).execute(
             incident_id=incident.incident_id,
             hypothesis_id=hypothesis.hypothesis_id,
             window_start=datetime(2026, 1, 1, 0, 10, tzinfo=UTC),

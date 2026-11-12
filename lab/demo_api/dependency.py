@@ -55,8 +55,10 @@ class Handler(BaseHTTPRequestHandler):
     def _log(self, status: int) -> None:
         # sanitized access line: method + route + status — never headers/query
         try:
-            line = f"{time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())} " \
-                   f"{self.command} {self.path.split('?')[0]} {status}\n"
+            line = (
+                f"{time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())} "
+                f"{self.command} {self.path.split('?')[0]} {status}\n"
+            )
             with (self.log_dir / "dependency-access.log").open("a") as fh:
                 fh.write(line)
         except OSError:

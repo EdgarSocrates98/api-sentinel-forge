@@ -49,8 +49,7 @@ def export_refs(
     )
     if proc.returncode != 0:
         raise SystemExit(
-            f"forge-lens traces list failed ({proc.returncode}): "
-            f"{proc.stderr.strip()[:400]}"
+            f"forge-lens traces list failed ({proc.returncode}): {proc.stderr.strip()[:400]}"
         )
     rows = json.loads(proc.stdout or "[]")
     refs: list[dict[str, object]] = []
@@ -92,9 +91,7 @@ def main(argv: list[str] | None = None) -> int:
         project=args.project,
         out=args.out,
     )
-    sys.stdout.write(
-        f"wrote {len(manifest['refs'])} ref(s) -> {args.out}\n"
-    )
+    sys.stdout.write(f"wrote {len(manifest['refs'])} ref(s) -> {args.out}\n")
     return 0
 
 

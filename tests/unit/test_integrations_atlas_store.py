@@ -65,8 +65,7 @@ def _fixture_db(path: Path) -> None:
         "'2026-01-01','path:E:/lab/atlas-repo')"
     )
     conn.execute(
-        "insert into snapshots values (1,1,'main','abc','dig','{}',null,"
-        "'READY','','2026-01-01',0)"
+        "insert into snapshots values (1,1,'main','abc','dig','{}',null,'READY','','2026-01-01',0)"
     )
     # service entity + two endpoints + one occurrence each
     for eid, kind, ikey, qn, name in (
@@ -132,16 +131,11 @@ class TestLoad:
         with pytest.raises(IntegrationRefused):
             DbStructuralContext.load(bad)
 
-    def test_repository_selector_required_when_ambiguous(
-        self, tmp_path: Path
-    ) -> None:
+    def test_repository_selector_required_when_ambiguous(self, tmp_path: Path) -> None:
         db = tmp_path / "a.db"
         _fixture_db(db)
         conn = sqlite3.connect(db)
-        conn.execute(
-            "insert into repositories values (2,'','E:/other','','',"
-            "'t','path:E:/other')"
-        )
+        conn.execute("insert into repositories values (2,'','E:/other','','','t','path:E:/other')")
         conn.execute(
             "insert into domain_entities values (9,2,'api','api_service',"
             "'k','o#o','o','','','','{}')"
@@ -163,9 +157,7 @@ class TestLoad:
         with pytest.raises(IntegrationRefused, match="no Atlas repository"):
             DbStructuralContext.load(db, repository="path:E:/nope")
 
-    def test_missing_ready_snapshot_named_unavailable(
-        self, tmp_path: Path
-    ) -> None:
+    def test_missing_ready_snapshot_named_unavailable(self, tmp_path: Path) -> None:
         db = tmp_path / "a.db"
         _fixture_db(db)
         conn = sqlite3.connect(db)
@@ -175,9 +167,7 @@ class TestLoad:
         with pytest.raises(IntegrationUnavailable, match="no READY"):
             DbStructuralContext.load(db)
 
-    def test_explicit_snapshot_missing_named_refused(
-        self, tmp_path: Path
-    ) -> None:
+    def test_explicit_snapshot_missing_named_refused(self, tmp_path: Path) -> None:
         db = tmp_path / "a.db"
         _fixture_db(db)
         with pytest.raises(IntegrationRefused, match="snapshot 99"):
@@ -220,7 +210,5 @@ class TestStructuralMapping:
         db = tmp_path / "a.db"
         _fixture_db(db)
         ctx = DbStructuralContext.load(db)
-        assert [e.to_ref for e in ctx.dependencies("svc.app#app")] == [
-            "GET /orders"
-        ]
+        assert [e.to_ref for e in ctx.dependencies("svc.app#app")] == ["GET /orders"]
         assert ctx.dependents("GET /orders")[0].from_ref == "svc.app#app"

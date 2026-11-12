@@ -39,9 +39,7 @@ def list_services(
 ) -> ServiceListResponse:
     """Every registered service with coverage + honest health — real
     inventory only, never demo data."""
-    return ServiceListResponse(
-        services=ListServiceSummaries(uow, ctx.clock).execute()
-    )
+    return ServiceListResponse(services=ListServiceSummaries(uow, ctx.clock).execute())
 
 
 @router.get("/v1/services/{service_id}")
@@ -59,9 +57,7 @@ def service_detail(
     detail = GetServiceDetail(uow, ctx.clock).execute(service_id=service_id)
     links = GetServiceLinks(uow).execute(service_id=service_id)
     unknowns = sorted(set(detail.health.unknowns) | set(links.unknowns))
-    return ServiceDetailResponse(
-        detail=detail, links=links, unknowns=unknowns
-    )
+    return ServiceDetailResponse(detail=detail, links=links, unknowns=unknowns)
 
 
 @router.get("/v1/services/{service_id}/operations")

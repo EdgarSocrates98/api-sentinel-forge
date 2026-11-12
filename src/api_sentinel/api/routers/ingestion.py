@@ -35,7 +35,10 @@ def start_ingestion_job(
     release = acquire_job_slot(ctx)
     try:
         job, replayed = StartIngestionJob(
-            uow, ctx.clock, ctx.ids, ctx.redactor,
+            uow,
+            ctx.clock,
+            ctx.ids,
+            ctx.redactor,
             workspace_root=ctx.workspace.root,
         ).execute(
             source_id=body.source_id,

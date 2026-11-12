@@ -101,7 +101,10 @@ def correlate_edges(
         ],
         structural_edges=[
             CorrelatedEdge(
-                kind="structural", from_ref=f, to_ref=t, evidence=e,
+                kind="structural",
+                from_ref=f,
+                to_ref=t,
+                evidence=e,
                 provenance="declared",
             )
             for f, t, e in structural

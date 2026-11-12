@@ -72,10 +72,26 @@ DOCTOR_MODULE = "forge_doctor_api"
 # caller's tree.
 _WORKER_MODULE = "api_sentinel.integrations.doctor._worker"
 _CHILD_ENV_KEEP = {
-    "PATH", "SystemRoot", "WINDIR", "SystemDrive", "ComSpec", "PATHEXT",
-    "TEMP", "TMP", "TMPDIR", "HOME", "USERPROFILE", "PYTHONUTF8",
-    "PYTHONIOENCODING", "PYTHONPATH", "VIRTUAL_ENV", "NUMBER_OF_PROCESSORS",
-    "OS", "LANG", "LC_ALL", "LC_CTYPE",
+    "PATH",
+    "SystemRoot",
+    "WINDIR",
+    "SystemDrive",
+    "ComSpec",
+    "PATHEXT",
+    "TEMP",
+    "TMP",
+    "TMPDIR",
+    "HOME",
+    "USERPROFILE",
+    "PYTHONUTF8",
+    "PYTHONIOENCODING",
+    "PYTHONPATH",
+    "VIRTUAL_ENV",
+    "NUMBER_OF_PROCESSORS",
+    "OS",
+    "LANG",
+    "LC_ALL",
+    "LC_CTYPE",
 }
 _TERMINATE_GRACE_SECONDS = 3.0
 _KILL_GRACE_SECONDS = 3.0
@@ -121,10 +137,7 @@ class DoctorACL:
         timeout_seconds: float = 30.0,
     ) -> None:
         if mode is None:
-            mode = (
-                DoctorMode.IN_PROCESS if doctor_importable()
-                else DoctorMode.HANDOFF_FILE
-            )
+            mode = DoctorMode.IN_PROCESS if doctor_importable() else DoctorMode.HANDOFF_FILE
         self._mode = DoctorMode(mode)
         self._timeout = timeout_seconds
 
@@ -182,12 +195,8 @@ class DoctorACL:
         handoffs_dir: Path | None,
     ) -> DoctorResult:
         if self._mode is DoctorMode.IN_PROCESS:
-            return self._delegate_in_process(
-                handoff, request_dict, context_root=context_root
-            )
-        return self._delegate_file(
-            handoff, request_dict, handoffs_dir=handoffs_dir
-        )
+            return self._delegate_in_process(handoff, request_dict, context_root=context_root)
+        return self._delegate_file(handoff, request_dict, handoffs_dir=handoffs_dir)
 
     def _delegate_in_process(
         self,
@@ -209,7 +218,7 @@ class DoctorACL:
                 mode=self._mode,
                 status="refused",
                 detail="in_process mode requires context_root (a "
-                       "Doctor ProjectContext root); none provided",
+                "Doctor ProjectContext root); none provided",
             )
         if not context_root.is_dir():
             return DoctorResult(
@@ -219,9 +228,7 @@ class DoctorACL:
                 detail=f"context_root is not a directory: {context_root}",
             )
         try:
-            return self._delegate_via_process(
-                handoff, request_dict, context_root=context_root
-            )
+            return self._delegate_via_process(handoff, request_dict, context_root=context_root)
         except IntegrationRefused as exc:
             return DoctorResult(
                 handoff_id=handoff.handoff_id,
@@ -242,8 +249,11 @@ class DoctorACL:
     def _worker_argv(self, request_path: Path, out_dir: Path) -> list[str]:
         """argv for the delegation child — a list, never a shell string."""
         return [
-            sys.executable, "-m", _WORKER_MODULE,
-            str(request_path), str(out_dir),
+            sys.executable,
+            "-m",
+            _WORKER_MODULE,
+            str(request_path),
+            str(out_dir),
         ]
 
     def _child_env(self) -> dict[str, str]:
@@ -349,20 +359,17 @@ class DoctorACL:
                         mode=self._mode,
                         status="failed",
                         detail="process_termination_failure: child survived "
-                               "terminate+kill escalation",
+                        "terminate+kill escalation",
                     )
                 return DoctorResult(
                     handoff_id=handoff.handoff_id,
                     mode=self._mode,
                     status="timed_out",
                     detail=f"execution_timeout: child exceeded "
-                           f"{self._timeout}s wall-clock; {ended}"
-                           + (f"; stderr: {stderr_tail[:200]}"
-                              if stderr_tail else ""),
+                    f"{self._timeout}s wall-clock; {ended}"
+                    + (f"; stderr: {stderr_tail[:200]}" if stderr_tail else ""),
                 )
-            return self._result_from_exit(
-                handoff, rc, out_dir, stderr_tail
-            )
+            return self._result_from_exit(handoff, rc, out_dir, stderr_tail)
 
     def _result_from_exit(
         self,
@@ -381,8 +388,7 @@ class DoctorACL:
                     handoff_id=handoff.handoff_id,
                     mode=self._mode,
                     status="failed",
-                    detail="invalid_response: worker exited 0 without a "
-                           "bundle",
+                    detail="invalid_response: worker exited 0 without a bundle",
                 )
             try:
                 text = read_text_bounded(bundle_path, name="doctor bundle")
@@ -399,8 +405,7 @@ class DoctorACL:
                 mode=self._mode,
                 status="completed",
                 ingest=ingest,
-                detail="delegated through DoctorBoundary in an isolated "
-                       "child process",
+                detail="delegated through DoctorBoundary in an isolated child process",
             )
         if rc == EXIT_UNAVAILABLE:
             return DoctorResult(
@@ -427,9 +432,7 @@ class DoctorACL:
         if not meta_path.is_file():
             return ""
         try:
-            meta = json.loads(
-                read_text_bounded(meta_path, name="worker meta")
-            )
+            meta = json.loads(read_text_bounded(meta_path, name="worker meta"))
         except (ContractError, ValidationError, ValueError):
             return ""
         detail = meta.get("detail") if isinstance(meta, dict) else None
@@ -455,9 +458,7 @@ class DoctorACL:
         slot = safe_slot(handoffs_dir, handoff.handoff_id, name="handoff_id")
         slot.mkdir(exist_ok=True)
         envelope_path = slot / "investigation_handoff.json"
-        envelope_path.write_text(
-            handoff.model_dump_json(indent=2, by_alias=True), encoding="utf-8"
-        )
+        envelope_path.write_text(handoff.model_dump_json(indent=2, by_alias=True), encoding="utf-8")
         request_path = slot / "doctor_request.json"
         request_path.write_text(
             json.dumps(request_dict, indent=2, sort_keys=True), encoding="utf-8"
@@ -495,9 +496,7 @@ class DoctorACL:
             text = read_text_bounded(bundle_path, name="doctor bundle")
         except UnicodeDecodeError as exc:
             raise ContractError(f"doctor bundle unreadable: {exc}") from exc
-        return ingest_doctor_bundle_json(
-            text, expected_handoff_id=expected_handoff_id
-        )
+        return ingest_doctor_bundle_json(text, expected_handoff_id=expected_handoff_id)
 
     # -- receipts -------------------------------------------------------
 
@@ -509,11 +508,7 @@ class DoctorACL:
     ) -> None:
         from datetime import datetime
 
-        at = (
-            datetime.fromisoformat(now_iso)
-            if now_iso
-            else datetime.now(UTC)
-        )
+        at = datetime.fromisoformat(now_iso) if now_iso else datetime.now(UTC)
         evidence_refs: list[str] = []
         if result.request_ref:
             evidence_refs.append(result.request_ref)

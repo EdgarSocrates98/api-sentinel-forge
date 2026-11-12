@@ -54,9 +54,7 @@ def _seed(ws_root: Path) -> Workspace:
     ws = ensure_workspace(Workspace(root=ws_root, scope="project"))
     with SqliteUnitOfWork(ws.db_path) as uow:
         env = uow.environments.put(
-            ServiceEnvironment(
-                environment_id="env_lab", name="lab", created_at=NOW
-            )
+            ServiceEnvironment(environment_id="env_lab", name="lab", created_at=NOW)
         )
         uow.services.put(
             ApiService(
@@ -99,8 +97,7 @@ def _ctx(
         ids=UlidIdFactory(),
         redactor=lambda t: t,
         structural=None,
-        structural_reason="no atlas export configured — structural context "
-                          "unavailable",
+        structural_reason="no atlas export configured — structural context unavailable",
         atlas_manifest=None,
         default_role="operator",
         auth=ApiAuth(
@@ -164,22 +161,16 @@ class TestLocalBearer:
         assert r.headers["www-authenticate"].startswith("Bearer")
 
     def test_bad_token_is_401(self, client: TestClient) -> None:
-        r = client.get(
-            "/v1/services", headers={"Authorization": "Bearer wrong"}
-        )
+        r = client.get("/v1/services", headers={"Authorization": "Bearer wrong"})
         assert r.status_code == 401
         assert r.json()["code"] == "sentinel.unauthorized"
 
     def test_wrong_scheme_is_401(self, client: TestClient) -> None:
-        r = client.get(
-            "/v1/services", headers={"Authorization": f"Basic {TOKEN}"}
-        )
+        r = client.get("/v1/services", headers={"Authorization": f"Basic {TOKEN}"})
         assert r.status_code == 401
 
     def test_expired_token_is_401(self, ws_root: Path) -> None:
-        ctx = _ctx(
-            ws_root, token_expires_at=NOW - timedelta(seconds=1)
-        )
+        ctx = _ctx(ws_root, token_expires_at=NOW - timedelta(seconds=1))
         with TestClient(create_app(context=ctx)) as c:
             r = c.get(
                 "/v1/services",
@@ -188,9 +179,7 @@ class TestLocalBearer:
             assert r.status_code == 401
             assert r.json()["details"]["reason"] == "token_expired"
 
-    def test_valid_token_reads_and_mutates(
-        self, client: TestClient
-    ) -> None:
+    def test_valid_token_reads_and_mutates(self, client: TestClient) -> None:
         assert (
             client.get(
                 "/v1/services",
@@ -205,14 +194,10 @@ class TestLocalBearer:
         )
         assert r.status_code in (200, 201), r.text
 
-    def test_self_declared_role_without_credentials_is_401(
-        self, client: TestClient
-    ) -> None:
+    def test_self_declared_role_without_credentials_is_401(self, client: TestClient) -> None:
         """The C10-F007 exploit: `X-Sentinel-Role: admin` alone grants
         nothing — it is a 401, never an admin session."""
-        r = client.get(
-            "/v1/services", headers={"X-Sentinel-Role": "admin"}
-        )
+        r = client.get("/v1/services", headers={"X-Sentinel-Role": "admin"})
         assert r.status_code == 401
         r = client.post(
             f"/v1/incidents/{INCIDENT}/investigations",
@@ -221,9 +206,7 @@ class TestLocalBearer:
         )
         assert r.status_code == 401
 
-    def test_role_header_never_escalates_a_token(
-        self, ws_root: Path
-    ) -> None:
+    def test_role_header_never_escalates_a_token(self, ws_root: Path) -> None:
         """A viewer-scoped token stays a viewer even when it also
         declares `X-Sentinel-Role: admin` — the header is ignored."""
         ctx = _ctx(ws_root, role="viewer")
@@ -239,9 +222,7 @@ class TestLocalBearer:
             assert r.status_code == 403
             assert r.json()["details"]["role"] == "viewer"
 
-    def test_missing_resource_with_valid_token_is_404(
-        self, client: TestClient
-    ) -> None:
+    def test_missing_resource_with_valid_token_is_404(self, client: TestClient) -> None:
         """Authn/authz pass, then the lookup fails — 404, not 401/403."""
         r = client.get(
             "/v1/services/svc_ghost",
@@ -249,9 +230,7 @@ class TestLocalBearer:
         )
         assert r.status_code == 404
 
-    def test_forwarded_headers_establish_nothing(
-        self, client: TestClient
-    ) -> None:
+    def test_forwarded_headers_establish_nothing(self, client: TestClient) -> None:
         """Proxy-injected identity headers are never consulted."""
         r = client.get(
             "/v1/services",
@@ -268,9 +247,7 @@ class TestLocalBearer:
 
 
 class TestIntegratedSignature:
-    def test_signed_principal_authenticates(
-        self, ws_root: Path
-    ) -> None:
+    def test_signed_principal_authenticates(self, ws_root: Path) -> None:
         ws = Workspace(root=ws_root, scope="project")
         with TestClient(create_app(context=_ctx(ws_root))) as c:
             r = c.get(
@@ -282,9 +259,7 @@ class TestIntegratedSignature:
     def _client_with(self, ws_root: Path) -> TestClient:
         return TestClient(create_app(context=_ctx(ws_root)))
 
-    def test_signed_viewer_reads_not_mutates(
-        self, ws_root: Path
-    ) -> None:
+    def test_signed_viewer_reads_not_mutates(self, ws_root: Path) -> None:
         ws = Workspace(root=ws_root, scope="project")
         with self._client_with(ws_root) as c:
             r = c.get(
@@ -321,9 +296,7 @@ class TestIntegratedSignature:
     def test_stale_timestamp_is_401(self, ws_root: Path) -> None:
         ws = Workspace(root=ws_root, scope="project")
         old_ts = str(NOW.timestamp() - 1000)
-        headers = _signed_headers(
-            ws, role="admin", timestamp=old_ts, nonce="nonce-5"
-        )
+        headers = _signed_headers(ws, role="admin", timestamp=old_ts, nonce="nonce-5")
         with self._client_with(ws_root) as c:
             r = c.get("/v1/services", headers=headers)
             assert r.status_code == 401
@@ -340,9 +313,7 @@ class TestIntegratedSignature:
 
     def test_cross_workspace_principal_is_401(self, ws_root: Path) -> None:
         ws = Workspace(root=ws_root, scope="project")
-        headers = _signed_headers(
-            ws, role="admin", nonce="nonce-7", workspace="/other/workspace"
-        )
+        headers = _signed_headers(ws, role="admin", nonce="nonce-7", workspace="/other/workspace")
         with self._client_with(ws_root) as c:
             r = c.get("/v1/services", headers=headers)
             assert r.status_code == 401
@@ -356,9 +327,7 @@ class TestIntegratedSignature:
             assert r.status_code == 401
             assert r.json()["details"]["reason"] == "unknown_role"
 
-    def test_principal_without_signature_is_401(
-        self, client: TestClient
-    ) -> None:
+    def test_principal_without_signature_is_401(self, client: TestClient) -> None:
         r = client.get(
             "/v1/services",
             headers={"X-Sentinel-Principal": "portal:pm-42"},
@@ -368,9 +337,7 @@ class TestIntegratedSignature:
 
 
 class TestDenialBeforeLookup:
-    def test_denied_scope_never_reveals_existence(
-        self, ws_root: Path
-    ) -> None:
+    def test_denied_scope_never_reveals_existence(self, ws_root: Path) -> None:
         ws = Workspace(root=ws_root, scope="project")
         headers = _signed_headers(ws, role="viewer", nonce="nonce-9")
         with TestClient(create_app(context=_ctx(ws_root))) as c:
@@ -382,9 +349,7 @@ class TestDenialBeforeLookup:
             ghost = c.post(
                 "/v1/incidents/inc_ghost/investigations",
                 json={},
-                headers=_signed_headers(
-                    ws, role="viewer", nonce="nonce-10"
-                ),
+                headers=_signed_headers(ws, role="viewer", nonce="nonce-10"),
             )
             assert real.status_code == ghost.status_code == 403
             assert real.json()["code"] == ghost.json()["code"]
@@ -403,9 +368,7 @@ class TestCors:
                 "Access-Control-Request-Method": "GET",
             },
         )
-        assert "access-control-allow-origin" not in {
-            k.lower() for k in r.headers
-        }
+        assert "access-control-allow-origin" not in {k.lower() for k in r.headers}
 
     def test_allowlisted_origin_only(self, ws_root: Path) -> None:
         ctx = _ctx(ws_root, cors_origins=["https://portal.local"])
@@ -417,10 +380,7 @@ class TestCors:
                     "Access-Control-Request-Method": "GET",
                 },
             )
-            assert (
-                allowed.headers.get("access-control-allow-origin")
-                == "https://portal.local"
-            )
+            assert allowed.headers.get("access-control-allow-origin") == "https://portal.local"
             denied = c.options(
                 "/v1/services",
                 headers={
@@ -428,21 +388,13 @@ class TestCors:
                     "Access-Control-Request-Method": "GET",
                 },
             )
-            assert (
-                denied.headers.get("access-control-allow-origin")
-                != "https://evil.example"
-            )
+            assert denied.headers.get("access-control-allow-origin") != "https://evil.example"
             # credentials stay off — a wildcard can never ride along
-            assert (
-                allowed.headers.get("access-control-allow-credentials")
-                != "true"
-            )
+            assert allowed.headers.get("access-control-allow-credentials") != "true"
 
 
 class TestServedPathAlwaysAuths:
-    def test_workspace_app_resolves_real_auth(
-        self, tmp_path: Path
-    ) -> None:
+    def test_workspace_app_resolves_real_auth(self, tmp_path: Path) -> None:
         """create_app(workspace=…) — the production path — never runs
         credential-less: no headers → 401."""
         ws_root = tmp_path / "ws"
@@ -459,9 +411,7 @@ class TestServedPathAlwaysAuths:
                 == 200
             )
 
-    def test_in_process_seam_still_denies_unknown_roles(
-        self, ws_root: Path
-    ) -> None:
+    def test_in_process_seam_still_denies_unknown_roles(self, ws_root: Path) -> None:
         """The documented test seam (`auth=None`) maps the role header —
         an unknown role is a 403, never an implicit grant."""
         ctx = _ctx(ws_root)
@@ -483,9 +433,7 @@ class TestServedPathAlwaysAuths:
 
 class TestTokenResolution:
     def test_token_file_created_once(self, tmp_path: Path) -> None:
-        ws = ensure_workspace(
-            Workspace(root=tmp_path / "ws", scope="project")
-        )
+        ws = ensure_workspace(Workspace(root=tmp_path / "ws", scope="project"))
         first = ensure_local_token(ws, env={})
         second = ensure_local_token(ws, env={})
         assert first.created and first.path is not None
@@ -493,23 +441,15 @@ class TestTokenResolution:
         assert second.token == first.token and not second.created
 
     def test_env_wins_over_file(self, tmp_path: Path) -> None:
-        ws = ensure_workspace(
-            Workspace(root=tmp_path / "ws", scope="project")
-        )
+        ws = ensure_workspace(Workspace(root=tmp_path / "ws", scope="project"))
         env_cred = "env-token-123"
-        resolved = ensure_local_token(
-            ws, env={"API_SENTINEL_TOKEN": env_cred}
-        )
+        resolved = ensure_local_token(ws, env={"API_SENTINEL_TOKEN": env_cred})
         assert resolved.token == env_cred
         assert resolved.path is None and not resolved.created
         assert not (ws.root / "token").exists()
 
-    def test_stdin_wins_over_file_but_not_env(
-        self, tmp_path: Path
-    ) -> None:
-        ws = ensure_workspace(
-            Workspace(root=tmp_path / "ws", scope="project")
-        )
+    def test_stdin_wins_over_file_but_not_env(self, tmp_path: Path) -> None:
+        ws = ensure_workspace(Workspace(root=tmp_path / "ws", scope="project"))
         stdin_cred = "stdin-tok"
         resolved = ensure_local_token(ws, env={}, stdin_token=stdin_cred)
         assert resolved.token == stdin_cred
@@ -522,9 +462,7 @@ class TestTokenResolution:
         assert resolved.token == env_cred
 
     def test_expired_file_rotates(self, tmp_path: Path) -> None:
-        ws = ensure_workspace(
-            Workspace(root=tmp_path / "ws", scope="project")
-        )
+        ws = ensure_workspace(Workspace(root=tmp_path / "ws", scope="project"))
         first = ensure_local_token(ws, env={})
         assert first.path is not None
         # age the file beyond the configured TTL

@@ -202,9 +202,7 @@ def _sts_stub(account: str = LAB_ACCOUNT) -> ReadOnlyClient:
 
 class TestIdentityPreflight:
     def test_happy_path_returns_verified_identity(self) -> None:
-        identity = verify_identity(
-            _sts_stub(), region=LAB_REGION, expected_account_id=LAB_ACCOUNT
-        )
+        identity = verify_identity(_sts_stub(), region=LAB_REGION, expected_account_id=LAB_ACCOUNT)
         assert identity.account_id == LAB_ACCOUNT
         assert identity.masked_account == "1234****9012"
         assert identity.account_digest.startswith("sha256:")
@@ -236,30 +234,22 @@ class TestIdentityPreflight:
             "sts",
             script={
                 "get_caller_identity": [
-                    SimulatedClientError(
-                        "AccessDenied", "denied", "GetCallerIdentity"
-                    )
+                    SimulatedClientError("AccessDenied", "denied", "GetCallerIdentity")
                 ]
             },
         )
         with pytest.raises(IntegrationRefused):
-            verify_identity(
-                ReadOnlyClient(stub, service="sts"), region=LAB_REGION
-            )
+            verify_identity(ReadOnlyClient(stub, service="sts"), region=LAB_REGION)
 
     def test_malformed_account_is_unavailable(self) -> None:
         stub = SimulatedAwsClient(
             "sts",
             script={
-                "get_caller_identity": [
-                    {"Account": "not-an-account", "Arn": "", "UserId": ""}
-                ]
+                "get_caller_identity": [{"Account": "not-an-account", "Arn": "", "UserId": ""}]
             },
         )
         with pytest.raises(IntegrationUnavailable):
-            verify_identity(
-                ReadOnlyClient(stub, service="sts"), region=LAB_REGION
-            )
+            verify_identity(ReadOnlyClient(stub, service="sts"), region=LAB_REGION)
 
 
 # ---------------------------------------------------------------------------
@@ -301,15 +291,15 @@ class TestBackoff:
         assert sleeps == [0.5]  # base * 2^0 + 0 jitter
 
     def test_backoff_delay_is_jittered_exponential_and_capped(self) -> None:
-        bo = JitteredBackoff(
-            base_seconds=0.5, cap_seconds=1.0, sleep=NO_SLEEP, jitter=NO_JITTER
-        )
+        bo = JitteredBackoff(base_seconds=0.5, cap_seconds=1.0, sleep=NO_SLEEP, jitter=NO_JITTER)
         assert bo.delay(0) == 0.5
         assert bo.delay(1) == 1.0
         assert bo.delay(9) == 1.0  # capped
         jittered = JitteredBackoff(
-            base_seconds=0.5, cap_seconds=8.0,
-            sleep=NO_SLEEP, jitter=lambda: 1.0,
+            base_seconds=0.5,
+            cap_seconds=8.0,
+            sleep=NO_SLEEP,
+            jitter=lambda: 1.0,
         )
         assert jittered.delay(0) == 1.0  # 0.5 expo + 0.5 jitter*base
 
@@ -381,11 +371,15 @@ _IDENTITY = AwsIdentity(
 
 _Q = [
     MetricQuery(
-        namespace="AWS/ApiGateway", metric_name="Latency", unit="Milliseconds",
+        namespace="AWS/ApiGateway",
+        metric_name="Latency",
+        unit="Milliseconds",
         stat="Average",
     ),
     MetricQuery(
-        namespace="AWS/ApiGateway", metric_name="5XXError", unit="Count",
+        namespace="AWS/ApiGateway",
+        metric_name="5XXError",
+        unit="Count",
         stat="Sum",
     ),
 ]
@@ -394,9 +388,7 @@ _Q = [
 def _collector(
     script: list[Any], *, budget: AwsCollectBudget | None = None
 ) -> tuple[CloudWatchCollector, SimulatedAwsClient]:
-    stub = SimulatedAwsClient(
-        "cloudwatch", script={"get_metric_data": script}
-    )
+    stub = SimulatedAwsClient("cloudwatch", script={"get_metric_data": script})
     coll = CloudWatchCollector(
         ReadOnlyClient(stub, service="cloudwatch"),
         budget=budget or AwsCollectBudget(),
@@ -414,12 +406,8 @@ class TestCloudWatchCollector:
         )
         coll, _ = _collector(
             [
-                metric_data_page(
-                    [metric_data_result("q0", [t1], [1.0])], marker="p2"
-                ),
-                metric_data_page(
-                    [metric_data_result("q0", [t2], [2.0])], marker="p3"
-                ),
+                metric_data_page([metric_data_result("q0", [t1], [1.0])], marker="p2"),
+                metric_data_page([metric_data_result("q0", [t2], [2.0])], marker="p3"),
                 metric_data_page([metric_data_result("q0", [t3], [3.0])]),
             ]
         )
@@ -446,9 +434,7 @@ class TestCloudWatchCollector:
             )
             for i in range(5)
         ]
-        coll, _ = _collector(
-            pages, budget=AwsCollectBudget(max_pages_per_call=2)
-        )
+        coll, _ = _collector(pages, budget=AwsCollectBudget(max_pages_per_call=2))
         result = coll.collect(
             _Q[:1],
             start=NOW - timedelta(minutes=30),
@@ -484,11 +470,7 @@ class TestCloudWatchCollector:
     def test_datapoint_cap_marks_series_partial(self) -> None:
         ts = [NOW - timedelta(minutes=i) for i in range(5)]
         coll, _ = _collector(
-            [
-                metric_data_page(
-                    [metric_data_result("q0", ts, [1.0] * 5)]
-                )
-            ],
+            [metric_data_page([metric_data_result("q0", ts, [1.0] * 5)])],
             budget=AwsCollectBudget(max_datapoints=3),
         )
         result = coll.collect(
@@ -508,9 +490,7 @@ class TestCloudWatchCollector:
         # page carries a NextToken → the follow-up page cannot be fetched
         coll, _ = _collector(
             [
-                metric_data_page(
-                    [metric_data_result("q0", [NOW], [1.0])], marker="more"
-                ),
+                metric_data_page([metric_data_result("q0", [NOW], [1.0])], marker="more"),
                 metric_data_page([metric_data_result("q0", [NOW], [2.0])]),
             ],
             budget=AwsCollectBudget(max_calls_per_cycle=1),
@@ -530,12 +510,8 @@ class TestCloudWatchCollector:
     def test_throttled_then_paginated_success(self) -> None:
         coll, _ = _collector(
             [
-                SimulatedClientError(
-                    "ThrottlingException", "Rate exceeded", "GetMetricData"
-                ),
-                metric_data_page(
-                    [metric_data_result("q0", [NOW], [7.0])]
-                ),
+                SimulatedClientError("ThrottlingException", "Rate exceeded", "GetMetricData"),
+                metric_data_page([metric_data_result("q0", [NOW], [7.0])]),
             ]
         )
         result = coll.collect(
@@ -555,9 +531,7 @@ class TestCloudWatchCollector:
             metric_data_page([metric_data_result("q0", [NOW], [1.0])]),
             metric_data_page([metric_data_result("q0", [NOW], [2.0])]),
         ]
-        coll, stub = _collector(
-            pages, budget=AwsCollectBudget(max_metrics_per_query=1)
-        )
+        coll, stub = _collector(pages, budget=AwsCollectBudget(max_metrics_per_query=1))
         result = coll.collect(
             _Q,
             start=NOW - timedelta(minutes=30),
@@ -580,8 +554,10 @@ class TestObservationMapping:
     def test_seconds_unit_maps_to_s_for_ms_normalization(self) -> None:
         obs = datapoint_to_observation(
             query=MetricQuery(
-                namespace="AWS/Lambda", metric_name="Duration",
-                stat="Average", unit="Seconds",
+                namespace="AWS/Lambda",
+                metric_name="Duration",
+                stat="Average",
+                unit="Seconds",
             ),
             timestamp=NOW,
             value=0.42,
@@ -598,9 +574,7 @@ class TestObservationMapping:
 
     def test_absent_unit_stays_absent_and_noted(self) -> None:
         obs = datapoint_to_observation(
-            query=MetricQuery(
-                namespace="N", metric_name="M", stat="Average", unit=None
-            ),
+            query=MetricQuery(namespace="N", metric_name="M", stat="Average", unit=None),
             timestamp=NOW,
             value=1.0,
             service_id="svc",
@@ -613,9 +587,7 @@ class TestObservationMapping:
 
     def test_sum_without_unit_defaults_to_count(self) -> None:
         obs = datapoint_to_observation(
-            query=MetricQuery(
-                namespace="N", metric_name="M", stat="Sum", unit=None
-            ),
+            query=MetricQuery(namespace="N", metric_name="M", stat="Sum", unit=None),
             timestamp=NOW,
             value=5.0,
             service_id="svc",
@@ -629,7 +601,10 @@ class TestObservationMapping:
     def test_observation_id_deterministic_across_collections(self) -> None:
         kw: dict[str, Any] = {
             "query": MetricQuery(
-                namespace="N", metric_name="M", stat="Average", unit="Count",
+                namespace="N",
+                metric_name="M",
+                stat="Average",
+                unit="Count",
                 dimensions={"ApiName": "a"},
             ),
             "timestamp": NOW,
@@ -667,9 +642,7 @@ class TestObservationMapping:
 
 
 def _gw_stub(service: str, script: dict[str, list[Any]]) -> ReadOnlyClient:
-    return ReadOnlyClient(
-        SimulatedAwsClient(service, script=script), service=service
-    )
+    return ReadOnlyClient(SimulatedAwsClient(service, script=script), service=service)
 
 
 class TestApiGateway:
@@ -696,9 +669,7 @@ class TestApiGateway:
     def test_rest_and_http_apis_stay_distinct(self) -> None:
         inv, _ = self._discover(
             {
-                "get_rest_apis": [
-                    {"items": [{"id": "r1", "name": "orders"}]}
-                ],
+                "get_rest_apis": [{"items": [{"id": "r1", "name": "orders"}]}],
                 "get_stages": [{"item": [{"stageName": "prod"}]}],
             },
             {
@@ -724,16 +695,23 @@ class TestApiGateway:
         assert rest_q and http_q
         # REST spells errors 4XXError/5XXError; HTTP spells 4xx/5xx
         assert {q.metric_name for q in rest_q} >= {
-            "Count", "4XXError", "5XXError", "Latency",
-            "IntegrationLatency", "IntegrationError",
+            "Count",
+            "4XXError",
+            "5XXError",
+            "Latency",
+            "IntegrationLatency",
+            "IntegrationError",
         }
         assert {q.metric_name for q in http_q} >= {
-            "Count", "4xx", "5xx", "Latency",
-            "IntegrationLatency", "IntegrationError",
+            "Count",
+            "4xx",
+            "5xx",
+            "Latency",
+            "IntegrationLatency",
+            "IntegrationError",
         }
         # gateway-vs-app failure scope stays distinct on attributes
-        scopes = {q.metric_name: q.attributes["aws.failure_scope"]
-                  for q in rest_q}
+        scopes = {q.metric_name: q.attributes["aws.failure_scope"] for q in rest_q}
         assert scopes["5XXError"] == "gateway"
         assert scopes["IntegrationError"] == "integration"
         assert scopes["IntegrationLatency"] == "integration"
@@ -803,9 +781,7 @@ class TestApiGateway:
                 "get_stages": [{"item": [{"stageName": "p"}]}],
             },
         )
-        http = SimulatedAwsClient(
-            "apigatewayv2", script={"get_apis": [{"Items": []}]}
-        )
+        http = SimulatedAwsClient("apigatewayv2", script={"get_apis": [{"Items": []}]})
         b = AwsCollectBudget()
         discover_gateways(
             ReadOnlyClient(rest, service="apigateway"),
@@ -830,9 +806,7 @@ def _workspace(tmp_path: Path) -> tuple[Workspace, SqliteUnitOfWork]:
     uow = SqliteUnitOfWork(ws.db_path)
     with uow:
         uow.environments.put(
-            ServiceEnvironment(
-                environment_id="env_lab", name="lab", created_at=NOW
-            )
+            ServiceEnvironment(environment_id="env_lab", name="lab", created_at=NOW)
         )
         uow.services.put(
             ApiService(
@@ -903,9 +877,7 @@ class TestCollectAwsSource:
         sim = simulated_clientset(
             script_by_service=script if script is not None else lab013(now=NOW)
         )
-        use_case = CollectAwsSource(
-            uow, FixedClock(NOW), SequentialIdFactory()
-        )
+        use_case = CollectAwsSource(uow, FixedClock(NOW), SequentialIdFactory())
         report = use_case.execute(
             source=src,
             clients=sim.clients,
@@ -968,14 +940,10 @@ class TestCollectAwsSource:
         config = {"queries_json": _LAB_QUERIES, "region": LAB_REGION}
         _ws, _uow, _s, r1 = self._run(tmp_path, config=config)
         assert json.loads(r1.checkpoint)["last_window_end"] == NOW.isoformat()
-        _w2, _u2, _s2, r2 = self._run(
-            tmp_path, config=config, resume=True
-        )
+        _w2, _u2, _s2, r2 = self._run(tmp_path, config=config, resume=True)
         assert r2.resumed_from == NOW
 
-    def test_credential_config_refused_before_any_aws_call(
-        self, tmp_path: Path
-    ) -> None:
+    def test_credential_config_refused_before_any_aws_call(self, tmp_path: Path) -> None:
         ws, uow = _workspace(tmp_path)
         src = _source(
             uow,
@@ -985,9 +953,7 @@ class TestCollectAwsSource:
             },
         )
         sim = simulated_clientset(script_by_service=lab013(now=NOW))
-        use_case = CollectAwsSource(
-            uow, FixedClock(NOW), SequentialIdFactory()
-        )
+        use_case = CollectAwsSource(uow, FixedClock(NOW), SequentialIdFactory())
         with pytest.raises(IntegrationRefused):
             use_case.execute(
                 source=src,
@@ -1014,9 +980,7 @@ class TestCollectAwsSource:
             )
         assert "lookback" in str(ei.value)
 
-    def test_throttle_forever_bounded_refusal_with_receipt(
-        self, tmp_path: Path
-    ) -> None:
+    def test_throttle_forever_bounded_refusal_with_receipt(self, tmp_path: Path) -> None:
         from api_sentinel.integrations.aws.simulated import throttle_forever
 
         with pytest.raises(AwsThrottled):
@@ -1038,9 +1002,7 @@ class TestCollectAwsSource:
         with pytest.raises(IntegrationRefused):
             self._run(tmp_path, config={"queries_json": "[]"})
 
-    def test_api_gateway_source_discovers_then_collects(
-        self, tmp_path: Path
-    ) -> None:
+    def test_api_gateway_source_discovers_then_collects(self, tmp_path: Path) -> None:
         _ws, _uow, sim, report = self._run(
             tmp_path,
             kind="api-gateway",

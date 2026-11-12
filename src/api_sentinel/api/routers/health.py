@@ -37,12 +37,8 @@ def health(ctx: Annotated[ApiContext, Depends(get_ctx)]) -> HealthResponse:
         workspace_initialized=ctx.workspace.root.is_dir(),
         database="present" if db_present else "absent",
         capabilities={
-            "available": sum(
-                1 for c in list_capabilities() if c.status.value == "available"
-            ),
-            "declared": sum(
-                1 for c in list_capabilities() if c.status.value == "declared"
-            ),
+            "available": sum(1 for c in list_capabilities() if c.status.value == "available"),
+            "declared": sum(1 for c in list_capabilities() if c.status.value == "declared"),
         },
         sentinel=sentinel,
         unknowns=unknowns,

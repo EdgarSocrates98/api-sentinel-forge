@@ -77,18 +77,16 @@ _SQL_CLASSES: tuple[tuple[str, str], ...] = (
     # Order matters: first substring match wins. NOTE: the sqlite3 trace
     # hook receives *expanded* SQL (bind values inlined) — needles must not
     # contain '?' placeholders.
-    ("SELECT observation_id, idempotency_key FROM runtime_observations",
-     "dedup_batch_query"),
-    ("SELECT * FROM runtime_observations WHERE observation_id=",
-     "dedup_point_query"),
-    ("SELECT DISTINCT source_id, window_start, window_end FROM runtime_observations",
-     "overlap_batch_query"),
-    ("SELECT DISTINCT source_id FROM runtime_observations",
-     "overlap_window_query"),
+    ("SELECT observation_id, idempotency_key FROM runtime_observations", "dedup_batch_query"),
+    ("SELECT * FROM runtime_observations WHERE observation_id=", "dedup_point_query"),
+    (
+        "SELECT DISTINCT source_id, window_start, window_end FROM runtime_observations",
+        "overlap_batch_query",
+    ),
+    ("SELECT DISTINCT source_id FROM runtime_observations", "overlap_window_query"),
     ("INSERT OR IGNORE INTO runtime_observations", "observation_insert"),
     ("SELECT * FROM api_services WHERE service_id IN", "service_batch_query"),
-    ("SELECT * FROM api_services WHERE environment_id=",
-     "service_by_name_query"),
+    ("SELECT * FROM api_services WHERE environment_id=", "service_by_name_query"),
     ("SELECT * FROM api_services WHERE service_id=", "service_point_query"),
     ("INSERT INTO ingestion_quarantine", "quarantine_insert"),
     ("INSERT OR IGNORE INTO observation_batches", "batch_insert"),
@@ -194,17 +192,13 @@ def _dataset_hash(path: Path) -> str:
     return f"sha256:{digest.hexdigest()}"
 
 
-def _seed(
-    ws: Workspace, *, n_sources: int = 1, services: int = 1
-) -> list[TelemetrySource]:
+def _seed(ws: Workspace, *, n_sources: int = 1, services: int = 1) -> list[TelemetrySource]:
     ensure_workspace(ws)
     now = BASE
     out: list[TelemetrySource] = []
     with SqliteUnitOfWork(ws.db_path) as uow:
         env = uow.environments.put(
-            ServiceEnvironment(
-                environment_id="env_bench", name="bench", created_at=now
-            )
+            ServiceEnvironment(environment_id="env_bench", name="bench", created_at=now)
         )
         for s in range(services):
             sid = f"svc_bench_{s}" if services > 1 else "svc_bench"
@@ -254,8 +248,10 @@ def gen_sequential(n: int, chunk: int, args: argparse.Namespace) -> list[bytes]:
         chunks.append(
             _encode(
                 _observation(
-                    i, _window_end_seq(i, offset, size),
-                    service="svc_bench", source="src_bench",
+                    i,
+                    _window_end_seq(i, offset, size),
+                    service="svc_bench",
+                    source="src_bench",
                 )
                 for i in range(offset, offset + size)
             )
@@ -270,8 +266,10 @@ def gen_dispersed(n: int, chunk: int, args: argparse.Namespace) -> list[bytes]:
         chunks.append(
             _encode(
                 _observation(
-                    i, _window_end_dispersed(i, args.windows),
-                    service="svc_bench", source="src_bench",
+                    i,
+                    _window_end_dispersed(i, args.windows),
+                    service="svc_bench",
+                    source="src_bench",
                 )
                 for i in range(offset, offset + size)
             )
@@ -285,8 +283,10 @@ def gen_out_of_order(n: int, chunk: int, args: argparse.Namespace) -> list[bytes
         size = min(chunk, n - offset)
         lines = [
             _observation(
-                i, _window_end_seq(i, offset, size),
-                service="svc_bench", source="src_bench",
+                i,
+                _window_end_seq(i, offset, size),
+                service="svc_bench",
+                source="src_bench",
             )
             for i in range(offset, offset + size)
         ]
@@ -305,8 +305,11 @@ def gen_high_cardinality(n: int, chunk: int, args: argparse.Namespace) -> list[b
         chunks.append(
             _encode(
                 _observation(
-                    i, _window_end_seq(i, offset, size),
-                    service="svc_bench", source="src_bench", n_ops=n_ops,
+                    i,
+                    _window_end_seq(i, offset, size),
+                    service="svc_bench",
+                    source="src_bench",
+                    n_ops=n_ops,
                     extra_attrs={"enduser.id": f"user_{i % 5000}"},
                 )
                 for i in range(offset, offset + size)
@@ -333,8 +336,10 @@ def gen_dup_heavy(n: int, chunk: int, args: argparse.Namespace) -> list[bytes]:
                 continue
             lines.append(
                 _observation(
-                    i, _window_end_seq(i, offset, size),
-                    service="svc_bench", source="src_bench",
+                    i,
+                    _window_end_seq(i, offset, size),
+                    service="svc_bench",
+                    source="src_bench",
                 )
             )
         chunks.append(_encode(lines))
@@ -357,8 +362,10 @@ def gen_mid_batch_failure(n: int, chunk: int, args: argparse.Namespace) -> list[
                 raw.append(
                     json.dumps(
                         _observation(
-                            i, _window_end_seq(i, offset, size),
-                            service="svc_bench", source="src_bench",
+                            i,
+                            _window_end_seq(i, offset, size),
+                            service="svc_bench",
+                            source="src_bench",
                         )
                     )
                 )
@@ -375,8 +382,10 @@ def gen_multi_source(n: int, chunk: int, args: argparse.Namespace) -> list[bytes
         chunks.append(
             _encode(
                 _observation(
-                    i, BASE - timedelta(minutes=i % n_windows),
-                    service="svc_bench", source="src_bench",
+                    i,
+                    BASE - timedelta(minutes=i % n_windows),
+                    service="svc_bench",
+                    source="src_bench",
                 )
                 for i in range(offset, offset + size)
             )
@@ -432,8 +441,9 @@ def _ingest_chunks(
         if rewrite_source:
             # Rewrite the declared source_id to the ingesting channel so the
             # multi-source shape exercises real overlap detection.
-            blob = blob.replace(b'"source_id": "src_bench"',
-                                f'"source_id": "{source.source_id}"'.encode())
+            blob = blob.replace(
+                b'"source_id": "src_bench"', f'"source_id": "{source.source_id}"'.encode()
+            )
         t0 = time.perf_counter()
         result = pipeline.ingest(source=source, kind="jsonl", content=blob)
         chunk_seconds.append(round(time.perf_counter() - t0, 3))
@@ -502,7 +512,9 @@ def run_shape(
     if shape == "multi_source":
         sources = _seed(ws, n_sources=args.sources)
         result = _ingest_chunks(
-            ws, chunks, sources=sources,
+            ws,
+            chunks,
+            sources=sources,
             source_for_chunk=lambda c: sources[c % len(sources)],
             rewrite_source=True,
         )
@@ -589,15 +601,16 @@ def main() -> int:
     parser.add_argument("--shape", choices=[*SHAPES, "all"], default="all")
     parser.add_argument("--n", type=int, default=10_000)
     parser.add_argument("--chunk", type=int, default=5_000)
-    parser.add_argument("--windows", type=int, default=1440,
-                        help="distinct 1-min windows for the dispersed shape")
+    parser.add_argument(
+        "--windows", type=int, default=1440, help="distinct 1-min windows for the dispersed shape"
+    )
     parser.add_argument("--sources", type=int, default=4)
     parser.add_argument("--ops-high-card", type=int, default=2000)
     parser.add_argument("--large-max-mib", type=int, default=64)
-    parser.add_argument("--datasets", type=Path,
-                        default=Path("lab/bench/datasets"))
-    parser.add_argument("--work", type=Path, default=None,
-                        help="kept workspace root (default: temp dir)")
+    parser.add_argument("--datasets", type=Path, default=Path("lab/bench/datasets"))
+    parser.add_argument(
+        "--work", type=Path, default=None, help="kept workspace root (default: temp dir)"
+    )
     parser.add_argument("--out", type=Path, default=None)
     args = parser.parse_args()
 
@@ -613,13 +626,17 @@ def main() -> int:
             "python": sys.version.split()[0],
             "platform": sys.platform,
             "params": {
-                "n": args.n, "chunk": args.chunk, "windows": args.windows,
-                "sources": args.sources, "ops_high_card": args.ops_high_card,
+                "n": args.n,
+                "chunk": args.chunk,
+                "windows": args.windows,
+                "sources": args.sources,
+                "ops_high_card": args.ops_high_card,
                 "large_max_mib": args.large_max_mib,
             },
             "results": [
-                run_shape(s, n=args.n, chunk=args.chunk, args=args,
-                          work_root=work, datasets=args.datasets)
+                run_shape(
+                    s, n=args.n, chunk=args.chunk, args=args, work_root=work, datasets=args.datasets
+                )
                 for s in shapes
             ],
         }

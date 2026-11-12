@@ -37,9 +37,7 @@ def _call(ws: Workspace, name: str, arguments: dict | None = None) -> object:
 
 
 class TestToolSurface:
-    def test_lists_exactly_the_four_declared_tools(
-        self, ws: Workspace
-    ) -> None:
+    def test_lists_exactly_the_four_declared_tools(self, ws: Workspace) -> None:
         assert set(_tool_names(ws)) == {
             "sentinel_list_services",
             "sentinel_capabilities",
@@ -47,17 +45,18 @@ class TestToolSurface:
             "sentinel_list_incidents",
         }
 
-    def test_capabilities_carries_stage_and_status(
-        self, ws: Workspace
-    ) -> None:
+    def test_capabilities_carries_stage_and_status(self, ws: Workspace) -> None:
         result = _call(ws, "sentinel_capabilities")
         data = json.loads(result.content[0].text)  # type: ignore[attr-defined]
         assert data
         for cap in data:
             assert cap["status"] in ("available", "declared", "unavailable")
             assert cap["stage"] in (
-                "implemented", "tested", "integrated",
-                "verified", "production_validated",
+                "implemented",
+                "tested",
+                "integrated",
+                "verified",
+                "production_validated",
             )
 
     def test_health_is_honest(self, ws: Workspace) -> None:
@@ -66,9 +65,7 @@ class TestToolSurface:
         assert data["state"] in ("AVAILABLE", "PARTIAL")
         assert data["database"] in ("present", "absent")
 
-    def test_unknown_tool_is_a_typed_error_not_a_crash(
-        self, ws: Workspace
-    ) -> None:
+    def test_unknown_tool_is_a_typed_error_not_a_crash(self, ws: Workspace) -> None:
         result = _call(ws, "sentinel_drop_table")
         data = json.loads(result.content[0].text)  # type: ignore[attr-defined]
         assert "error" in data

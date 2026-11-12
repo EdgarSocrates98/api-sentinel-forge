@@ -39,18 +39,26 @@ def _bundle(tmp_path: Path, rel: str = "steps/S1.json") -> tuple[Path, Path, Pat
     target.write_text(json.dumps(record), encoding="utf-8")
     digest = "sha256:" + hashlib.sha256(target.read_bytes()).hexdigest()
     receipt = root / "federated-e2e-receipt.json"
-    receipt.write_text(json.dumps({
-        "schema": "sentinel-evidence/FederatedE2EReceipt/v1",
-        "steps": [record],
-        "summary": {"total": 1, "passed": 1, "failed": 0,
-                    "blocked": 0, "not_run": 0},
-    }), encoding="utf-8")
+    receipt.write_text(
+        json.dumps(
+            {
+                "schema": "sentinel-evidence/FederatedE2EReceipt/v1",
+                "steps": [record],
+                "summary": {"total": 1, "passed": 1, "failed": 0, "blocked": 0, "not_run": 0},
+            }
+        ),
+        encoding="utf-8",
+    )
     manifest = root / "federated-e2e-manifest.json"
-    manifest.write_text(json.dumps({
-        "schema": "api-sentinel/EvidenceManifest/v1",
-        "files": [{"path": rel, "sha256": digest,
-                   "bytes": target.stat().st_size}],
-    }), encoding="utf-8")
+    manifest.write_text(
+        json.dumps(
+            {
+                "schema": "api-sentinel/EvidenceManifest/v1",
+                "files": [{"path": rel, "sha256": digest, "bytes": target.stat().st_size}],
+            }
+        ),
+        encoding="utf-8",
+    )
     return root, receipt, manifest
 
 
@@ -75,8 +83,15 @@ def test_verifier_rejects_traversal_and_duplicate_paths(tmp_path: Path) -> None:
     manifest.write_text(json.dumps(data), encoding="utf-8")
     old_argv = sys.argv
     try:
-        sys.argv = ["verify", "--receipt", str(receipt), "--manifest",
-                    str(manifest), "--root", str(root)]
+        sys.argv = [
+            "verify",
+            "--receipt",
+            str(receipt),
+            "--manifest",
+            str(manifest),
+            "--root",
+            str(root),
+        ]
         assert verify_main() == 1
     finally:
         sys.argv = old_argv
@@ -93,21 +108,28 @@ def test_verifier_rejects_symlink_escape(tmp_path: Path) -> None:
         pytest.skip("symlink creation is unavailable on this host")
     data = json.loads(manifest.read_text(encoding="utf-8"))
     digest = "sha256:" + hashlib.sha256(outside.read_bytes()).hexdigest()
-    data["files"].append({"path": "steps/escape.json", "sha256": digest,
-                           "bytes": outside.stat().st_size})
+    data["files"].append(
+        {"path": "steps/escape.json", "sha256": digest, "bytes": outside.stat().st_size}
+    )
     manifest.write_text(json.dumps(data), encoding="utf-8")
     old_argv = sys.argv
     try:
-        sys.argv = ["verify", "--receipt", str(receipt), "--manifest",
-                    str(manifest), "--root", str(root)]
+        sys.argv = [
+            "verify",
+            "--receipt",
+            str(receipt),
+            "--manifest",
+            str(manifest),
+            "--root",
+            str(root),
+        ]
         assert verify_main() == 1
     finally:
         sys.argv = old_argv
 
 
 def test_tui_display_argv_masks_sensitive_value() -> None:
-    cmd = Command("security", "x", ("investigate",),
-                  (Field("--token", "Token", sensitive=True),))
+    cmd = Command("security", "x", ("investigate",), (Field("--token", "Token", sensitive=True),))
     execution = build_argv(cmd, {"--token": "secret-value"}, ws=None)
     display = display_argv(cmd, {"--token": "secret-value"}, ws=None)
     assert execution[-1] == "secret-value"
@@ -124,8 +146,7 @@ def test_bridge_http_detail_is_bounded_and_redacted() -> None:
     payload = b"{" + b"x" * ((1 << 20) + 10) + b"}"
     headers = Message()
     headers["Content-Type"] = "application/json"
-    exc = HTTPError("http://127.0.0.1", 500, "server error", headers,
-                    io.BytesIO(payload))
+    exc = HTTPError("http://127.0.0.1", 500, "server error", headers, io.BytesIO(payload))
     detail = HttpAgentSession._http_detail(exc)
     assert "size limit" in detail
     assert len(detail) < 200
@@ -134,7 +155,9 @@ def test_bridge_http_detail_is_bounded_and_redacted() -> None:
 def test_help_is_renderable_on_windows_console() -> None:
     result = subprocess.run(  # noqa: S603 — fixed local runner argv
         [sys.executable, str(LAB / "federated_e2e.py"), "--help"],
-        capture_output=True, text=True, timeout=60,
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     assert result.returncode == 0
     assert "skip-traffic-sleep" in result.stdout

@@ -29,9 +29,7 @@ from api_sentinel.integrations.doctor.translate import (
 )
 
 NOW = datetime(2026, 1, 1, tzinfo=UTC)
-DOCTOR_LAB = (
-    Path(__file__).resolve().parents[2] / "lab" / "fixtures" / "doctor-project"
-)
+DOCTOR_LAB = Path(__file__).resolve().parents[2] / "lab" / "fixtures" / "doctor-project"
 
 
 def _handoff(**over) -> InvestigationHandoffV1:
@@ -51,11 +49,7 @@ def _handoff(**over) -> InvestigationHandoffV1:
 class TestAbsentAndModeSelection:
     def test_mode_defaults_by_importability(self) -> None:
         acl = DoctorACL()
-        expected = (
-            DoctorMode.IN_PROCESS
-            if doctor_importable()
-            else DoctorMode.HANDOFF_FILE
-        )
+        expected = DoctorMode.IN_PROCESS if doctor_importable() else DoctorMode.HANDOFF_FILE
         assert acl.mode is expected
 
     def test_absent_module_named_unavailable(self, monkeypatch) -> None:

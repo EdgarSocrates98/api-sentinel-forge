@@ -87,9 +87,7 @@ def test_quarantine_is_inspectable_and_payload_bounded(db_path: Path, tmp_path: 
         source = seed_service_and_source(uow)
         uow.commit()
     huge = json.dumps({"schema": "api-sentinel/RuntimeObservation/v2", "pad": "x" * 9000})
-    result = _pipeline(db_path).ingest(
-        source=source, kind="jsonl", content=_file(tmp_path, huge)
-    )
+    result = _pipeline(db_path).ingest(source=source, kind="jsonl", content=_file(tmp_path, huge))
     assert result.quarantined == 1
     with SqliteUnitOfWork(db_path) as uow:
         entry = uow.quarantine.list()[0]
@@ -116,9 +114,7 @@ def test_quarantine_payload_is_redacted(db_path: Path, tmp_path: Path) -> None:
         source = seed_service_and_source(uow)
         uow.commit()
     leaky_line = '{"schema":"api-sentinel/RuntimeObservation/v9","auth":"token=supersecret123"}'
-    _pipeline(db_path).ingest(
-        source=source, kind="jsonl", content=_file(tmp_path, leaky_line)
-    )
+    _pipeline(db_path).ingest(source=source, kind="jsonl", content=_file(tmp_path, leaky_line))
     with SqliteUnitOfWork(db_path) as uow:
         payload = uow.quarantine.list()[0].payload
         assert "supersecret123" not in payload and MASK in payload

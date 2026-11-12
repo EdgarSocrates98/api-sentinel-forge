@@ -34,9 +34,7 @@ from api_sentinel.incidents.models import (
 #: Confidence classes a hypothesis may be *created* with — VERIFIED and
 #: REFUTED are outcomes of evidence, never starting points; OBSERVED is a
 #: raw signal, not yet a candidate cause.
-CREATABLE_CONFIDENCE = frozenset(
-    {ConfidenceClass.CORRELATED, ConfidenceClass.HYPOTHESIZED}
-)
+CREATABLE_CONFIDENCE = frozenset({ConfidenceClass.CORRELATED, ConfidenceClass.HYPOTHESIZED})
 
 
 def hypothesis_id_for(*, incident_id: str, text: str, at: datetime) -> str:
@@ -46,9 +44,7 @@ def hypothesis_id_for(*, incident_id: str, text: str, at: datetime) -> str:
 
 
 def _bump(incident: Incident, **changes: object) -> Incident:
-    return incident.model_copy(
-        update={**changes, "revision": incident.revision + 1}
-    )
+    return incident.model_copy(update={**changes, "revision": incident.revision + 1})
 
 
 def create_hypothesis(
@@ -161,8 +157,7 @@ def promote_hypothesis(
         (
             v
             for v in incident.verifications
-            if v.verification_id == verification_id
-            and v.hypothesis_id == hypothesis_id
+            if v.verification_id == verification_id and v.hypothesis_id == hypothesis_id
         ),
         None,
     )
@@ -199,17 +194,14 @@ def promote_hypothesis(
         update={
             "confidence": ConfidenceClass.VERIFIED,
             "evidence_refs": evidence,
-            "evidence_for": sorted(
-                set(found.evidence_for) | {f"verification:{verification_id}"}
-            ),
+            "evidence_for": sorted(set(found.evidence_for) | {f"verification:{verification_id}"}),
             "verification_id": verification_id,
             "note": note or found.note,
             "updated_at": at,
         }
     )
     hypotheses = [
-        updated_hyp if h.hypothesis_id == hypothesis_id else h
-        for h in incident.hypotheses
+        updated_hyp if h.hypothesis_id == hypothesis_id else h for h in incident.hypotheses
     ]
     updated = _bump(incident, hypotheses=hypotheses)
     event = make_event(
@@ -258,23 +250,18 @@ def demote_hypothesis(
             f"hypothesis already REFUTED: {hypothesis_id}",
             details={"incident_id": incident.incident_id},
         )
-    against = sorted(
-        set(found.evidence_against) | set(evidence_against or [])
-    )
+    against = sorted(set(found.evidence_against) | set(evidence_against or []))
     updated_hyp = found.model_copy(
         update={
             "confidence": ConfidenceClass.REFUTED,
             "evidence_against": against,
-            "evidence_refs": sorted(
-                set(found.evidence_for) | set(against)
-            ),
+            "evidence_refs": sorted(set(found.evidence_for) | set(against)),
             "note": note or reason,
             "updated_at": at,
         }
     )
     hypotheses = [
-        updated_hyp if h.hypothesis_id == hypothesis_id else h
-        for h in incident.hypotheses
+        updated_hyp if h.hypothesis_id == hypothesis_id else h for h in incident.hypotheses
     ]
     updated = _bump(incident, hypotheses=hypotheses)
     event = make_event(
@@ -304,10 +291,7 @@ def record_verification(
     actor: str,
 ) -> tuple[Incident, IncidentEvent]:
     """Persist a verification outcome — journaled, deduped by id."""
-    if any(
-        v.verification_id == record.verification_id
-        for v in incident.verifications
-    ):
+    if any(v.verification_id == record.verification_id for v in incident.verifications):
         return incident, make_event(  # replay is a no-op on the row
             incident_id=incident.incident_id,
             kind=EventKind.NOTE,
@@ -318,9 +302,7 @@ def record_verification(
             note=f"verification {record.verification_id} already recorded",
             discriminator=f"verification_dup|{record.verification_id}",
         )
-    updated = _bump(
-        incident, verifications=[*incident.verifications, record]
-    )
+    updated = _bump(incident, verifications=[*incident.verifications, record])
     event = make_event(
         incident_id=incident.incident_id,
         kind=EventKind.VERIFICATION_RECORDED,
@@ -329,8 +311,7 @@ def record_verification(
         from_status=incident.status,
         to_status=incident.status,
         note=(
-            f"verification {record.verification_id} → {record.verdict} "
-            f"for {record.hypothesis_id}"
+            f"verification {record.verification_id} → {record.verdict} for {record.hypothesis_id}"
         ),
         details={
             "verification_id": record.verification_id,
@@ -367,9 +348,7 @@ class AddHypothesis:
             incident = uow.incidents.get(incident_id)
             if incident is None:
                 raise NotFoundError(f"incident not found: {incident_id}")
-            hypothesis_id = hypothesis_id_for(
-                incident_id=incident_id, text=text, at=self._now
-            )
+            hypothesis_id = hypothesis_id_for(incident_id=incident_id, text=text, at=self._now)
             updated, event = create_hypothesis(
                 incident,
                 hypothesis_id=hypothesis_id,
@@ -416,10 +395,7 @@ class PromoteHypothesis:
             uow.incidents.put(updated, expected_revision=incident.revision)
             uow.incident_events.append(event)
             uow.commit()
-            hypothesis = next(
-                h for h in updated.hypotheses
-                if h.hypothesis_id == hypothesis_id
-            )
+            hypothesis = next(h for h in updated.hypotheses if h.hypothesis_id == hypothesis_id)
             return hypothesis, updated
 
 
@@ -453,8 +429,5 @@ class DemoteHypothesis:
             uow.incidents.put(updated, expected_revision=incident.revision)
             uow.incident_events.append(event)
             uow.commit()
-            hypothesis = next(
-                h for h in updated.hypotheses
-                if h.hypothesis_id == hypothesis_id
-            )
+            hypothesis = next(h for h in updated.hypotheses if h.hypothesis_id == hypothesis_id)
             return hypothesis, updated

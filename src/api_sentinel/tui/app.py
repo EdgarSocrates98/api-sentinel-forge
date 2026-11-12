@@ -102,13 +102,9 @@ class WizardScreen(ModalScreen[dict[str, str] | None]):
             with VerticalScroll(id="wizfields"):
                 for f in self._cmd.fields:
                     with Horizontal(classes="fieldrow"):
-                        yield Label(
-                            f.label + (" *" if f.required else "")
-                        )
+                        yield Label(f.label + (" *" if f.required else ""))
                         if f.kind == "bool":
-                            yield Checkbox(
-                                f.label, value=False, id=f"f{f.flag}"
-                            )
+                            yield Checkbox(f.label, value=False, id=f"f{f.flag}")
                         elif f.choices:
                             yield Select(
                                 [(c, c) for c in f.choices if c],
@@ -130,17 +126,9 @@ class WizardScreen(ModalScreen[dict[str, str] | None]):
         if event.button.id == "cancel":
             self.dismiss(None)
             return
-        missing = [
-            f.label
-            for f in self._cmd.fields
-            if f.required and not self._value(f)
-        ]
+        missing = [f.label for f in self._cmd.fields if f.required and not self._value(f)]
         if missing:
-            self.app.push_screen(
-                NoticeScreen(
-                    f"Required field(s) missing: {', '.join(missing)}"
-                )
-            )
+            self.app.push_screen(NoticeScreen(f"Required field(s) missing: {', '.join(missing)}"))
             return
         self.dismiss({f.flag: self._value(f) for f in self._cmd.fields})
 
@@ -208,9 +196,7 @@ class SentinelApp(App[None]):
         if key == "dash":
             children += [
                 Static("Dashboard", classes="title"),
-                Static(
-                    f"workspace: {self.ws.root}\ndatabase:  {self.ws.db_path}"
-                ),
+                Static(f"workspace: {self.ws.root}\ndatabase:  {self.ws.db_path}"),
                 Static("Recent audit events", classes="title"),
                 _table(load_audit(self.ws)),
             ]
@@ -248,9 +234,7 @@ class SentinelApp(App[None]):
                 Horizontal(
                     ListView(
                         *[
-                            ListItem(
-                                Static(f"[{c.group}] {c.label}"), id=f"cmd{i}"
-                            )
+                            ListItem(Static(f"[{c.group}] {c.label}"), id=f"cmd{i}")
                             for i, c in enumerate(CATALOG)
                         ],
                         id="cmdlist",
@@ -279,6 +263,7 @@ class SentinelApp(App[None]):
         if not cmd.fields:
             self._run_command(cmd, {})
             return
+
         def _on_wizard_done(values: dict[str, str] | None) -> None:
             if values is not None:
                 self._run_command(cmd, values)
@@ -304,9 +289,7 @@ class SentinelApp(App[None]):
 
     def _logline_from_worker(self, text: str, *, markup: bool = False) -> None:
         """Schedule widget access on Textual's app thread."""
-        self.call_from_thread(
-            lambda: self._logline(text, markup=markup)
-        )
+        self.call_from_thread(lambda: self._logline(text, markup=markup))
 
     @work(thread=True)
     def _run_command(self, cmd: Command, values: dict[str, str]) -> None:
@@ -315,22 +298,16 @@ class SentinelApp(App[None]):
         self._logline_from_worker(f"$ api-sentinel {' '.join(display)}")
         result = CliRunner().invoke(cli_app, argv)
         out = result.output.strip() or "(no output)"
-        status = "[green]ok[/]" if result.exit_code == 0 else (
-            f"[red]exit {result.exit_code}[/]"
-        )
+        status = "[green]ok[/]" if result.exit_code == 0 else (f"[red]exit {result.exit_code}[/]")
         self._logline_from_worker(status, markup=True)
         self._logline_from_worker(out)
         if result.exit_code != 0 and result.exception:
-            self._logline_from_worker(
-                f"{type(result.exception).__name__}: {result.exception}"
-            )
+            self._logline_from_worker(f"{type(result.exception).__name__}: {result.exception}")
         # Refresh data panels the command may have touched — but never the
         # commands panel itself: rebuilding it would wipe the output log.
         if getattr(self, "_current", "dash") != "commands":
             self.call_from_thread(
-                lambda: self.run_worker(
-                    self._refresh_current(), exclusive=True, group="refresh"
-                )
+                lambda: self.run_worker(self._refresh_current(), exclusive=True, group="refresh")
             )
 
     # -- actions --------------------------------------------------------------

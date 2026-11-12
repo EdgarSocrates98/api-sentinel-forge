@@ -24,9 +24,7 @@ def _count(conn: sqlite3.Connection, table: str) -> int:
     return int(conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0])  # noqa: S608
 
 
-def _minmax(
-    conn: sqlite3.Connection, table: str, column: str
-) -> tuple[str | None, str | None]:
+def _minmax(conn: sqlite3.Connection, table: str, column: str) -> tuple[str | None, str | None]:
     row = conn.execute(
         f"SELECT MIN({column}) AS lo, MAX({column}) AS hi FROM {table}"  # noqa: S608
     ).fetchone()
@@ -74,9 +72,7 @@ def _source_freshness(
     ).fetchall()
     checkpoints = {
         r["source_id"]: r["updated_at"]
-        for r in conn.execute(
-            "SELECT source_id, updated_at FROM ingestion_checkpoints"
-        )
+        for r in conn.execute("SELECT source_id, updated_at FROM ingestion_checkpoints")
     }
     per_source: list[dict[str, Any]] = []
     stale: list[str] = []
@@ -151,9 +147,7 @@ def sentinel_health(
     conn = connect(ws.db_path)
     try:
         integrity = conn.execute("PRAGMA quick_check").fetchone()[0]
-        observations_lo, observations_hi = _minmax(
-            conn, "runtime_observations", "window_end"
-        )
+        observations_lo, observations_hi = _minmax(conn, "runtime_observations", "window_end")
         quarantine_lo, _ = _minmax(conn, "ingestion_quarantine", "created_at")
         open_incidents = int(
             conn.execute(
@@ -185,9 +179,7 @@ def sentinel_health(
                     "total": _count(conn, "incidents"),
                 },
                 "audit_events": _count(conn, "audit_events"),
-                "sources": _source_freshness(
-                    conn, now=at, stale_after_seconds=stale_after_seconds
-                ),
+                "sources": _source_freshness(conn, now=at, stale_after_seconds=stale_after_seconds),
                 "blobs": _blob_stats(ws, conn),
             }
         )

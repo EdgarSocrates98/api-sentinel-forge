@@ -22,10 +22,6 @@ def list_anomalies(
 ) -> AnomalyListResponse:
     """Persisted anomalies — OBSERVED→VERIFIED states, bounded result set;
     `truncated` marks a clipped feed rather than hiding it."""
-    rows, truncated = ListAnomalies(uow).execute(
-        service_id=service_id, status=status, limit=limit
-    )
+    rows, truncated = ListAnomalies(uow).execute(service_id=service_id, status=status, limit=limit)
     evidence_refs = sorted({r for a in rows for r in a.evidence_refs})
-    return AnomalyListResponse(
-        anomalies=rows, truncated=truncated, evidence_refs=evidence_refs
-    )
+    return AnomalyListResponse(anomalies=rows, truncated=truncated, evidence_refs=evidence_refs)

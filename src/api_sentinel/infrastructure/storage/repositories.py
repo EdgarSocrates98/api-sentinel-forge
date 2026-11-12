@@ -144,9 +144,14 @@ class _ServiceRepo:
             " (service_id, service_name, environment_id, namespace, display_name, external_refs,"
             "  created_at, updated_at) VALUES (?,?,?,?,?,?,?,?)",
             (
-                s.service_id, s.service_name, s.environment_id, s.namespace, s.display_name,
+                s.service_id,
+                s.service_name,
+                s.environment_id,
+                s.namespace,
+                s.display_name,
                 json.dumps([x.model_dump() for x in s.external_refs]),
-                s.created_at.isoformat(), s.updated_at.isoformat(),
+                s.created_at.isoformat(),
+                s.updated_at.isoformat(),
             ),
         )
         return s
@@ -157,13 +162,13 @@ class _EnvironmentRepo:
         self._c = conn
 
     def get_by_name(self, name: str) -> ServiceEnvironment | None:
-        r = self._c.execute(
-            "SELECT * FROM service_environments WHERE name=?", (name,)
-        ).fetchone()
+        r = self._c.execute("SELECT * FROM service_environments WHERE name=?", (name,)).fetchone()
         if not r:
             return None
         return ServiceEnvironment(
-            environment_id=r["environment_id"], name=r["name"], scope=r["scope"],
+            environment_id=r["environment_id"],
+            name=r["name"],
+            scope=r["scope"],
             created_at=datetime.fromisoformat(r["created_at"]),
         )
 
@@ -182,8 +187,11 @@ class _SourceRepo:
 
     def _row(self, r: sqlite3.Row) -> TelemetrySource:
         return TelemetrySource(
-            source_id=r["source_id"], kind=r["kind"], service_id=r["service_id"],
-            enabled=bool(r["enabled"]), config=json.loads(r["config"]),
+            source_id=r["source_id"],
+            kind=r["kind"],
+            service_id=r["service_id"],
+            enabled=bool(r["enabled"]),
+            config=json.loads(r["config"]),
             created_at=datetime.fromisoformat(r["created_at"]),
         )
 
@@ -207,8 +215,14 @@ class _SourceRepo:
         self._c.execute(
             "INSERT OR REPLACE INTO telemetry_sources"
             " (source_id, kind, service_id, enabled, config, created_at) VALUES (?,?,?,?,?,?)",
-            (s.source_id, s.kind, s.service_id, int(s.enabled), json.dumps(s.config),
-             s.created_at.isoformat()),
+            (
+                s.source_id,
+                s.kind,
+                s.service_id,
+                int(s.enabled),
+                json.dumps(s.config),
+                s.created_at.isoformat(),
+            ),
         )
         return s
 
@@ -239,14 +253,11 @@ class _OperationRepo:
     def list(self, service_id: str | None = None) -> list[ApiOperation]:
         if service_id:
             rows = self._c.execute(
-                "SELECT * FROM api_operations WHERE service_id=?"
-                " ORDER BY operation_id",
+                "SELECT * FROM api_operations WHERE service_id=? ORDER BY operation_id",
                 (service_id,),
             )
         else:
-            rows = self._c.execute(
-                "SELECT * FROM api_operations ORDER BY service_id, operation_id"
-            )
+            rows = self._c.execute("SELECT * FROM api_operations ORDER BY service_id, operation_id")
         return [self._row(r) for r in rows]
 
     def put(self, o: ApiOperation) -> ApiOperation:
@@ -255,8 +266,12 @@ class _OperationRepo:
             " (operation_id, service_id, protocol, method, route, normalized_route,"
             "  created_at) VALUES (?,?,?,?,?,?,?)",
             (
-                o.operation_id, o.service_id, o.identity.protocol,
-                o.identity.method, o.identity.route, o.normalized_route,
+                o.operation_id,
+                o.service_id,
+                o.identity.protocol,
+                o.identity.method,
+                o.identity.route,
+                o.normalized_route,
                 o.created_at.isoformat(),
             ),
         )
@@ -272,9 +287,7 @@ class _ReleaseRepo:
             release_id=r["release_id"],
             service_id=r["service_id"],
             version=r["version"],
-            deployed_at=(
-                datetime.fromisoformat(r["deployed_at"]) if r["deployed_at"] else None
-            ),
+            deployed_at=(datetime.fromisoformat(r["deployed_at"]) if r["deployed_at"] else None),
             source=r["source"],
             created_at=datetime.fromisoformat(r["created_at"]),
         )
@@ -284,9 +297,14 @@ class _ReleaseRepo:
             "INSERT OR REPLACE INTO service_releases"
             " (release_id, service_id, version, deployed_at, source, created_at)"
             " VALUES (?,?,?,?,?,?)",
-            (r.release_id, r.service_id, r.version,
-             r.deployed_at.isoformat() if r.deployed_at else None, r.source,
-             r.created_at.isoformat()),
+            (
+                r.release_id,
+                r.service_id,
+                r.version,
+                r.deployed_at.isoformat() if r.deployed_at else None,
+                r.source,
+                r.created_at.isoformat(),
+            ),
         )
         return r
 
@@ -335,10 +353,18 @@ class _BatchRepo:
             "INSERT OR IGNORE INTO observation_batches"
             " (batch_id, source_id, observed_at, received_at, signal_types, quality, item_count,"
             "  idempotency_key, adapter_version, transform_notes) VALUES (?,?,?,?,?,?,?,?,?,?)",
-            (b.batch_id, b.provenance.source_id, b.provenance.observed_at.isoformat(),
-             b.provenance.received_at.isoformat(),
-             json.dumps([s.value for s in b.signal_types]), b.quality.value, b.item_count,
-             b.idempotency_key, b.provenance.adapter_version, b.provenance.transform_notes),
+            (
+                b.batch_id,
+                b.provenance.source_id,
+                b.provenance.observed_at.isoformat(),
+                b.provenance.received_at.isoformat(),
+                json.dumps([s.value for s in b.signal_types]),
+                b.quality.value,
+                b.item_count,
+                b.idempotency_key,
+                b.provenance.adapter_version,
+                b.provenance.transform_notes,
+            ),
         )
         return b
 
@@ -354,10 +380,15 @@ class _EvidenceRepo:
         if not r:
             return None
         return EvidenceArtifact(
-            evidence_id=r["evidence_id"], kind=r["kind"],
-            created_at=datetime.fromisoformat(r["created_at"]), hash=r["hash"],
-            size_bytes=r["size_bytes"], truncated=bool(r["truncated"]),
-            loss_notes=r["loss_notes"], source_id=r["source_id"], blob_ref=r["blob_ref"],
+            evidence_id=r["evidence_id"],
+            kind=r["kind"],
+            created_at=datetime.fromisoformat(r["created_at"]),
+            hash=r["hash"],
+            size_bytes=r["size_bytes"],
+            truncated=bool(r["truncated"]),
+            loss_notes=r["loss_notes"],
+            source_id=r["source_id"],
+            blob_ref=r["blob_ref"],
         )
 
     def put(self, a: EvidenceArtifact) -> EvidenceArtifact:
@@ -365,8 +396,17 @@ class _EvidenceRepo:
             "INSERT OR REPLACE INTO evidence_artifacts"
             " (evidence_id, kind, created_at, hash, size_bytes, truncated, loss_notes, source_id,"
             "  blob_ref) VALUES (?,?,?,?,?,?,?,?,?)",
-            (a.evidence_id, a.kind, a.created_at.isoformat(), a.hash, a.size_bytes,
-             int(a.truncated), a.loss_notes, a.source_id, a.blob_ref),
+            (
+                a.evidence_id,
+                a.kind,
+                a.created_at.isoformat(),
+                a.hash,
+                a.size_bytes,
+                int(a.truncated),
+                a.loss_notes,
+                a.source_id,
+                a.blob_ref,
+            ),
         )
         return a
 
@@ -382,8 +422,15 @@ class _AuditRepo:
             "INSERT INTO audit_events"
             " (audit_id, at, actor, action, target_type, target_id, details)"
             " VALUES (?,?,?,?,?,?,?)",
-            (e.audit_id, e.at.isoformat(), e.actor, e.action, e.target_type, e.target_id,
-             json.dumps(e.details)),
+            (
+                e.audit_id,
+                e.at.isoformat(),
+                e.actor,
+                e.action,
+                e.target_type,
+                e.target_id,
+                json.dumps(e.details),
+            ),
         )
 
     def list(self, target_id: str | None = None) -> list[AuditEvent]:
@@ -395,8 +442,12 @@ class _AuditRepo:
         rows = self._c.execute(sql + " ORDER BY at, audit_id", args).fetchall()
         return [
             AuditEvent(
-                audit_id=r["audit_id"], at=datetime.fromisoformat(r["at"]), actor=r["actor"],
-                action=r["action"], target_type=r["target_type"], target_id=r["target_id"],
+                audit_id=r["audit_id"],
+                at=datetime.fromisoformat(r["at"]),
+                actor=r["actor"],
+                action=r["action"],
+                target_type=r["target_type"],
+                target_id=r["target_id"],
                 details=json.loads(r["details"]),
             )
             for r in rows
@@ -414,7 +465,8 @@ class _CheckpointRepo:
         if not r:
             return None
         return IngestionCheckpoint(
-            source_id=r["source_id"], checkpoint=r["checkpoint"],
+            source_id=r["source_id"],
+            checkpoint=r["checkpoint"],
             updated_at=datetime.fromisoformat(r["updated_at"]),
         )
 
@@ -457,9 +509,7 @@ class _ObservationRepo:
         ).fetchone()
         return self._row(r) if r else None
 
-    def idempotency_keys(
-        self, observation_ids: Collection[str]
-    ) -> dict[str, str]:
+    def idempotency_keys(self, observation_ids: Collection[str]) -> dict[str, str]:
         """Batched dedup read: observation_id → idempotency_key.
 
         C10-F006: the ingest dedup check used to run one point `get` per
@@ -488,11 +538,19 @@ class _ObservationRepo:
             "  window_end, ingest_time, processing_time, source_id, batch_id, quality,"
             "  measurement, attributes, idempotency_key) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (
-                o.observation_id, o.service_id, o.operation_id, o.release_id,
-                o.window_start.isoformat(), o.window_end.isoformat(),
-                o.ingest_time.isoformat(), o.processing_time.isoformat(),
-                o.source_id, o.batch_id, o.quality.value,
-                o.measurement.model_dump_json(), json.dumps(o.attributes, default=str),
+                o.observation_id,
+                o.service_id,
+                o.operation_id,
+                o.release_id,
+                o.window_start.isoformat(),
+                o.window_end.isoformat(),
+                o.ingest_time.isoformat(),
+                o.processing_time.isoformat(),
+                o.source_id,
+                o.batch_id,
+                o.quality.value,
+                o.measurement.model_dump_json(),
+                json.dumps(o.attributes, default=str),
                 o.idempotency_key,
             ),
         )
@@ -646,8 +704,12 @@ class _QuarantineRepo:
             " (item_id, batch_id, reason, payload, payload_truncated, created_at)"
             " VALUES (?,?,?,?,?,?)",
             (
-                e.item_id, e.batch_id, e.reason, e.payload,
-                int(e.payload_truncated), e.created_at.isoformat(),
+                e.item_id,
+                e.batch_id,
+                e.reason,
+                e.payload,
+                int(e.payload_truncated),
+                e.created_at.isoformat(),
             ),
         )
 
@@ -674,8 +736,7 @@ class _SloDefinitionRepo:
     def get(self, slo_id: str, revision: int | None = None) -> SloDefinition | None:
         if revision is None:
             r = self._c.execute(
-                "SELECT * FROM slo_definitions WHERE slo_id=?"
-                " ORDER BY revision DESC LIMIT 1",
+                "SELECT * FROM slo_definitions WHERE slo_id=? ORDER BY revision DESC LIMIT 1",
                 (slo_id,),
             ).fetchone()
         else:
@@ -688,14 +749,11 @@ class _SloDefinitionRepo:
     def list(self, service_id: str | None = None) -> list[SloDefinition]:
         if service_id:
             rows = self._c.execute(
-                "SELECT * FROM slo_definitions WHERE service_id=?"
-                " ORDER BY slo_id, revision",
+                "SELECT * FROM slo_definitions WHERE service_id=? ORDER BY slo_id, revision",
                 (service_id,),
             )
         else:
-            rows = self._c.execute(
-                "SELECT * FROM slo_definitions ORDER BY slo_id, revision"
-            )
+            rows = self._c.execute("SELECT * FROM slo_definitions ORDER BY slo_id, revision")
         return [self._row(r) for r in rows]
 
     def put(self, definition: SloDefinition) -> None:
@@ -735,10 +793,18 @@ class _SloAssessmentRepo:
             "   budget_consumed=excluded.budget_consumed, state=excluded.state,"
             "   assessment=excluded.assessment, created_at=excluded.created_at",
             (
-                a.assessment_id, a.slo_id, a.revision,
-                a.window_start.isoformat(), a.window_end.isoformat(),
-                a.sli, a.eligible, a.good, a.budget_consumed, a.state.value,
-                a.model_dump_json(), a.evaluated_at.isoformat(),
+                a.assessment_id,
+                a.slo_id,
+                a.revision,
+                a.window_start.isoformat(),
+                a.window_end.isoformat(),
+                a.sli,
+                a.eligible,
+                a.good,
+                a.budget_consumed,
+                a.state.value,
+                a.model_dump_json(),
+                a.evaluated_at.isoformat(),
             ),
         )
 
@@ -791,8 +857,7 @@ class _DetectionRuleRepo:
     def get(self, rule_id: str, revision: int | None = None) -> DetectionRule | None:
         if revision is None:
             r = self._c.execute(
-                "SELECT * FROM detection_rules WHERE rule_id=?"
-                " ORDER BY revision DESC LIMIT 1",
+                "SELECT * FROM detection_rules WHERE rule_id=? ORDER BY revision DESC LIMIT 1",
                 (rule_id,),
             ).fetchone()
         else:
@@ -805,14 +870,11 @@ class _DetectionRuleRepo:
     def list(self, service_id: str | None = None) -> list[DetectionRule]:
         if service_id:
             rows = self._c.execute(
-                "SELECT * FROM detection_rules WHERE service_id=?"
-                " ORDER BY rule_id, revision",
+                "SELECT * FROM detection_rules WHERE service_id=? ORDER BY rule_id, revision",
                 (service_id,),
             )
         else:
-            rows = self._c.execute(
-                "SELECT * FROM detection_rules ORDER BY rule_id, revision"
-            )
+            rows = self._c.execute("SELECT * FROM detection_rules ORDER BY rule_id, revision")
         return [self._row(r) for r in rows]
 
     def put(self, rule: DetectionRule) -> None:
@@ -824,8 +886,12 @@ class _DetectionRuleRepo:
             " (rule_id, revision, service_id, kind, config, enabled, created_at)"
             " VALUES (?,?,?,?,?,?,?)",
             (
-                rule.rule_id, rule.revision, rule.service_id, rule.kind,
-                json.dumps(rule.config, default=str), int(rule.enabled),
+                rule.rule_id,
+                rule.revision,
+                rule.service_id,
+                rule.kind,
+                json.dumps(rule.config, default=str),
+                int(rule.enabled),
                 rule.created_at.isoformat(),
             ),
         )
@@ -841,9 +907,7 @@ class _AnomalyRepo:
         return Anomaly.model_validate(json.loads(r["anomaly"]))
 
     def get(self, anomaly_id: str) -> Anomaly | None:
-        r = self._c.execute(
-            "SELECT * FROM anomalies WHERE anomaly_id=?", (anomaly_id,)
-        ).fetchone()
+        r = self._c.execute("SELECT * FROM anomalies WHERE anomaly_id=?", (anomaly_id,)).fetchone()
         return self._row(r) if r else None
 
     def put(self, anomaly: Anomaly) -> None:
@@ -854,14 +918,24 @@ class _AnomalyRepo:
             "  severity, status, explanation, evidence_refs, unknowns, dedup_key,"
             "  anomaly, incident_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (
-                anomaly.anomaly_id, anomaly.service_id, anomaly.operation_id,
-                anomaly.detected_at.isoformat(), anomaly.window_start.isoformat(),
-                anomaly.window_end.isoformat(), anomaly.rule.rule_id,
-                anomaly.rule.rule_revision, anomaly.rule.detector_id,
-                anomaly.rule.detector_version, anomaly.severity.value,
-                anomaly.status.value, anomaly.explanation.model_dump_json(),
-                json.dumps(anomaly.evidence_refs), json.dumps(anomaly.unknowns),
-                anomaly.dedup_key, anomaly.model_dump_json(), anomaly.incident_id,
+                anomaly.anomaly_id,
+                anomaly.service_id,
+                anomaly.operation_id,
+                anomaly.detected_at.isoformat(),
+                anomaly.window_start.isoformat(),
+                anomaly.window_end.isoformat(),
+                anomaly.rule.rule_id,
+                anomaly.rule.rule_revision,
+                anomaly.rule.detector_id,
+                anomaly.rule.detector_version,
+                anomaly.severity.value,
+                anomaly.status.value,
+                anomaly.explanation.model_dump_json(),
+                json.dumps(anomaly.evidence_refs),
+                json.dumps(anomaly.unknowns),
+                anomaly.dedup_key,
+                anomaly.model_dump_json(),
+                anomaly.incident_id,
             ),
         )
 
@@ -881,16 +955,14 @@ class _AnomalyRepo:
 
     def list_for_service(self, service_id: str) -> list[Anomaly]:
         rows = self._c.execute(
-            "SELECT * FROM anomalies WHERE service_id=?"
-            " ORDER BY detected_at, anomaly_id",
+            "SELECT * FROM anomalies WHERE service_id=? ORDER BY detected_at, anomaly_id",
             (service_id,),
         )
         return [self._row(r) for r in rows]
 
     def list_for_incident(self, incident_id: str) -> list[Anomaly]:
         rows = self._c.execute(
-            "SELECT * FROM anomalies WHERE incident_id=?"
-            " ORDER BY detected_at, anomaly_id",
+            "SELECT * FROM anomalies WHERE incident_id=? ORDER BY detected_at, anomaly_id",
             (incident_id,),
         )
         return [self._row(r) for r in rows]
@@ -952,15 +1024,21 @@ class _IncidentRepo:
             " acknowledged_at=?, resolved_at=?, owner=?, revision=?, state=?"
             " WHERE incident_id=? AND revision=?",
             (
-                incident.title, incident.severity.value, incident.status.value,
-                incident.service_id, incident.operation_id, incident.group_key,
+                incident.title,
+                incident.severity.value,
+                incident.status.value,
+                incident.service_id,
+                incident.operation_id,
+                incident.group_key,
                 incident.first_observed_at.isoformat(),
                 incident.detected_at.isoformat(),
-                incident.acknowledged_at.isoformat()
-                if incident.acknowledged_at else None,
+                incident.acknowledged_at.isoformat() if incident.acknowledged_at else None,
                 incident.resolved_at.isoformat() if incident.resolved_at else None,
-                incident.owner, incident.revision, incident.model_dump_json(),
-                incident.incident_id, expected_revision,
+                incident.owner,
+                incident.revision,
+                incident.model_dump_json(),
+                incident.incident_id,
+                expected_revision,
             ),
         )
         if cur.rowcount == 0:
@@ -976,12 +1054,20 @@ class _IncidentRepo:
     @staticmethod
     def _cols(i: Incident) -> tuple[object, ...]:
         return (
-            i.incident_id, i.title, i.severity.value, i.status.value,
-            i.service_id, i.operation_id, i.group_key,
-            i.first_observed_at.isoformat(), i.detected_at.isoformat(),
+            i.incident_id,
+            i.title,
+            i.severity.value,
+            i.status.value,
+            i.service_id,
+            i.operation_id,
+            i.group_key,
+            i.first_observed_at.isoformat(),
+            i.detected_at.isoformat(),
             i.acknowledged_at.isoformat() if i.acknowledged_at else None,
             i.resolved_at.isoformat() if i.resolved_at else None,
-            i.owner, i.revision, i.model_dump_json(),
+            i.owner,
+            i.revision,
+            i.model_dump_json(),
         )
 
     def list(
@@ -1000,9 +1086,7 @@ class _IncidentRepo:
             args.append(service_id)
         if clauses:
             sql += " WHERE " + " AND ".join(clauses)
-        rows = self._c.execute(
-            sql + " ORDER BY detected_at DESC, incident_id", args
-        ).fetchall()
+        rows = self._c.execute(sql + " ORDER BY detected_at DESC, incident_id", args).fetchall()
         return [self._row(r) for r in rows]
 
     def find_open(self, service_id: str, group_key: str) -> Incident | None:
@@ -1030,12 +1114,8 @@ class _IncidentEventRepo:
             at=datetime.fromisoformat(r["at"]),
             actor=r["actor"],
             kind=r["kind"],
-            from_status=(
-                IncidentStatus(r["from_status"]) if r["from_status"] else None
-            ),
-            to_status=(
-                IncidentStatus(r["to_status"]) if r["to_status"] else None
-            ),
+            from_status=(IncidentStatus(r["from_status"]) if r["from_status"] else None),
+            to_status=(IncidentStatus(r["to_status"]) if r["to_status"] else None),
             note=r["note"],
             details=json.loads(r["details"]),
         )
@@ -1048,11 +1128,15 @@ class _IncidentEventRepo:
             " (event_id, incident_id, at, actor, kind, from_status, to_status,"
             "  note, details) VALUES (?,?,?,?,?,?,?,?,?)",
             (
-                event.event_id, event.incident_id, event.at.isoformat(),
-                event.actor, event.kind.value,
+                event.event_id,
+                event.incident_id,
+                event.at.isoformat(),
+                event.actor,
+                event.kind.value,
                 event.from_status.value if event.from_status else None,
                 event.to_status.value if event.to_status else None,
-                event.note, json.dumps(event.details),
+                event.note,
+                json.dumps(event.details),
             ),
         )
 
@@ -1105,9 +1189,14 @@ class _ChangeEventRepo:
             " (change_id, service_id, kind, at, source, ref, details, created_at)"
             " VALUES (?,?,?,?,?,?,?,?)",
             (
-                event.change_id, event.service_id, event.kind.value,
-                event.at.isoformat(), event.source, event.ref,
-                json.dumps(event.details), event.created_at.isoformat(),
+                event.change_id,
+                event.service_id,
+                event.kind.value,
+                event.at.isoformat(),
+                event.source,
+                event.ref,
+                json.dumps(event.details),
+                event.created_at.isoformat(),
             ),
         )
 
@@ -1173,11 +1262,19 @@ class _DependencyObservationRepo:
             "   errors=errors+excluded.errors,"
             "   timeouts=timeouts+excluded.timeouts",
             (
-                edge.edge_id, edge.service_id, edge.target, edge.target_kind,
-                edge.operation_id, edge.window_start.isoformat(),
-                edge.window_end.isoformat(), edge.calls, edge.errors,
-                edge.timeouts, json.dumps(edge.evidence_refs),
-                edge.provenance, edge.created_at.isoformat(),
+                edge.edge_id,
+                edge.service_id,
+                edge.target,
+                edge.target_kind,
+                edge.operation_id,
+                edge.window_start.isoformat(),
+                edge.window_end.isoformat(),
+                edge.calls,
+                edge.errors,
+                edge.timeouts,
+                json.dumps(edge.evidence_refs),
+                edge.provenance,
+                edge.created_at.isoformat(),
             ),
         )
 
@@ -1253,9 +1350,14 @@ class _HandoffRecordRepo:
             "   response_ref=excluded.response_ref,"
             "   detail=excluded.detail",
             (
-                record.handoff_id, record.to_forge, record.kind,
-                record.status.value, record.request_ref, record.response_ref,
-                record.detail, record.created_at.isoformat(),
+                record.handoff_id,
+                record.to_forge,
+                record.kind,
+                record.status.value,
+                record.request_ref,
+                record.response_ref,
+                record.detail,
+                record.created_at.isoformat(),
             ),
         )
 
@@ -1275,9 +1377,7 @@ class _HandoffRecordRepo:
             args.append(status.value)
         if clauses:
             sql += " WHERE " + " AND ".join(clauses)
-        rows = self._c.execute(
-            sql + " ORDER BY created_at, handoff_id", args
-        ).fetchall()
+        rows = self._c.execute(sql + " ORDER BY created_at, handoff_id", args).fetchall()
         return [self._row(r) for r in rows]
 
 
@@ -1296,10 +1396,7 @@ class _InvestigationRepo:
             context_pack=json.loads(r["context_pack"]),
             idempotency_key=r["idempotency_key"],
             created_at=datetime.fromisoformat(r["created_at"]),
-            finished_at=(
-                datetime.fromisoformat(r["finished_at"])
-                if r["finished_at"] else None
-            ),
+            finished_at=(datetime.fromisoformat(r["finished_at"]) if r["finished_at"] else None),
         )
 
     def get(self, investigation_id: str) -> Investigation | None:
@@ -1327,10 +1424,13 @@ class _InvestigationRepo:
             "   context_pack=excluded.context_pack,"
             "   finished_at=excluded.finished_at",
             (
-                i.investigation_id, i.incident_id, i.status.value,
+                i.investigation_id,
+                i.incident_id,
+                i.status.value,
                 json.dumps(i.result, default=str),
                 json.dumps(i.context_pack, default=str),
-                i.idempotency_key, i.created_at.isoformat(),
+                i.idempotency_key,
+                i.created_at.isoformat(),
                 i.finished_at.isoformat() if i.finished_at else None,
             ),
         )
@@ -1364,16 +1464,11 @@ class _IngestionJobRepo:
             error=r["error"],
             idempotency_key=r["idempotency_key"],
             created_at=datetime.fromisoformat(r["created_at"]),
-            finished_at=(
-                datetime.fromisoformat(r["finished_at"])
-                if r["finished_at"] else None
-            ),
+            finished_at=(datetime.fromisoformat(r["finished_at"]) if r["finished_at"] else None),
         )
 
     def get(self, job_id: str) -> IngestionJob | None:
-        r = self._c.execute(
-            "SELECT * FROM ingestion_jobs WHERE job_id=?", (job_id,)
-        ).fetchone()
+        r = self._c.execute("SELECT * FROM ingestion_jobs WHERE job_id=?", (job_id,)).fetchone()
         return self._row(r) if r else None
 
     def get_by_idempotency_key(self, key: str) -> IngestionJob | None:
@@ -1397,9 +1492,18 @@ class _IngestionJobRepo:
             "   error=excluded.error,"
             "   finished_at=excluded.finished_at",
             (
-                j.job_id, j.source_id, j.file_ref, j.kind, j.status.value,
-                j.accepted, j.quarantined, j.skipped_duplicates, j.batch_id,
-                j.error, j.idempotency_key, j.created_at.isoformat(),
+                j.job_id,
+                j.source_id,
+                j.file_ref,
+                j.kind,
+                j.status.value,
+                j.accepted,
+                j.quarantined,
+                j.skipped_duplicates,
+                j.batch_id,
+                j.error,
+                j.idempotency_key,
+                j.created_at.isoformat(),
                 j.finished_at.isoformat() if j.finished_at else None,
             ),
         )

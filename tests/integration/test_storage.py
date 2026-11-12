@@ -45,9 +45,7 @@ def _seed_service_and_source(uow: SqliteUnitOfWork) -> None:
         )
     )
     uow.sources.put(
-        TelemetrySource(
-            source_id="src_1", kind="jsonl-file", service_id="svc_1", created_at=NOW
-        )
+        TelemetrySource(source_id="src_1", kind="jsonl-file", service_id="svc_1", created_at=NOW)
     )
 
 

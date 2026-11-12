@@ -184,9 +184,7 @@ class AtlasExportV1(Envelope):
     def _check_unique_ids(self) -> AtlasExportV1:
         """Duplicate entity ids are a contract violation, not a merge."""
         service_ids = [s.atlas_id for s in self.services]
-        dup_services = sorted(
-            {i for i in service_ids if service_ids.count(i) > 1}
-        )
+        dup_services = sorted({i for i in service_ids if service_ids.count(i) > 1})
         edge_ids = [e.edge_id for e in self.edges]
         dup_edges = sorted({i for i in edge_ids if edge_ids.count(i) > 1})
         if dup_services or dup_edges:

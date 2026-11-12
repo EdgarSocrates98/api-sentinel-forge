@@ -52,12 +52,8 @@ def open_incident(
     actor: str = "system",
 ) -> tuple[Incident, list[IncidentEvent]]:
     """Open a DETECTED incident for the anomaly's group signature."""
-    group_key = group_key_for(
-        anomaly.service_id, anomaly.operation_id, anomaly.rule.detector_id
-    )
-    incident_id = incident_id_for(
-        group_key=group_key, first_observed_at=anomaly.window_start
-    )
+    group_key = group_key_for(anomaly.service_id, anomaly.operation_id, anomaly.rule.detector_id)
+    incident_id = incident_id_for(group_key=group_key, first_observed_at=anomaly.window_start)
     title = f"{anomaly.rule.detector_id} on {service_name}"
     if anomaly.operation_ref:
         title += f" ({anomaly.operation_ref})"
@@ -127,19 +123,13 @@ def attach_anomaly(
         )
     if anomaly.anomaly_id in incident.anomaly_ids:
         return incident, []  # already attached — replay is a no-op
-    dedup = incident.dedup or DedupInfo(
-        group_key=incident.group_key, grouped_by=GROUPED_BY
-    )
+    dedup = incident.dedup or DedupInfo(group_key=incident.group_key, grouped_by=GROUPED_BY)
     changes: dict[str, object] = {
         "anomaly_ids": [*incident.anomaly_ids, anomaly.anomaly_id],
-        "evidence_refs": sorted(
-            set(incident.evidence_refs) | set(anomaly.evidence_refs)
-        ),
+        "evidence_refs": sorted(set(incident.evidence_refs) | set(anomaly.evidence_refs)),
         "rule_refs": _merge_rule_refs(incident.rule_refs, anomaly.rule),
         "first_observed_at": min(incident.first_observed_at, anomaly.window_start),
-        "dedup": dedup.model_copy(
-            update={"attached_anomalies": dedup.attached_anomalies + 1}
-        ),
+        "dedup": dedup.model_copy(update={"attached_anomalies": dedup.attached_anomalies + 1}),
     }
     escalated = SEVERITY_RANK[anomaly.severity] > SEVERITY_RANK[incident.severity]
     if escalated:
@@ -159,9 +149,7 @@ def attach_anomaly(
                 "rule_id": anomaly.rule.rule_id,
                 "rule_revision": str(anomaly.rule.rule_revision),
                 "justification": "same service+operation scope, detector "
-                "signature and unresolved status (grouped_by: "
-                + ",".join(GROUPED_BY)
-                + ")",
+                "signature and unresolved status (grouped_by: " + ",".join(GROUPED_BY) + ")",
             },
             discriminator=anomaly.anomaly_id,
         )
@@ -208,8 +196,7 @@ def transition(
     """
     if not can_transition(incident.status, to_status):
         raise ValidationError(
-            f"invalid incident transition: "
-            f"{incident.status.value} → {to_status.value}",
+            f"invalid incident transition: {incident.status.value} → {to_status.value}",
             details={
                 "incident_id": incident.incident_id,
                 "allowed": sorted(s.value for s in TRANSITIONS[incident.status]),
@@ -360,9 +347,7 @@ def set_hypothesis_confidence(
     note: str | None = None,
 ) -> tuple[Incident, IncidentEvent]:
     """Move a hypothesis along the confidence ladder; journaled."""
-    found = next(
-        (h for h in incident.hypotheses if h.hypothesis_id == hypothesis_id), None
-    )
+    found = next((h for h in incident.hypotheses if h.hypothesis_id == hypothesis_id), None)
     if found is None:
         raise ValidationError(
             f"hypothesis not found: {hypothesis_id}",
@@ -382,8 +367,7 @@ def set_hypothesis_confidence(
         }
     )
     hypotheses = [
-        updated_hyp if h.hypothesis_id == hypothesis_id else h
-        for h in incident.hypotheses
+        updated_hyp if h.hypothesis_id == hypothesis_id else h for h in incident.hypotheses
     ]
     updated = _bump(incident, hypotheses=hypotheses)
     event = make_event(
@@ -449,9 +433,6 @@ def assign_owner(
 
 
 def _merge_rule_refs(existing: list[RuleRef], new: RuleRef) -> list[RuleRef]:
-    seen = {
-        (r.rule_id, r.rule_revision, r.detector_id, r.detector_version)
-        for r in existing
-    }
+    seen = {(r.rule_id, r.rule_revision, r.detector_id, r.detector_version) for r in existing}
     key = (new.rule_id, new.rule_revision, new.detector_id, new.detector_version)
     return existing if key in seen else [*existing, new]

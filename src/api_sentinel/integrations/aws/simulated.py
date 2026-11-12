@@ -61,12 +61,8 @@ class SimulatedAwsClient:
         call_log: list[tuple[str, str, dict[str, Any]]] | None = None,
     ) -> None:
         self.service = service
-        self._script = {
-            op: deque(entries) for op, entries in (script or {}).items()
-        }
-        self.call_log = (
-            call_log if call_log is not None else []
-        )
+        self._script = {op: deque(entries) for op, entries in (script or {}).items()}
+        self.call_log = call_log if call_log is not None else []
 
     def _invoke(self, op: str, **kwargs: Any) -> Any:
         self.call_log.append((self.service, op, kwargs))
@@ -134,15 +130,9 @@ def simulated_clientset(
     return SimulatedAws(
         clients=AwsClientSet(
             sts=ReadOnlyClient(stub("sts"), service="sts"),
-            cloudwatch=ReadOnlyClient(
-                stub("cloudwatch"), service="cloudwatch"
-            ),
-            apigateway=ReadOnlyClient(
-                stub("apigateway"), service="apigateway"
-            ),
-            apigatewayv2=ReadOnlyClient(
-                stub("apigatewayv2"), service="apigatewayv2"
-            ),
+            cloudwatch=ReadOnlyClient(stub("cloudwatch"), service="cloudwatch"),
+            apigateway=ReadOnlyClient(stub("apigateway"), service="apigateway"),
+            apigatewayv2=ReadOnlyClient(stub("apigatewayv2"), service="apigatewayv2"),
             region=region,
         ),
         call_log=call_log,
@@ -207,12 +197,8 @@ def lab013(
         "sts": {"get_caller_identity": [caller_identity_response(account)]},
         "cloudwatch": {
             "get_metric_data": [
-                SimulatedClientError(
-                    "ThrottlingException", "Rate exceeded", "GetMetricData"
-                ),
-                SimulatedClientError(
-                    "ThrottlingException", "Rate exceeded", "GetMetricData"
-                ),
+                SimulatedClientError("ThrottlingException", "Rate exceeded", "GetMetricData"),
+                SimulatedClientError("ThrottlingException", "Rate exceeded", "GetMetricData"),
                 metric_data_page(
                     [
                         metric_data_result("q0", [t1, t2], [120.0, 240.0]),
@@ -228,17 +214,14 @@ def lab013(
                     messages=[
                         {
                             "Code": "PartialData",
-                            "Value": "data points were omitted for part of "
-                            "the requested window",
+                            "Value": "data points were omitted for part of the requested window",
                         }
                     ],
                 ),
             ]
         },
         "apigateway": {
-            "get_rest_apis": [
-                {"items": [{"id": "restapi123", "name": "payments-api"}]}
-            ],
+            "get_rest_apis": [{"items": [{"id": "restapi123", "name": "payments-api"}]}],
             "get_stages": [{"item": [{"stageName": "prod"}]}],
         },
         "apigatewayv2": {
@@ -266,9 +249,7 @@ def throttle_forever(
         "sts": {"get_caller_identity": [caller_identity_response(account)]},
         "cloudwatch": {
             "get_metric_data": [
-                SimulatedClientError(
-                    "ThrottlingException", "Rate exceeded", "GetMetricData"
-                )
+                SimulatedClientError("ThrottlingException", "Rate exceeded", "GetMetricData")
             ]
             * 10
         },

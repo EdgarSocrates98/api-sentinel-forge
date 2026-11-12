@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Exec(api-sentinel --version)",
+      "Exec(api-sentinel doctor)",
+      "Exec(api-sentinel obsidian status)",
+      "Exec(api-sentinel obsidian scan)",
+      "Exec(api-sentinel obsidian preview)",
+      "Exec(api-sentinel obsidian sync-plan)",
+      "Exec(api-sentinel obsidian history)"
+    ]
+  }
+}

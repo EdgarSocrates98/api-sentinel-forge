@@ -37,8 +37,13 @@ MAX_RECEIPT_BYTES = 16 * 1024 * 1024
 MAX_FILE_BYTES = 32 * 1024 * 1024
 VALID_STATUSES = {"pass", "fail", "blocked", "not_run"}
 VALID_TRUTHS = {
-    "LOCAL_REAL", "INTEGRATION_REAL", "EXTERNAL_REAL", "FIXTURE",
-    "SIMULATED", "NOT_RUN", "BLOCKED",
+    "LOCAL_REAL",
+    "INTEGRATION_REAL",
+    "EXTERNAL_REAL",
+    "FIXTURE",
+    "SIMULATED",
+    "NOT_RUN",
+    "BLOCKED",
 }
 
 
@@ -117,8 +122,7 @@ def main() -> int:
         manifest = {}
     if manifest.get("schema") != "api-sentinel/EvidenceManifest/v1":
         failures.append(
-            f"manifest schema {manifest.get('schema')!r} is not "
-            "api-sentinel/EvidenceManifest/v1"
+            f"manifest schema {manifest.get('schema')!r} is not api-sentinel/EvidenceManifest/v1"
         )
     entries = manifest.get("files") or []
     if not isinstance(entries, list):
@@ -152,11 +156,9 @@ def main() -> int:
             continue
         digest = _sha256(target)
         if digest != entry.get("sha256"):
-            failures.append(f"{rel}: sha256 mismatch "
-                            f"({entry.get('sha256')} != {digest})")
+            failures.append(f"{rel}: sha256 mismatch ({entry.get('sha256')} != {digest})")
         if size != declared_size:
-            failures.append(f"{rel}: byte size mismatch "
-                            f"({declared_size} != {size})")
+            failures.append(f"{rel}: byte size mismatch ({declared_size} != {size})")
 
     if not isinstance(receipt, dict):
         failures.append("receipt must be a JSON object")
@@ -215,7 +217,8 @@ def main() -> int:
 
     # 4 — no step file on disk goes unmanifested
     steps_dirs = {
-        (root / rel).parent for rel in manifest_paths
+        (root / rel).parent
+        for rel in manifest_paths
         if Path(rel).parts and Path(rel).parts[0] == "steps"
     }
     for d in steps_dirs:
@@ -239,9 +242,7 @@ def main() -> int:
     }
     for key, want in actual.items():
         if summary.get(key) != want:
-            failures.append(
-                f"summary.{key}: declared {summary.get(key)} != actual {want}"
-            )
+            failures.append(f"summary.{key}: declared {summary.get(key)} != actual {want}")
 
     verified = len(entries) - len([f for f in failures if f])
     print(f"manifest entries: {len(entries)}; steps: {len(steps)}")

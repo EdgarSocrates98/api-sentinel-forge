@@ -81,9 +81,7 @@ def parse_jsonl(content: bytes) -> ImportOutcome:
         try:
             text = line.decode("utf-8")
         except UnicodeDecodeError:
-            quarantine.append(
-                QuarantineCandidate("undecodable_line", _preview(line))
-            )
+            quarantine.append(QuarantineCandidate("undecodable_line", _preview(line)))
             continue
         try:
             obj = json.loads(text)
@@ -99,9 +97,7 @@ def parse_jsonl(content: bytes) -> ImportOutcome:
             continue
         try:
             env = RuntimeObservationV1.model_validate(obj)
-            measurement = Measurement.model_validate(
-                env.measurement.model_dump(exclude_none=True)
-            )
+            measurement = Measurement.model_validate(env.measurement.model_dump(exclude_none=True))
         except (PydanticValidationError, ContractError, ValueError):
             quarantine.append(QuarantineCandidate("schema_validation", _preview(text)))
             continue
@@ -257,17 +253,13 @@ def parse_otlp_json(
                 name = metric.get("name")
                 if name not in _SUPPORTED_METRICS:
                     quarantine.append(
-                        QuarantineCandidate(
-                            "unsupported_metric", _preview(json.dumps(metric))
-                        )
+                        QuarantineCandidate("unsupported_metric", _preview(json.dumps(metric)))
                     )
                     continue
                 variant = _SUPPORTED_METRICS[name]
                 if not isinstance(metric.get("histogram"), dict):
                     quarantine.append(
-                        QuarantineCandidate(
-                            "unsupported_datatype", _preview(json.dumps(metric))
-                        )
+                        QuarantineCandidate("unsupported_datatype", _preview(json.dumps(metric)))
                     )
                     continue
                 histogram = metric["histogram"]
@@ -276,9 +268,7 @@ def parse_otlp_json(
                 for dp in points:
                     if unresolved_service:
                         quarantine.append(
-                            QuarantineCandidate(
-                                "unresolved_service", _preview(json.dumps(dp))
-                            )
+                            QuarantineCandidate("unresolved_service", _preview(json.dumps(dp)))
                         )
                         continue
                     try:
@@ -293,9 +283,7 @@ def parse_otlp_json(
                         )
                     except (_Malformed, KeyError, TypeError, ValueError):
                         quarantine.append(
-                            QuarantineCandidate(
-                                "malformed_datapoint", _preview(json.dumps(dp))
-                            )
+                            QuarantineCandidate("malformed_datapoint", _preview(json.dumps(dp)))
                         )
                         continue
                     items.append(item)
@@ -321,9 +309,7 @@ def _convert_point(
     if not isinstance(dp, dict) or "timeUnixNano" not in dp:
         raise _Malformed("missing timeUnixNano")
     window_end = _ns_to_dt(dp["timeUnixNano"])
-    window_start = (
-        _ns_to_dt(dp["startTimeUnixNano"]) if dp.get("startTimeUnixNano") else window_end
-    )
+    window_start = _ns_to_dt(dp["startTimeUnixNano"]) if dp.get("startTimeUnixNano") else window_end
     point_attrs = _kv_list(dp.get("attributes"))
 
     attributes: dict[str, Any] = {}

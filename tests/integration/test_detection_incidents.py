@@ -48,14 +48,8 @@ from api_sentinel.ingestion.models import (
 )
 from conftest import seed_service_and_source
 
-LAB1 = (
-    Path(__file__).resolve().parents[2]
-    / "lab" / "fixtures" / "lab-001-elevated-latency.jsonl"
-)
-LAB2 = (
-    Path(__file__).resolve().parents[2]
-    / "lab" / "fixtures" / "lab-002-persistent-503.jsonl"
-)
+LAB1 = Path(__file__).resolve().parents[2] / "lab" / "fixtures" / "lab-001-elevated-latency.jsonl"
+LAB2 = Path(__file__).resolve().parents[2] / "lab" / "fixtures" / "lab-002-persistent-503.jsonl"
 NOW = datetime(2026, 1, 1, 0, 11, tzinfo=UTC)
 W0 = datetime(2026, 1, 1, 0, 0, tzinfo=UTC)
 W6 = datetime(2026, 1, 1, 0, 6, tzinfo=UTC)
@@ -72,9 +66,7 @@ def _redactor(text: str) -> str:
 def _detect(db_path: Path, **kw):
     params = {"service_id": "svc_lab_checkout", "now": NOW}
     params.update(kw)
-    return RunDetection(
-        SqliteUnitOfWork(db_path), FixedClock(NOW), _IDS
-    ).execute(**params)
+    return RunDetection(SqliteUnitOfWork(db_path), FixedClock(NOW), _IDS).execute(**params)
 
 
 def _ingest_lab2(db_path: Path) -> None:
@@ -83,9 +75,9 @@ def _ingest_lab2(db_path: Path) -> None:
             uow, service_id="svc_lab_checkout", service_name="checkout-api"
         )
         uow.commit()
-    result = IngestionPipeline(
-        SqliteUnitOfWork(db_path), FixedClock(NOW), _IDS, _redactor
-    ).ingest(source=source, kind="jsonl", content=LAB2.read_bytes())
+    result = IngestionPipeline(SqliteUnitOfWork(db_path), FixedClock(NOW), _IDS, _redactor).ingest(
+        source=source, kind="jsonl", content=LAB2.read_bytes()
+    )
     assert result.accepted == 16
 
 
@@ -107,9 +99,9 @@ def _ingest_lab1(db_path: Path, *, p95_ms: float = 300.0) -> None:
             )
         )
         uow.commit()
-    result = IngestionPipeline(
-        SqliteUnitOfWork(db_path), FixedClock(NOW), _IDS, _redactor
-    ).ingest(source=source, kind="jsonl", content=LAB1.read_bytes())
+    result = IngestionPipeline(SqliteUnitOfWork(db_path), FixedClock(NOW), _IDS, _redactor).ingest(
+        source=source, kind="jsonl", content=LAB1.read_bytes()
+    )
     assert result.accepted == 8
 
 
@@ -122,9 +114,7 @@ def test_lab002_persistent_503_fires_error_ratio_once(db_path: Path) -> None:
     assert report.rules_seeded is True
     (anomaly,) = report.anomalies
     assert anomaly.rule.detector_id == "error_ratio_over_limit"
-    assert anomaly.rule.rule_id == (
-        "rule_error_ratio_over_limit_svc_lab_checkout"
-    )
+    assert anomaly.rule.rule_id == ("rule_error_ratio_over_limit_svc_lab_checkout")
     # 573 errors / 999 eligible over the 10-minute window.
     assert "(573" in anomaly.explanation.math
     assert anomaly.explanation.math.endswith("> 0.05")
@@ -177,9 +167,9 @@ def test_lab002_clean_window_journals_recovery_observation(db_path: Path) -> Non
 
 def test_lab001_elevated_latency_fires_p95(db_path: Path) -> None:
     _ingest_lab1(db_path)
-    report = RunDetection(
-        SqliteUnitOfWork(db_path), FixedClock(NOW), _IDS
-    ).execute(service_id="svc_lab_payments", now=NOW)
+    report = RunDetection(SqliteUnitOfWork(db_path), FixedClock(NOW), _IDS).execute(
+        service_id="svc_lab_payments", now=NOW
+    )
     (anomaly,) = report.anomalies
     assert anomaly.rule.detector_id == "p95_over_latency_target"
     assert "never averaged" in anomaly.explanation.math
@@ -197,30 +187,26 @@ def test_incident_ack_resolve_reopen_flow(db_path: Path) -> None:
     listed = ListIncidents(SqliteUnitOfWork(db_path)).execute(open_only=True)
     assert [i.incident_id for i in listed] == [incident.incident_id]
 
-    view = ShowIncident(SqliteUnitOfWork(db_path)).execute(
-        incident_id=incident.incident_id
-    )
+    view = ShowIncident(SqliteUnitOfWork(db_path)).execute(incident_id=incident.incident_id)
     assert [e.kind for e in view.events] == [EventKind.OPENED]
     assert len(view.anomalies) == 1
 
-    acked = TransitionIncident(
-        SqliteUnitOfWork(db_path), FixedClock(NOW), _IDS
-    ).execute(incident_id=incident.incident_id, to_status=IncidentStatus.TRIAGED)
+    acked = TransitionIncident(SqliteUnitOfWork(db_path), FixedClock(NOW), _IDS).execute(
+        incident_id=incident.incident_id, to_status=IncidentStatus.TRIAGED
+    )
     assert acked.acknowledged_at == NOW
 
-    resolved = TransitionIncident(
-        SqliteUnitOfWork(db_path), FixedClock(NOW), _IDS
-    ).execute(incident_id=incident.incident_id, to_status=IncidentStatus.RESOLVED)
+    resolved = TransitionIncident(SqliteUnitOfWork(db_path), FixedClock(NOW), _IDS).execute(
+        incident_id=incident.incident_id, to_status=IncidentStatus.RESOLVED
+    )
     assert resolved.resolved_at == NOW
     assert ListIncidents(SqliteUnitOfWork(db_path)).execute(open_only=True) == []
 
-    reopened = TransitionIncident(
-        SqliteUnitOfWork(db_path), FixedClock(NOW), _IDS
-    ).execute(incident_id=incident.incident_id, to_status=IncidentStatus.REOPENED)
-    assert reopened.resolved_at is None
-    view = ShowIncident(SqliteUnitOfWork(db_path)).execute(
-        incident_id=incident.incident_id
+    reopened = TransitionIncident(SqliteUnitOfWork(db_path), FixedClock(NOW), _IDS).execute(
+        incident_id=incident.incident_id, to_status=IncidentStatus.REOPENED
     )
+    assert reopened.resolved_at is None
+    view = ShowIncident(SqliteUnitOfWork(db_path)).execute(incident_id=incident.incident_id)
     kinds = [e.kind for e in view.events]
     assert kinds == [EventKind.OPENED] + [EventKind.STATUS_TRANSITION] * 3
 
@@ -229,15 +215,15 @@ def test_invalid_transition_and_unknown_incident_are_named(db_path: Path) -> Non
     _ingest_lab2(db_path)
     incident = _detect(db_path).incidents_created[0]
     with pytest.raises(ValidationError, match="invalid incident transition"):
-        TransitionIncident(
-            SqliteUnitOfWork(db_path), FixedClock(NOW), _IDS
-        ).execute(incident_id=incident.incident_id, to_status=IncidentStatus.CLOSED)
+        TransitionIncident(SqliteUnitOfWork(db_path), FixedClock(NOW), _IDS).execute(
+            incident_id=incident.incident_id, to_status=IncidentStatus.CLOSED
+        )
     with pytest.raises(NotFoundError, match="incident not found"):
         ShowIncident(SqliteUnitOfWork(db_path)).execute(incident_id="inc_ghost")
     with pytest.raises(NotFoundError, match="incident not found"):
-        TransitionIncident(
-            SqliteUnitOfWork(db_path), FixedClock(NOW), _IDS
-        ).execute(incident_id="inc_ghost", to_status=IncidentStatus.TRIAGED)
+        TransitionIncident(SqliteUnitOfWork(db_path), FixedClock(NOW), _IDS).execute(
+            incident_id="inc_ghost", to_status=IncidentStatus.TRIAGED
+        )
 
 
 def test_timeout_growth_after_deploy_fires_with_release(
@@ -245,9 +231,7 @@ def test_timeout_growth_after_deploy_fires_with_release(
 ) -> None:
     """Release inside the lookback is recorded as evidence, not cause."""
     with SqliteUnitOfWork(db_path) as uow:
-        seed_service_and_source(
-            uow, service_id="svc_lab_checkout", service_name="checkout-api"
-        )
+        seed_service_and_source(uow, service_id="svc_lab_checkout", service_name="checkout-api")
         uow.releases.put(
             ServiceRelease(
                 release_id="rel_lab_1",
@@ -321,8 +305,7 @@ def test_timeout_growth_after_deploy_fires_with_release(
     detectors = {a.rule.detector_id for a in report.anomalies}
     assert "timeout_growth_after_deploy" in detectors
     anomaly = next(
-        a for a in report.anomalies
-        if a.rule.detector_id == "timeout_growth_after_deploy"
+        a for a in report.anomalies if a.rule.detector_id == "timeout_growth_after_deploy"
     )
     assert any(e.startswith("rel:rel_lab_1@") for e in anomaly.evidence_refs)
 
@@ -355,9 +338,7 @@ def test_detect_unknown_rule_kind_is_a_named_error(db_path: Path) -> None:
 
 def test_detect_without_observations_is_a_named_error(db_path: Path) -> None:
     with SqliteUnitOfWork(db_path) as uow:
-        seed_service_and_source(
-            uow, service_id="svc_lab_checkout", service_name="checkout-api"
-        )
+        seed_service_and_source(uow, service_id="svc_lab_checkout", service_name="checkout-api")
         uow.commit()
     with pytest.raises(ValidationError, match="no stored observations"):
         _detect(db_path)
@@ -390,9 +371,7 @@ def test_incident_revision_conflict_is_a_named_error(db_path: Path) -> None:
         # ...a stale read of the old revision is a named conflict.
         with pytest.raises(ConflictError, match="revision conflict"):
             uow.incidents.put(
-                incident.model_copy(
-                    update={"title": "stale", "revision": incident.revision + 1}
-                ),
+                incident.model_copy(update={"title": "stale", "revision": incident.revision + 1}),
                 expected_revision=incident.revision,
             )
         uow.rollback()
@@ -406,21 +385,17 @@ def test_default_rules_seed_per_service_without_collision(
     _ingest_lab2(db_path)
     _detect(db_path)  # seeds for svc_lab_checkout
     with SqliteUnitOfWork(db_path) as uow:
-        seed_service_and_source(
-            uow, service_id="svc_second", service_name="second-api"
-        )
+        seed_service_and_source(uow, service_id="svc_second", service_name="second-api")
         uow.commit()
-    report = RunDetection(
-        SqliteUnitOfWork(db_path), FixedClock(NOW), _IDS
-    ).execute(service_id="svc_second", window_start=W0, window_end=W10)
+    report = RunDetection(SqliteUnitOfWork(db_path), FixedClock(NOW), _IDS).execute(
+        service_id="svc_second", window_start=W0, window_end=W10
+    )
     assert report.rules_seeded is True
     with SqliteUnitOfWork(db_path) as uow:
         first = uow.detection_rules.list("svc_lab_checkout")
         second = uow.detection_rules.list("svc_second")
         assert len(first) == len(second) == 6
-        assert all(
-            r.rule_id.endswith("_svc_lab_checkout") for r in first
-        )
+        assert all(r.rule_id.endswith("_svc_lab_checkout") for r in first)
         assert all(r.rule_id.endswith("_svc_second") for r in second)
 
 
@@ -451,9 +426,7 @@ def test_evaluation_report_is_honest_about_unknowns(db_path: Path) -> None:
     by_kind = {e.kind: e for e in report.evaluations}
     # Every rule evaluated is represented with its honest outcome.
     assert by_kind["error_ratio_over_limit"].outcome is EvaluationOutcome.FIRED
-    assert "no_slo_assessments_in_window" in (
-        by_kind["budget_burn_acceleration"].unknowns
-    )
+    assert "no_slo_assessments_in_window" in (by_kind["budget_burn_acceleration"].unknowns)
     assert "no_unexpected_statuses_configured" in (
         by_kind["status_unexpected_on_operation"].unknowns
     )
@@ -471,20 +444,22 @@ def test_cli_detect_incident_workflow(tmp_path: Path) -> None:
         return json.loads(result.stdout)
 
     svc = invoke("services", "--register", "checkout-api")
-    src = invoke(
-        "sources", "--register", "jsonl-file", "--service-id", svc["service_id"]
+    src = invoke("sources", "--register", "jsonl-file", "--service-id", svc["service_id"])
+    payload = (
+        LAB2.read_text(encoding="utf-8")
+        .replace("svc_lab_checkout", svc["service_id"])
+        .replace("src_lab_jsonl", src["source_id"])
     )
-    payload = LAB2.read_text(encoding="utf-8").replace(
-        "svc_lab_checkout", svc["service_id"]
-    ).replace("src_lab_jsonl", src["source_id"])
     fixture = tmp_path / "lab2-remapped.jsonl"
     fixture.write_text(payload, encoding="utf-8")
     invoke("ingest", "--source-id", src["source_id"], "--file", str(fixture))
 
     report = invoke(
         "detect",
-        "--service-id", svc["service_id"],
-        "--now", "2026-01-01T00:11:00+00:00",
+        "--service-id",
+        svc["service_id"],
+        "--now",
+        "2026-01-01T00:11:00+00:00",
     )
     assert report["rules_seeded"] is True
     assert len(report["anomalies"]) == 1
@@ -527,8 +502,10 @@ def test_cli_detect_unknown_service_named_error(
         [
             "api-sentinel",
             "detect",
-            "--service-id", "svc_ghost",
-            "--workspace", ws,
+            "--service-id",
+            "svc_ghost",
+            "--workspace",
+            ws,
             "--json",
         ],
     )
@@ -540,8 +517,6 @@ def test_cli_detect_unknown_service_named_error(
 
 def test_cli_incidents_empty_workspace_lists_nothing(tmp_path: Path) -> None:
     ws = str(tmp_path / "ws")
-    result = runner.invoke(
-        app, ["incidents", "--status", "open", "--workspace", ws, "--json"]
-    )
+    result = runner.invoke(app, ["incidents", "--status", "open", "--workspace", ws, "--json"])
     assert result.exit_code == 0
     assert json.loads(result.stdout) == []

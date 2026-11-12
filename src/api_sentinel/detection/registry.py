@@ -85,13 +85,9 @@ class DetectorRegistry:
     """Resolves versioned rules to detector instances; registers new kinds."""
 
     def __init__(self) -> None:
-        self._factories: dict[str, Callable[[dict[str, Any]], Detector]] = dict(
-            _DETECTOR_KINDS
-        )
+        self._factories: dict[str, Callable[[dict[str, Any]], Detector]] = dict(_DETECTOR_KINDS)
 
-    def register(
-        self, kind: str, factory: Callable[[dict[str, Any]], Detector]
-    ) -> None:
+    def register(self, kind: str, factory: Callable[[dict[str, Any]], Detector]) -> None:
         self._factories[kind] = factory
 
     def kinds(self) -> list[str]:

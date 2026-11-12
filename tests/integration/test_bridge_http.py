@@ -40,7 +40,10 @@ from api_sentinel.investigation.context_pack import (
 
 BRIDGE_EXE = (
     Path(__file__).resolve().parents[3]
-    / "forge-agent-bridge" / ".venv" / "Scripts" / "forge-bridge.exe"
+    / "forge-agent-bridge"
+    / ".venv"
+    / "Scripts"
+    / "forge-bridge.exe"
 )
 BRIDGE_HAS_VENV = BRIDGE_EXE.is_file()
 
@@ -98,32 +101,38 @@ class _LabBridge(BaseHTTPRequestHandler):
             body = {}
         if self.path == "/pair/exchange":
             if body.get("pair_token") == "lab-master":
-                return self._send(201, {"session_token": "lab-bearer",
-                                        "device": {"name": "sentinel"}})
-            return self._send(403, {"error": {
-                "code": "FAB-FORBIDDEN", "message": "invalid pair token"}})
+                return self._send(
+                    201, {"session_token": "lab-bearer", "device": {"name": "sentinel"}}
+                )
+            return self._send(
+                403, {"error": {"code": "FAB-FORBIDDEN", "message": "invalid pair token"}}
+            )
         if self.path == "/agent-sessions":
             auth = self.headers.get("Authorization", "")
             if not auth.startswith("Bearer "):
-                return self._send(401, {"error": {
-                    "code": "FAB-UNAUTHORIZED", "message": "bearer required"}})
+                return self._send(
+                    401, {"error": {"code": "FAB-UNAUTHORIZED", "message": "bearer required"}}
+                )
             if auth[7:] != self.token:
-                return self._send(403, {"error": {
-                    "code": "FAB-FORBIDDEN", "message": "bad token"}})
+                return self._send(403, {"error": {"code": "FAB-FORBIDDEN", "message": "bad token"}})
             if self.headers.get("X-FAB-Nonce") in self.server.seen_nonces:
-                return self._send(409, {"error": {
-                    "code": "FAB-REPLAY", "message": "nonce replay"}})
+                return self._send(409, {"error": {"code": "FAB-REPLAY", "message": "nonce replay"}})
             self.server.seen_nonces.add(self.headers.get("X-FAB-Nonce"))
             if not body.get("provider"):
-                return self._send(422, {"error": {
-                    "code": "FAB-PROVIDER-REQUIRED",
-                    "message": "provider is required"}})
+                return self._send(
+                    422,
+                    {"error": {"code": "FAB-PROVIDER-REQUIRED", "message": "provider is required"}},
+                )
             self.server.bodies.append(body)
-            return self._send(201, {"id": "ses_lab1", "provider":
-                                    body["provider"],
-                                    "workspace_id": body.get("workspace_id")})
-        return self._send(404, {"error": {"code": "FAB-NOTFOUND",
-                                        "message": "no route"}})
+            return self._send(
+                201,
+                {
+                    "id": "ses_lab1",
+                    "provider": body["provider"],
+                    "workspace_id": body.get("workspace_id"),
+                },
+            )
+        return self._send(404, {"error": {"code": "FAB-NOTFOUND", "message": "no route"}})
 
 
 @pytest.fixture()
@@ -138,17 +147,11 @@ def lab_server():
 
 
 class TestLabTransport:
-    def test_missing_provider_is_refused_without_fake_fallback(
-        self, lab_server: str
-    ) -> None:
+    def test_missing_provider_is_refused_without_fake_fallback(self, lab_server: str) -> None:
         acl = HttpAgentSession(lab_server, "lab-bearer", timeout_seconds=5)
         request = _request()
         request = request.model_copy(
-            update={
-                "governance": request.governance.model_copy(
-                    update={"provider": None}
-                )
-            }
+            update={"governance": request.governance.model_copy(update={"provider": None})}
         )
         result = acl.open_session(request)
         assert result.status == "refused"
@@ -162,8 +165,7 @@ class TestLabTransport:
         assert r.session_ref == "ses_lab1"
         assert "Forge Agent Bridge" in r.detail
 
-    def test_governance_travels_verbatim(self, lab_server: str,
-                                       monkeypatch) -> None:
+    def test_governance_travels_verbatim(self, lab_server: str, monkeypatch) -> None:
         bodies: list[dict] = []
         original = _LabBridge.do_POST
 
@@ -195,6 +197,7 @@ class TestLabTransport:
         acl = HttpAgentSession(lab_server, "lab-bearer", timeout_seconds=5)
         # force the same nonce twice — a replayed request is refused
         import api_sentinel.integrations.bridge.adapter as mod
+
         original_uuid = mod.uuid.uuid4
         mod.uuid.uuid4 = lambda: type("U", (), {"hex": "same-nonce"})()
         try:
@@ -211,9 +214,7 @@ class TestLabTransport:
         sock.bind(("127.0.0.1", 0))
         dead_port = sock.getsockname()[1]
         sock.close()  # nothing listens
-        acl = HttpAgentSession(
-            f"http://127.0.0.1:{dead_port}", "x", timeout_seconds=2
-        )
+        acl = HttpAgentSession(f"http://127.0.0.1:{dead_port}", "x", timeout_seconds=2)
         r = acl.open_session(_request())
         assert r.status == "unavailable"
         assert "bridge_transport_unreachable" in r.unknowns
@@ -231,17 +232,18 @@ class TestLabTransport:
         with pytest.raises(ValueError):
             HttpAgentSession(url, "lab-bearer")
 
-    def test_pair_exchange_flow(self, lab_server: str,
-                                monkeypatch, tmp_path: Path) -> None:
+    def test_pair_exchange_flow(self, lab_server: str, monkeypatch, tmp_path: Path) -> None:
         pair = tmp_path / "pair.token"
         pair.write_text("lab-master")
         cfg = {
-            "integrations": {"bridge": {
-                "mode": "http",
-                "base_url": lab_server,
-                "pair_token_path": str(pair),
-                "timeout_seconds": 5,
-            }}
+            "integrations": {
+                "bridge": {
+                    "mode": "http",
+                    "base_url": lab_server,
+                    "pair_token_path": str(pair),
+                    "timeout_seconds": 5,
+                }
+            }
         }
         port = bridge_session_from_config(cfg, None)
         assert isinstance(port, HttpAgentSession)
@@ -252,10 +254,15 @@ class TestLabTransport:
         self, lab_server: str, monkeypatch, tmp_path: Path
     ) -> None:
         monkeypatch.delenv("FAB_BEARER", raising=False)
-        cfg = {"integrations": {"bridge": {
-            "mode": "http", "base_url": lab_server,
-            "pair_token_path": str(tmp_path / "absent.token"),
-        }}}
+        cfg = {
+            "integrations": {
+                "bridge": {
+                    "mode": "http",
+                    "base_url": lab_server,
+                    "pair_token_path": str(tmp_path / "absent.token"),
+                }
+            }
+        }
         port = bridge_session_from_config(cfg, None)
         assert isinstance(port, UnavailableAgentSession)
         r = port.open_session(_request())
@@ -289,7 +296,8 @@ class TestRealBridgeService:
         proc = subprocess.Popen(  # noqa: S603 — fixed argv, known exe
             [str(BRIDGE_EXE), "serve", "--port", str(port)],
             env=proc_env,
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             text=True,
         )
         base = f"http://127.0.0.1:{port}"
@@ -335,12 +343,14 @@ class TestRealBridgeService:
                 time.sleep(0.2)
         assert pair_file.is_file(), "pair.token not issued"
         cfg = {
-            "integrations": {"bridge": {
-                "mode": "http",
-                "base_url": base,
-                "pair_token_path": str(pair_file),
-                "timeout_seconds": 10,
-            }}
+            "integrations": {
+                "bridge": {
+                    "mode": "http",
+                    "base_url": base,
+                    "pair_token_path": str(pair_file),
+                    "timeout_seconds": 10,
+                }
+            }
         }
         port = bridge_session_from_config(cfg, None)
         assert isinstance(port, HttpAgentSession)

@@ -85,10 +85,7 @@ def _services_payload(ws: Workspace) -> dict[str, Any]:
 
     services = ListServices(SqliteUnitOfWork(ws.db_path)).execute()
     return {
-        "services": [
-            s.model_dump(mode="json") if hasattr(s, "model_dump") else s
-            for s in services
-        ]
+        "services": [s.model_dump(mode="json") if hasattr(s, "model_dump") else s for s in services]
     }
 
 
@@ -100,8 +97,7 @@ def _incidents_payload(ws: Workspace, *, open_only: bool = False) -> dict[str, A
         incidents = ListIncidents(uow).execute(open_only=open_only)
     return {
         "incidents": [
-            i.model_dump(mode="json") if hasattr(i, "model_dump") else i
-            for i in incidents
+            i.model_dump(mode="json") if hasattr(i, "model_dump") else i for i in incidents
         ]
     }
 
@@ -175,14 +171,10 @@ def tool_handlers(ws: Workspace) -> tuple[Any, Any]:
 
     tools = _tools()
 
-    async def _list(
-        _ctx: Any, _params: Any
-    ) -> types.ListToolsResult:
+    async def _list(_ctx: Any, _params: Any) -> types.ListToolsResult:
         return types.ListToolsResult(tools=tools)
 
-    async def _call(
-        _ctx: Any, params: types.CallToolRequestParams
-    ) -> types.CallToolResult:
+    async def _call(_ctx: Any, params: types.CallToolRequestParams) -> types.CallToolResult:
         args = params.arguments or {}
         name = params.name
         if name == "sentinel_list_services":
@@ -201,9 +193,7 @@ def tool_handlers(ws: Workspace) -> tuple[Any, Any]:
             content = [
                 types.TextContent(
                     type="text",
-                    text=json.dumps(
-                        {"error": f"unknown tool: {name!r}"}, sort_keys=True
-                    ),
+                    text=json.dumps({"error": f"unknown tool: {name!r}"}, sort_keys=True),
                 )
             ]
         return types.CallToolResult(content=content, isError=False)

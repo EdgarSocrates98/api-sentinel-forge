@@ -110,7 +110,8 @@ def response_to_result(response: dict[str, Any]) -> dict[str, Any]:
         )
     if status not in ("ok", "partial"):
         raise IntegrationRefused(
-            THE_FORGE, f"unknown response status {status!r}",
+            THE_FORGE,
+            f"unknown response status {status!r}",
             details={"request_id": response.get("request_id")},
         )
     payload = response.get("payload") or {}

@@ -149,8 +149,7 @@ _CAPABILITIES: list[Capability] = [
         CapabilityStatus.AVAILABLE,
         CapabilityStage.VERIFIED,
         "0.2.5",
-        notes="Cycle 8 — change import/correlation with explicit "
-        "proximity≠cause honesty",
+        notes="Cycle 8 — change import/correlation with explicit proximity≠cause honesty",
     ),
     Capability(
         "api.agentic-investigation",
@@ -173,9 +172,7 @@ def _aws_capability() -> Capability:
     regression widens the allowlist — the capability stays DECLARED and
     says why, rather than advertising an unproven security boundary.
     """
-    base = next(
-        c for c in _CAPABILITIES if c.capability_id == _AWS_CAPABILITY_ID
-    )
+    base = next(c for c in _CAPABILITIES if c.capability_id == _AWS_CAPABILITY_ID)
     try:
         from api_sentinel.integrations.aws.client import (
             boto3_available,
@@ -218,8 +215,7 @@ def _aws_capability() -> Capability:
 
 def list_capabilities() -> list[Capability]:
     return [
-        _aws_capability() if c.capability_id == _AWS_CAPABILITY_ID else c
-        for c in _CAPABILITIES
+        _aws_capability() if c.capability_id == _AWS_CAPABILITY_ID else c for c in _CAPABILITIES
     ]
 
 
@@ -229,11 +225,7 @@ def status_report(workspace_initialized: bool, db_present: bool) -> dict[str, ob
         "workspace_initialized": workspace_initialized,
         "database": "present" if db_present else "absent",
         "capabilities": {
-            "available": sum(
-                1 for c in capabilities if c.status is CapabilityStatus.AVAILABLE
-            ),
-            "declared": sum(
-                1 for c in capabilities if c.status is CapabilityStatus.DECLARED
-            ),
+            "available": sum(1 for c in capabilities if c.status is CapabilityStatus.AVAILABLE),
+            "declared": sum(1 for c in capabilities if c.status is CapabilityStatus.DECLARED),
         },
     }

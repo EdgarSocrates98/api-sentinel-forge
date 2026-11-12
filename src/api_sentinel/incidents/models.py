@@ -83,15 +83,9 @@ TRANSITIONS: dict[IncidentStatus, frozenset[IncidentStatus]] = {
             IncidentStatus.INVESTIGATING,
         }
     ),
-    IncidentStatus.MONITORING: frozenset(
-        {IncidentStatus.RESOLVED, IncidentStatus.INVESTIGATING}
-    ),
-    IncidentStatus.RESOLVED: frozenset(
-        {IncidentStatus.REOPENED, IncidentStatus.CLOSED}
-    ),
-    IncidentStatus.REOPENED: frozenset(
-        {IncidentStatus.TRIAGED, IncidentStatus.INVESTIGATING}
-    ),
+    IncidentStatus.MONITORING: frozenset({IncidentStatus.RESOLVED, IncidentStatus.INVESTIGATING}),
+    IncidentStatus.RESOLVED: frozenset({IncidentStatus.REOPENED, IncidentStatus.CLOSED}),
+    IncidentStatus.REOPENED: frozenset({IncidentStatus.TRIAGED, IncidentStatus.INVESTIGATING}),
     IncidentStatus.DISMISSED: frozenset({IncidentStatus.REOPENED}),
     IncidentStatus.CLOSED: frozenset(),
 }
@@ -211,9 +205,7 @@ def group_key_for(service_id: str, operation_id: str | None, kind: str) -> str:
     return f"{service_id}|{operation_id or 'service'}|{kind}"
 
 
-def incident_id_for(
-    *, group_key: str, first_observed_at: datetime
-) -> str:
+def incident_id_for(*, group_key: str, first_observed_at: datetime) -> str:
     """Deterministic incident identity — replay reproduces the same id."""
     canonical = f"{group_key}|{first_observed_at.isoformat()}"
     return "inc_" + hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:24]

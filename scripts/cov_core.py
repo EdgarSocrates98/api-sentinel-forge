@@ -5,9 +5,17 @@ from pathlib import Path
 with Path(sys.argv[1]).open() as fh:
     cov = json.load(fh)
 CORE = (
-    "/domain/", "/ingestion/", "/detection/", "/metrics/", "/reliability/",
-    "/incidents/", "/infrastructure/storage/", "/infrastructure/security/",
-    "/contracts/", "/application/", "/workspace",
+    "/domain/",
+    "/ingestion/",
+    "/detection/",
+    "/metrics/",
+    "/reliability/",
+    "/incidents/",
+    "/infrastructure/storage/",
+    "/infrastructure/security/",
+    "/contracts/",
+    "/application/",
+    "/workspace",
 )
 stmts = miss = br = brp = 0
 low = []

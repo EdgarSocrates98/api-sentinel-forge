@@ -23,7 +23,12 @@ def test_normalize_route_collapses_ids() -> None:
 
 def test_quality_and_signal_enums_complete() -> None:
     assert {s.value for s in QualityState} == {
-        "COMPLETE", "PARTIAL", "SAMPLED", "STALE", "INVALID", "UNKNOWN"
+        "COMPLETE",
+        "PARTIAL",
+        "SAMPLED",
+        "STALE",
+        "INVALID",
+        "UNKNOWN",
     }
     assert len(SignalType) == 8
 

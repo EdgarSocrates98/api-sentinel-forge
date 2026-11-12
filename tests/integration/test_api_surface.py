@@ -105,9 +105,7 @@ def _seed_workspace(ws_root: Path) -> None:
     clock = FixedClock(NOW)
     with SqliteUnitOfWork(db) as uow:
         env = uow.environments.put(
-            ServiceEnvironment(
-                environment_id="env_lab", name="lab", created_at=NOW
-            )
+            ServiceEnvironment(environment_id="env_lab", name="lab", created_at=NOW)
         )
         uow.services.put(
             ApiService(
@@ -137,21 +135,22 @@ def _seed_workspace(ws_root: Path) -> None:
             ApiOperation.make(
                 operation_id="op_post_payments",
                 service_id=SERVICE,
-                identity=OperationIdentity(
-                    protocol="http", method="POST", route="/payments"
-                ),
+                identity=OperationIdentity(protocol="http", method="POST", route="/payments"),
                 created_at=NOW,
             )
         )
         uow.commit()
 
     lines = [
-        _obs_line("obs_w1_ok", "op_get_payments", 200,
-                  "2026-01-01T11:58:00Z", "2026-01-01T11:59:00Z", 18),
-        _obs_line("obs_w1_err", "op_get_payments", 503,
-                  "2026-01-01T11:58:00Z", "2026-01-01T11:59:00Z", 2),
-        _obs_line("obs_w2_ok", "op_get_payments", 200,
-                  "2026-01-01T11:59:00Z", "2026-01-01T12:00:00Z", 20),
+        _obs_line(
+            "obs_w1_ok", "op_get_payments", 200, "2026-01-01T11:58:00Z", "2026-01-01T11:59:00Z", 18
+        ),
+        _obs_line(
+            "obs_w1_err", "op_get_payments", 503, "2026-01-01T11:58:00Z", "2026-01-01T11:59:00Z", 2
+        ),
+        _obs_line(
+            "obs_w2_ok", "op_get_payments", 200, "2026-01-01T11:59:00Z", "2026-01-01T12:00:00Z", 20
+        ),
     ]
     content = "\n".join(json.dumps(o) for o in lines).encode()
     IngestionPipeline(SqliteUnitOfWork(db), clock, ids, lambda t: t).ingest(
@@ -159,7 +158,9 @@ def _seed_workspace(ws_root: Path) -> None:
     )
 
     DefineSlo(SqliteUnitOfWork(db), clock, ids).execute(
-        service_id=SERVICE, target=0.99, window_seconds=120,
+        service_id=SERVICE,
+        target=0.99,
+        window_seconds=120,
         slo_id="slo_availability",
     )
     EvaluateSlo(SqliteUnitOfWork(db), clock, ids).execute(
@@ -223,9 +224,7 @@ def _seed_workspace(ws_root: Path) -> None:
                 ),
                 severity=Severity.SEV3,
                 status=AnomalyStatus.OBSERVED,
-                explanation=Explanation(
-                    summary="error ratio 0.10 over window W1"
-                ),
+                explanation=Explanation(summary="error ratio 0.10 over window W1"),
                 evidence_refs=["ev_metric_w1"],
                 dedup_key="op_get_payments",
                 incident_id="inc_1",
@@ -252,8 +251,7 @@ def _ctx(ws_root: Path, *, now: datetime = NOW) -> ApiContext:
         ids=UlidIdFactory(),  # fresh ids — sequential factories collide
         redactor=lambda t: t,
         structural=None,
-        structural_reason="no atlas export configured — structural context "
-                          "unavailable",
+        structural_reason="no atlas export configured — structural context unavailable",
         atlas_manifest=None,
         default_role="operator",
     )
@@ -284,9 +282,7 @@ class TestSentinelEndpoints:
         assert body["workspace_initialized"] is True
         assert "unknowns" in body and "evidence_refs" in body
 
-    def test_capabilities_portal_operations_available(
-        self, client: TestClient
-    ) -> None:
+    def test_capabilities_portal_operations_available(self, client: TestClient) -> None:
         from api_sentinel.integrations.aws.client import prove_read_only
 
         body = client.get("/v1/capabilities").json()
@@ -294,9 +290,7 @@ class TestSentinelEndpoints:
         assert caps["api.portal-operations"] == "available"
         # Cycle 7: AVAILABLE ⇔ the mechanical read-only proof passed.
         passed, _detail = prove_read_only()
-        assert caps["api.aws-readonly-observability"] == (
-            "available" if passed else "declared"
-        )
+        assert caps["api.aws-readonly-observability"] == ("available" if passed else "declared")
 
     def test_integrations_status_named_states(self, client: TestClient) -> None:
         body = client.get("/v1/integrations/status").json()
@@ -318,9 +312,7 @@ class TestServices:
         assert row["open_incidents"] == 1
         assert row["slo_definitions"] == 1
 
-    def test_service_detail_health_and_proven_links(
-        self, client: TestClient
-    ) -> None:
+    def test_service_detail_health_and_proven_links(self, client: TestClient) -> None:
         body = client.get(f"/v1/services/{SERVICE}").json()
         assert body["detail"]["health"]["state"] == "AVAILABLE"
         assert body["detail"]["health"]["condition"] == "observed"
@@ -335,9 +327,7 @@ class TestServices:
         assert body["code"] == "sentinel.not_found"
         assert "ghost" in body["detail"]
 
-    def test_operations_keep_declared_and_observed_distinct(
-        self, client: TestClient
-    ) -> None:
+    def test_operations_keep_declared_and_observed_distinct(self, client: TestClient) -> None:
         body = client.get(f"/v1/services/{SERVICE}/operations").json()
         ops = {o["operation_id"]: o for o in body["operations"]}
         observed = ops["op_get_payments"]
@@ -348,9 +338,7 @@ class TestServices:
         assert declared["provenance"] == "declared"
         assert declared["observations"] == 0
 
-    def test_metrics_carry_units_windows_and_exclusions(
-        self, client: TestClient
-    ) -> None:
+    def test_metrics_carry_units_windows_and_exclusions(self, client: TestClient) -> None:
         body = client.get(f"/v1/services/{SERVICE}/metrics").json()
         metrics = body["metrics"]
         assert metrics["units"]["latency"] == "ms"
@@ -367,9 +355,7 @@ class TestServices:
         assert metrics["qualities"]["COMPLETE"] == 3
         assert "gaps" in metrics and "excluded_by_reason" in metrics
 
-    def test_metrics_window_filter_and_operation_filter(
-        self, client: TestClient
-    ) -> None:
+    def test_metrics_window_filter_and_operation_filter(self, client: TestClient) -> None:
         body = client.get(
             f"/v1/services/{SERVICE}/metrics",
             params={
@@ -378,9 +364,7 @@ class TestServices:
             },
         ).json()
         assert len(body["metrics"]["windows"]) == 1
-        assert body["metrics"]["windows"][0]["window_end"].startswith(
-            "2026-01-01T12:00"
-        )
+        assert body["metrics"]["windows"][0]["window_end"].startswith("2026-01-01T12:00")
         body = client.get(
             f"/v1/services/{SERVICE}/metrics",
             params={"operation_id": "op_unknown"},
@@ -388,9 +372,7 @@ class TestServices:
         assert body["metrics"]["windows"] == []
         assert "no_observations_for_operation" in body["metrics"]["unknowns"]
 
-    def test_slos_show_revision_pinned_history(
-        self, client: TestClient
-    ) -> None:
+    def test_slos_show_revision_pinned_history(self, client: TestClient) -> None:
         body = client.get(f"/v1/services/{SERVICE}/slos").json()
         entries = body["panel"]["slos"]
         assert len(entries) == 1
@@ -406,16 +388,12 @@ class TestServices:
             "INSUFFICIENT_DATA",
         )
 
-    def test_stale_source_health_is_unverified_not_fiction(
-        self, tmp_path: Path
-    ) -> None:
+    def test_stale_source_health_is_unverified_not_fiction(self, tmp_path: Path) -> None:
         """A source that stopped reporting never yields positive health."""
         ws_root = tmp_path / "ws"
         _seed_workspace(ws_root)
         stale_clock = datetime(2026, 1, 1, 13, 0, tzinfo=UTC)  # 1h later
-        stale_client = TestClient(
-            create_app(context=_ctx(ws_root, now=stale_clock))
-        )
+        stale_client = TestClient(create_app(context=_ctx(ws_root, now=stale_clock)))
         body = stale_client.get(f"/v1/services/{SERVICE}").json()
         assert body["detail"]["health"]["state"] == "UNVERIFIED"
         assert body["detail"]["health"]["condition"] == "source_stale"
@@ -423,14 +401,16 @@ class TestServices:
 
 
 class TestIngestionJobs:
-    def test_job_roundtrip_idempotency_and_audit(
-        self, client: TestClient, tmp_path: Path
-    ) -> None:
+    def test_job_roundtrip_idempotency_and_audit(self, client: TestClient, tmp_path: Path) -> None:
         ws_root = tmp_path / "ws"
         batch = ws_root / "batch.jsonl"
         line = _obs_line(
-            "obs_w3_ok", "op_get_payments", 200,
-            "2026-01-01T12:00:00Z", "2026-01-01T12:01:00Z", 20,
+            "obs_w3_ok",
+            "op_get_payments",
+            200,
+            "2026-01-01T12:00:00Z",
+            "2026-01-01T12:01:00Z",
+            20,
         )
         batch.write_text(json.dumps(line) + "\n", encoding="utf-8")
 
@@ -465,9 +445,7 @@ class TestIngestionJobs:
 
         with SqliteUnitOfWork(ws_root / "sentinel.db") as uow:
             audits = uow.audit.list(target_id=job["job_id"])
-            assert any(
-                a.action == "ingestion.job.completed" for a in audits
-            )
+            assert any(a.action == "ingestion.job.completed" for a in audits)
             assert uow.observations.count() == 4  # 3 seeded + 1 imported
 
     def test_unknown_source_is_404(self, client: TestClient) -> None:
@@ -498,16 +476,12 @@ class TestIngestionJobs:
 
 class TestAnomaliesAndIncidents:
     def test_anomalies_feed(self, client: TestClient) -> None:
-        body = client.get(
-            "/v1/anomalies", params={"service_id": SERVICE}
-        ).json()
+        body = client.get("/v1/anomalies", params={"service_id": SERVICE}).json()
         assert [a["anomaly_id"] for a in body["anomalies"]] == ["anm_1"]
         assert body["anomalies"][0]["status"] == "OBSERVED"
         assert body["evidence_refs"] == ["ev_metric_w1"]
 
-    def test_anomaly_status_filter_and_validation(
-        self, client: TestClient
-    ) -> None:
+    def test_anomaly_status_filter_and_validation(self, client: TestClient) -> None:
         body = client.get("/v1/anomalies", params={"status": "verified"}).json()
         assert body["anomalies"] == []
         resp = client.get("/v1/anomalies", params={"status": "bogus"})
@@ -520,22 +494,16 @@ class TestAnomaliesAndIncidents:
         body = client.get("/v1/incidents", params={"status": "closed"}).json()
         assert body["incidents"] == []
 
-    def test_incident_detail_carries_evidence_metadata(
-        self, client: TestClient
-    ) -> None:
+    def test_incident_detail_carries_evidence_metadata(self, client: TestClient) -> None:
         body = client.get("/v1/incidents/inc_1").json()
         detail = body["detail"]
         assert detail["incident"]["status"] == "INVESTIGATING"
         assert [a["anomaly_id"] for a in detail["anomalies"]] == ["anm_1"]
-        assert [e["evidence_id"] for e in detail["evidence"]] == [
-            "ev_metric_w1"
-        ]
+        assert [e["evidence_id"] for e in detail["evidence"]] == ["ev_metric_w1"]
         assert detail["evidence_unresolved"] == []
         assert "ev_metric_w1" in body["evidence_refs"]
 
-    def test_incident_timeline_journal_and_edges(
-        self, client: TestClient
-    ) -> None:
+    def test_incident_timeline_journal_and_edges(self, client: TestClient) -> None:
         body = client.get("/v1/incidents/inc_1/timeline").json()
         timeline = body["timeline"]
         assert timeline["events"][0]["kind"] == "opened"
@@ -566,9 +534,7 @@ class TestInvestigations:
         structural = pack["structural_context"]
         assert structural["state"] == "UNAVAILABLE"
         assert structural["dependencies"] == []
-        assert any(
-            "structural_context" in u for u in pack["unknowns"]
-        )
+        assert any("structural_context" in u for u in pack["unknowns"])
         assert pack["indicators"]["state"] == "AVAILABLE"
         assert pack["correlation"]["suspected_origin"] == "payments-db"
 
@@ -578,34 +544,22 @@ class TestInvestigations:
         )
         assert replay.status_code == 200
         assert replay.json()["replayed"] is True
-        assert replay.json()["investigation"]["investigation_id"] == (
-            inv["investigation_id"]
-        )
+        assert replay.json()["investigation"]["investigation_id"] == (inv["investigation_id"])
 
-        got = client.get(
-            f"/v1/investigations/{inv['investigation_id']}"
-        ).json()
+        got = client.get(f"/v1/investigations/{inv['investigation_id']}").json()
         assert got["investigation"]["status"] == "COMPLETED"
 
-    def test_investigation_journal_and_audit(
-        self, client: TestClient, tmp_path: Path
-    ) -> None:
+    def test_investigation_journal_and_audit(self, client: TestClient, tmp_path: Path) -> None:
         client.post("/v1/incidents/inc_1/investigations", json={})
         timeline = client.get("/v1/incidents/inc_1/timeline").json()
         kinds = [e["kind"] for e in timeline["timeline"]["events"]]
         assert "action_recorded" in kinds
-        with SqliteUnitOfWork(
-            tmp_path / "ws" / "sentinel.db"
-        ) as uow:
+        with SqliteUnitOfWork(tmp_path / "ws" / "sentinel.db") as uow:
             audits = uow.audit.list(target_id="inc_1")
             assert any(a.action == "investigation.start" for a in audits)
 
-    def test_investigation_unknown_incident_404(
-        self, client: TestClient
-    ) -> None:
-        resp = client.post(
-            "/v1/incidents/inc_ghost/investigations", json={}
-        )
+    def test_investigation_unknown_incident_404(self, client: TestClient) -> None:
+        resp = client.post("/v1/incidents/inc_ghost/investigations", json={})
         assert _problem(resp)["code"] == "sentinel.not_found"
 
     def test_unknown_investigation_404(self, client: TestClient) -> None:
@@ -634,13 +588,9 @@ class TestEvidence:
         raw = json.dumps(body)
         assert "BEGIN" not in raw and "blob_content" not in evidence
 
-    def test_evidence_read_is_audited(
-        self, client: TestClient, tmp_path: Path
-    ) -> None:
+    def test_evidence_read_is_audited(self, client: TestClient, tmp_path: Path) -> None:
         client.get("/v1/evidence/ev_metric_w1")
-        with SqliteUnitOfWork(
-            tmp_path / "ws" / "sentinel.db"
-        ) as uow:
+        with SqliteUnitOfWork(tmp_path / "ws" / "sentinel.db") as uow:
             audits = uow.audit.list(target_id="ev_metric_w1")
             assert any(a.action == "evidence.read" for a in audits)
 
@@ -655,9 +605,7 @@ class TestAuthorizationPlaceholder:
     def test_viewer_can_query_but_not_mutate(self, client: TestClient) -> None:
         viewer = {"X-Sentinel-Role": "viewer"}
         assert client.get("/v1/services", headers=viewer).status_code == 200
-        resp = client.post(
-            "/v1/incidents/inc_1/investigations", json={}, headers=viewer
-        )
+        resp = client.post("/v1/incidents/inc_1/investigations", json={}, headers=viewer)
         assert resp.status_code == 403
         assert _problem(resp)["code"] == "sentinel.forbidden"
         resp = client.post(
@@ -667,13 +615,9 @@ class TestAuthorizationPlaceholder:
         )
         assert resp.status_code == 403
 
-    def test_analyst_investigates_but_cannot_import(
-        self, client: TestClient
-    ) -> None:
+    def test_analyst_investigates_but_cannot_import(self, client: TestClient) -> None:
         analyst = {"X-Sentinel-Role": "analyst"}
-        resp = client.post(
-            "/v1/incidents/inc_1/investigations", json={}, headers=analyst
-        )
+        resp = client.post("/v1/incidents/inc_1/investigations", json={}, headers=analyst)
         assert resp.status_code == 201
         resp = client.post(
             "/v1/ingestion/jobs",
@@ -691,23 +635,15 @@ class TestAuthorizationPlaceholder:
         assert resp.status_code == 403
         assert _problem(resp)["code"] == "sentinel.forbidden"
 
-    def test_denial_does_not_leak_existence(
-        self, client: TestClient, tmp_path: Path
-    ) -> None:
+    def test_denial_does_not_leak_existence(self, client: TestClient, tmp_path: Path) -> None:
         """A viewer probing a ghost id gets the same 403 as for a real id —
         denial precedes lookup, and is itself audit-recorded."""
         viewer = {"X-Sentinel-Role": "viewer"}
-        real = client.post(
-            "/v1/incidents/inc_1/investigations", json={}, headers=viewer
-        )
-        ghost = client.post(
-            "/v1/incidents/inc_ghost/investigations", json={}, headers=viewer
-        )
+        real = client.post("/v1/incidents/inc_1/investigations", json={}, headers=viewer)
+        ghost = client.post("/v1/incidents/inc_ghost/investigations", json={}, headers=viewer)
         assert real.status_code == ghost.status_code == 403
         assert real.json()["code"] == ghost.json()["code"]
-        with SqliteUnitOfWork(
-            tmp_path / "ws" / "sentinel.db"
-        ) as uow:
+        with SqliteUnitOfWork(tmp_path / "ws" / "sentinel.db") as uow:
             denials = uow.audit.list(target_id="investigate")
             assert any(a.action == "api.scope.denied" for a in denials)
 

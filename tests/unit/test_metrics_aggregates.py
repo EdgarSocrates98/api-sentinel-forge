@@ -229,9 +229,7 @@ def test_quantile_plus_inf_bound_returns_last_finite() -> None:
 def test_per_bucket_semantics_repair_is_recorded() -> None:
     # Producer emitted per-bucket counts (non-monotonic cumulative) but the
     # +Inf total disambiguates: 10+55+40+12+3 == 120.
-    obs = [
-        _hist("h", 0, [(50, 10), (100, 55), (200, 40), (500, 12), (1000, 3), ("+Inf", 120)])
-    ]
+    obs = [_hist("h", 0, [(50, 10), (100, 55), (200, 40), (500, 12), (1000, 3), ("+Inf", 120)])]
     (agg,) = compute_window_aggregates(obs, WINDOW)
     assert agg.latency_buckets  # repaired into cumulative form
     assert [b.cum_count for b in agg.latency_buckets] == [10, 65, 105, 117, 120, 120]

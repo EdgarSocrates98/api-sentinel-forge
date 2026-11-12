@@ -59,9 +59,7 @@ def _block_network() -> Iterator[None]:
         _guard_connect(sock, address)
         return original_connect_ex(sock, address)
 
-    def create_connection(
-        address: Any, *args: object, **kwargs: object
-    ) -> socket.socket:
+    def create_connection(address: Any, *args: object, **kwargs: object) -> socket.socket:
         _guard_connect(None, address)  # type: ignore[arg-type]
         return original_create(address, *args, **kwargs)  # type: ignore[arg-type]
 

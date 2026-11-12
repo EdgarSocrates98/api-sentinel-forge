@@ -84,8 +84,8 @@ def handoff_to_doctor_request(
                 "expected": InvestigationHandoffV1.expected_schema,
             },
         )
-    payload_caps = capabilities if capabilities is not None else list(
-        handoff.payload.get("capabilities", [])
+    payload_caps = (
+        capabilities if capabilities is not None else list(handoff.payload.get("capabilities", []))
     )
     refs = list(handoff.constraints.evidence_refs)
     for ref in handoff.payload.get("context_refs", []):
@@ -122,8 +122,7 @@ def ingest_doctor_bundle(
         # must never masquerade as Doctor evidence. Real V1/V2 bundles
         # always serialize `handoff_version` (V1=1, V2=2).
         raise ContractError(
-            "doctor bundle missing handoff_version — not a Doctor "
-            "handoff artifact",
+            "doctor bundle missing handoff_version — not a Doctor handoff artifact",
         )
     version = data.get("handoff_version")
     if version not in (1, 2):
@@ -156,9 +155,7 @@ def ingest_doctor_bundle(
         raise ContractError(f"doctor bundle malformed: {exc}") from exc
 
 
-def ingest_doctor_bundle_json(
-    text: str, *, expected_handoff_id: str | None = None
-) -> DoctorIngest:
+def ingest_doctor_bundle_json(text: str, *, expected_handoff_id: str | None = None) -> DoctorIngest:
     """Parse a Doctor bundle from raw JSON text."""
     try:
         data = json.loads(text)

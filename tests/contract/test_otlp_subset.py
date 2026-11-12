@@ -23,19 +23,22 @@ NOW = datetime(2026, 1, 1, 0, 10, tzinfo=UTC)
 
 
 def _seed(uow: SqliteUnitOfWork) -> TelemetrySource:
-    uow.environments.put(
-        ServiceEnvironment(environment_id="env_lab", name="lab", created_at=NOW)
-    )
+    uow.environments.put(ServiceEnvironment(environment_id="env_lab", name="lab", created_at=NOW))
     uow.services.put(
         ApiService(
-            service_id="svc_lab_payments", service_name="payments-api",
-            environment_id="env_lab", created_at=NOW, updated_at=NOW,
+            service_id="svc_lab_payments",
+            service_name="payments-api",
+            environment_id="env_lab",
+            created_at=NOW,
+            updated_at=NOW,
         )
     )
     return uow.sources.put(
         TelemetrySource(
-            source_id="src_otlp", kind="otlp-json",
-            service_id="svc_lab_payments", created_at=NOW,
+            source_id="src_otlp",
+            kind="otlp-json",
+            service_id="svc_lab_payments",
+            created_at=NOW,
         )
     )
 

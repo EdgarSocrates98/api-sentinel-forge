@@ -31,9 +31,11 @@ def _hist(**kw: object) -> Measurement:
 
 
 def test_seconds_convert_to_ms_losslessly() -> None:
-    m = _hist(unit="s", sum=14.4, buckets=[
-        {"le": 0.05, "count": 10}, {"le": 0.1, "count": 55}, {"le": "+Inf", "count": 120}
-    ])
+    m = _hist(
+        unit="s",
+        sum=14.4,
+        buckets=[{"le": 0.05, "count": 10}, {"le": 0.1, "count": 55}, {"le": "+Inf", "count": 120}],
+    )
     out, issues = normalize_measurement(m)
     assert issues == []
     assert out.unit == "ms"
@@ -54,10 +56,15 @@ def test_unknown_unit_is_invalid_never_assumed() -> None:
     _out, issues = normalize_measurement(_hist(unit="furlongs"))
     assert "unknown_unit" in issues
     quality, _ = assess_quality(
-        declared=QualityState.COMPLETE, sampling_rate=None, dropped=False,
-        measurement_issues=issues, window_end=NOW - timedelta(minutes=1),
-        ingest_time=NOW, policy_stale_after_seconds=300,
-        policy_lateness_seconds=120, temporality=None,
+        declared=QualityState.COMPLETE,
+        sampling_rate=None,
+        dropped=False,
+        measurement_issues=issues,
+        window_end=NOW - timedelta(minutes=1),
+        ingest_time=NOW,
+        policy_stale_after_seconds=300,
+        policy_lateness_seconds=120,
+        temporality=None,
     )
     assert quality == QualityState.INVALID
 
@@ -108,10 +115,15 @@ def test_semconv_attribute_variants() -> None:
 def test_assess_never_labels_unsampled_as_sampled() -> None:
     for declared in (QualityState.COMPLETE, QualityState.PARTIAL, QualityState.UNKNOWN):
         q, _ = assess_quality(
-            declared=declared, sampling_rate=None, dropped=False,
-            measurement_issues=[], window_end=NOW - timedelta(minutes=1),
-            ingest_time=NOW, policy_stale_after_seconds=300,
-            policy_lateness_seconds=120, temporality=None,
+            declared=declared,
+            sampling_rate=None,
+            dropped=False,
+            measurement_issues=[],
+            window_end=NOW - timedelta(minutes=1),
+            ingest_time=NOW,
+            policy_stale_after_seconds=300,
+            policy_lateness_seconds=120,
+            temporality=None,
         )
         assert q != QualityState.SAMPLED
         assert q == declared  # no detection → declared claim stands
@@ -119,43 +131,68 @@ def test_assess_never_labels_unsampled_as_sampled() -> None:
 
 def test_assess_marks_sampling_and_dropped() -> None:
     q, notes = assess_quality(
-        declared=QualityState.COMPLETE, sampling_rate=0.25, dropped=False,
-        measurement_issues=[], window_end=NOW - timedelta(minutes=1),
-        ingest_time=NOW, policy_stale_after_seconds=300,
-        policy_lateness_seconds=120, temporality=None,
+        declared=QualityState.COMPLETE,
+        sampling_rate=0.25,
+        dropped=False,
+        measurement_issues=[],
+        window_end=NOW - timedelta(minutes=1),
+        ingest_time=NOW,
+        policy_stale_after_seconds=300,
+        policy_lateness_seconds=120,
+        temporality=None,
     )
     assert q == QualityState.SAMPLED and any("sampling" in n for n in notes)
     q2, _ = assess_quality(
-        declared=QualityState.COMPLETE, sampling_rate=None, dropped=True,
-        measurement_issues=[], window_end=NOW - timedelta(minutes=1),
-        ingest_time=NOW, policy_stale_after_seconds=300,
-        policy_lateness_seconds=120, temporality=None,
+        declared=QualityState.COMPLETE,
+        sampling_rate=None,
+        dropped=True,
+        measurement_issues=[],
+        window_end=NOW - timedelta(minutes=1),
+        ingest_time=NOW,
+        policy_stale_after_seconds=300,
+        policy_lateness_seconds=120,
+        temporality=None,
     )
     assert q2 == QualityState.SAMPLED
 
 
 def test_assess_marks_stale_beyond_threshold_and_late_within_tolerance() -> None:
     stale, _notes = assess_quality(
-        declared=QualityState.COMPLETE, sampling_rate=None, dropped=False,
-        measurement_issues=[], window_end=NOW - timedelta(minutes=10),
-        ingest_time=NOW, policy_stale_after_seconds=300,
-        policy_lateness_seconds=120, temporality=None,
+        declared=QualityState.COMPLETE,
+        sampling_rate=None,
+        dropped=False,
+        measurement_issues=[],
+        window_end=NOW - timedelta(minutes=10),
+        ingest_time=NOW,
+        policy_stale_after_seconds=300,
+        policy_lateness_seconds=120,
+        temporality=None,
     )
     assert stale == QualityState.STALE
     late, lnotes = assess_quality(
-        declared=QualityState.COMPLETE, sampling_rate=None, dropped=False,
-        measurement_issues=[], window_end=NOW - timedelta(minutes=3),
-        ingest_time=NOW, policy_stale_after_seconds=300,
-        policy_lateness_seconds=120, temporality=None,
+        declared=QualityState.COMPLETE,
+        sampling_rate=None,
+        dropped=False,
+        measurement_issues=[],
+        window_end=NOW - timedelta(minutes=3),
+        ingest_time=NOW,
+        policy_stale_after_seconds=300,
+        policy_lateness_seconds=120,
+        temporality=None,
     )
     assert late == QualityState.COMPLETE and any("late" in n for n in lnotes)
 
 
 def test_declared_quality_never_upgraded() -> None:
     q, _ = assess_quality(
-        declared=QualityState.PARTIAL, sampling_rate=None, dropped=False,
-        measurement_issues=[], window_end=NOW - timedelta(minutes=1),
-        ingest_time=NOW, policy_stale_after_seconds=300,
-        policy_lateness_seconds=120, temporality=None,
+        declared=QualityState.PARTIAL,
+        sampling_rate=None,
+        dropped=False,
+        measurement_issues=[],
+        window_end=NOW - timedelta(minutes=1),
+        ingest_time=NOW,
+        policy_stale_after_seconds=300,
+        policy_lateness_seconds=120,
+        temporality=None,
     )
     assert q == QualityState.PARTIAL  # PARTIAL never surfaces as COMPLETE
