@@ -3,6 +3,7 @@ from pathlib import Path
 
 from typer.testing import CliRunner, Result
 
+from api_sentinel import __version__
 from api_sentinel.cli import app
 
 runner = CliRunner()
@@ -15,7 +16,7 @@ def _invoke(*args: str) -> Result:
 def test_version_json() -> None:
     result = _invoke("version", "--json")
     assert result.exit_code == 0
-    assert json.loads(result.stdout)["version"] == "0.1.0"
+    assert json.loads(result.stdout)["version"] == __version__
 
 
 def test_capabilities_honest_states() -> None:
@@ -32,7 +33,7 @@ def test_workspace_and_doctor(tmp_path: Path) -> None:
     assert r.exit_code == 0
     assert json.loads(r.stdout)["scope"] == "project"
     d = _invoke("doctor", "--workspace", str(tmp_path / "ws"), "--json")
-    assert json.loads(d.stdout)["version"] == "0.1.0"
+    assert json.loads(d.stdout)["version"] == __version__
 
 
 def test_install_headless(tmp_path: Path) -> None:
