@@ -260,7 +260,7 @@ def _context_root(ws: Any) -> Path | None:
     owns the sentinel data dir — or None for account-scope installs."""
     if ws.scope != "project":
         return None
-    parent = ws.root.parent
+    parent: Path = ws.root.parent
     if parent == ws.root or not str(parent):  # filesystem root guard
         return None
     return parent
