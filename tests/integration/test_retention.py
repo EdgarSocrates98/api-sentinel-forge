@@ -80,9 +80,7 @@ def _obs(
         source_id=SOURCE,
         batch_id=batch_id,
         quality=QualityState.COMPLETE,
-        measurement=NormalizedMeasurement(
-            kind=MeasurementKind.COUNTER, unit="requests", value=1.0
-        ),
+        measurement=NormalizedMeasurement(kind=MeasurementKind.COUNTER, unit="requests", value=1.0),
         attributes={},
         idempotency_key=f"key_{obs_id}",
     )
@@ -115,9 +113,7 @@ def _seed(ws_root: Path) -> Workspace:
     blobs = FileBlobStore(ws.blobs_dir)
     with SqliteUnitOfWork(ws.db_path) as uow:
         env = uow.environments.put(
-            ServiceEnvironment(
-                environment_id="env_ret", name="lab", created_at=_ago(400)
-            )
+            ServiceEnvironment(environment_id="env_ret", name="lab", created_at=_ago(400))
         )
         uow.services.put(
             ApiService(
@@ -147,37 +143,57 @@ def _seed(ws_root: Path) -> Workspace:
                 item_count=8,
             )
         )
-        uow.checkpoints.put(
-            IngestionCheckpoint(
-                source_id=SOURCE, checkpoint="8", updated_at=NOW
-            )
-        )
+        uow.checkpoints.put(IngestionCheckpoint(source_id=SOURCE, checkpoint="8", updated_at=NOW))
 
         # --- observations: three width classes at ages around the tiers ---
-        uow.observations.put(_obs(
-            "obs_detailed_old", batch_id="batch_ret",
-            w_start=_ago(10), w_end=_ago(10) + timedelta(seconds=30),
-        ))  # detailed, 10d old > 7d → purge
-        uow.observations.put(_obs(
-            "obs_detailed_new", batch_id="batch_ret",
-            w_start=_ago(1), w_end=_ago(1) + timedelta(seconds=30),
-        ))  # detailed, 1d old → keep
-        uow.observations.put(_obs(
-            "obs_minute_old", batch_id="batch_ret",
-            w_start=_ago(40), w_end=_ago(40) + timedelta(seconds=60),
-        ))  # minute class, 40d > 30d → purge
-        uow.observations.put(_obs(
-            "obs_minute_new", batch_id="batch_ret",
-            w_start=_ago(20), w_end=_ago(20) + timedelta(seconds=60),
-        ))  # minute class, 20d → keep
-        uow.observations.put(_obs(
-            "obs_hourly_old", batch_id="batch_ret",
-            w_start=_ago(100), w_end=_ago(100) + timedelta(seconds=3600),
-        ))  # hourly class, 100d > 90d → purge
-        uow.observations.put(_obs(
-            "obs_hourly_new", batch_id="batch_ret",
-            w_start=_ago(50), w_end=_ago(50) + timedelta(seconds=3600),
-        ))  # hourly class, 50d → keep
+        uow.observations.put(
+            _obs(
+                "obs_detailed_old",
+                batch_id="batch_ret",
+                w_start=_ago(10),
+                w_end=_ago(10) + timedelta(seconds=30),
+            )
+        )  # detailed, 10d old > 7d → purge
+        uow.observations.put(
+            _obs(
+                "obs_detailed_new",
+                batch_id="batch_ret",
+                w_start=_ago(1),
+                w_end=_ago(1) + timedelta(seconds=30),
+            )
+        )  # detailed, 1d old → keep
+        uow.observations.put(
+            _obs(
+                "obs_minute_old",
+                batch_id="batch_ret",
+                w_start=_ago(40),
+                w_end=_ago(40) + timedelta(seconds=60),
+            )
+        )  # minute class, 40d > 30d → purge
+        uow.observations.put(
+            _obs(
+                "obs_minute_new",
+                batch_id="batch_ret",
+                w_start=_ago(20),
+                w_end=_ago(20) + timedelta(seconds=60),
+            )
+        )  # minute class, 20d → keep
+        uow.observations.put(
+            _obs(
+                "obs_hourly_old",
+                batch_id="batch_ret",
+                w_start=_ago(100),
+                w_end=_ago(100) + timedelta(seconds=3600),
+            )
+        )  # hourly class, 100d > 90d → purge
+        uow.observations.put(
+            _obs(
+                "obs_hourly_new",
+                batch_id="batch_ret",
+                w_start=_ago(50),
+                w_end=_ago(50) + timedelta(seconds=3600),
+            )
+        )  # hourly class, 50d → keep
 
         # --- quarantine: one old entry → purge ---
         uow.quarantine.put(
@@ -291,9 +307,7 @@ class TestRetentionDryRun:
 
 
 class TestRetentionApply:
-    def test_apply_enforces_policy_and_protects_evidence(
-        self, tmp_path: Path
-    ) -> None:
+    def test_apply_enforces_policy_and_protects_evidence(self, tmp_path: Path) -> None:
         ws = _seed(tmp_path / "ws")
         ids = SequentialIdFactory()
         report = run_retention(
@@ -313,23 +327,17 @@ class TestRetentionApply:
         conn = sqlite3.connect(str(ws.db_path))
         try:
             obs_ids = {
-                r[0]
-                for r in conn.execute(
-                    "SELECT observation_id FROM runtime_observations"
-                )
+                r[0] for r in conn.execute("SELECT observation_id FROM runtime_observations")
             }
             assert obs_ids == {
                 "obs_detailed_new",
                 "obs_minute_new",
                 "obs_hourly_new",
             }
-            incident_ids = {
-                r[0] for r in conn.execute("SELECT incident_id FROM incidents")
-            }
+            incident_ids = {r[0] for r in conn.execute("SELECT incident_id FROM incidents")}
             assert incident_ids == {"inc_active"}
             evidence_ids = {
-                r[0]
-                for r in conn.execute("SELECT evidence_id FROM evidence_artifacts")
+                r[0] for r in conn.execute("SELECT evidence_id FROM evidence_artifacts")
             }
             # active-incident + anomaly evidence protected; young orphan kept
             assert evidence_ids == {"ev_active", "ev_anom", "ev_orphan_young"}
@@ -341,8 +349,7 @@ class TestRetentionApply:
             actions = [
                 r[0]
                 for r in conn.execute(
-                    "SELECT action FROM audit_events"
-                    " WHERE action='operations.retention'"
+                    "SELECT action FROM audit_events WHERE action='operations.retention'"
                 )
             ]
             assert len(actions) == 1
@@ -369,12 +376,18 @@ class TestRetentionApply:
         ws = _seed(tmp_path / "ws")
         ids = SequentialIdFactory()
         first = run_retention(
-            ws, apply=True, policy=RetentionPolicy(),
-            clock=FixedClock(NOW), ids=ids,
+            ws,
+            apply=True,
+            policy=RetentionPolicy(),
+            clock=FixedClock(NOW),
+            ids=ids,
         )
         second = run_retention(
-            ws, apply=True, policy=RetentionPolicy(),
-            clock=FixedClock(NOW), ids=ids,
+            ws,
+            apply=True,
+            policy=RetentionPolicy(),
+            clock=FixedClock(NOW),
+            ids=ids,
         )
         assert second.deleted["observations"] == 0
         assert second.deleted["incidents"] == 0
@@ -382,13 +395,14 @@ class TestRetentionApply:
         assert _count(ws.db_path, "runtime_observations") == 3
         assert first.deleted["observations"] == 3
 
-    def test_open_incident_never_purged_regardless_of_age(
-        self, tmp_path: Path
-    ) -> None:
+    def test_open_incident_never_purged_regardless_of_age(self, tmp_path: Path) -> None:
         ws = _seed(tmp_path / "ws")
         run_retention(
-            ws, apply=True, policy=RetentionPolicy(incidents_days=1),
-            clock=FixedClock(NOW), ids=SequentialIdFactory(),
+            ws,
+            apply=True,
+            policy=RetentionPolicy(incidents_days=1),
+            clock=FixedClock(NOW),
+            ids=SequentialIdFactory(),
         )
         assert _count(ws.db_path, "incidents") == 1  # inc_active survives
         with SqliteUnitOfWork(ws.db_path) as uow:

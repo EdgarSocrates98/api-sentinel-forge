@@ -129,11 +129,7 @@ def _instructions(incident: Incident) -> PackInstructions:
 
 
 def _size_of(content: dict[str, Any] | str) -> int:
-    raw = (
-        content
-        if isinstance(content, str)
-        else json.dumps(content, sort_keys=True, default=str)
-    )
+    raw = content if isinstance(content, str) else json.dumps(content, sort_keys=True, default=str)
     return len(raw.encode("utf-8"))
 
 
@@ -154,11 +150,7 @@ def _make_item(
     truncated: bool = False,
 ) -> PackItem:
     """Redact every string field, charge the serialized size, mark role=data."""
-    raw = (
-        content
-        if isinstance(content, str)
-        else json.dumps(content, sort_keys=True, default=str)
-    )
+    raw = content if isinstance(content, str) else json.dumps(content, sort_keys=True, default=str)
     result = redactor(raw)
     text = getattr(result, "text", str(result))
     findings = [str(getattr(f, "kind", f)) for f in getattr(result, "findings", [])]

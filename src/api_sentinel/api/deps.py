@@ -92,12 +92,8 @@ class ApiContext:
 ROLE_SCOPES: dict[str, frozenset[str]] = {
     "viewer": frozenset({"query"}),
     "analyst": frozenset({"query", "investigate"}),
-    "operator": frozenset(
-        {"query", "import", "investigate", "manage_sources"}
-    ),
-    "admin": frozenset(
-        {"query", "import", "investigate", "manage_sources", "approve_changes"}
-    ),
+    "operator": frozenset({"query", "import", "investigate", "manage_sources"}),
+    "admin": frozenset({"query", "import", "investigate", "manage_sources", "approve_changes"}),
 }
 
 _KNOWN_ROLES = frozenset(ROLE_SCOPES)
@@ -160,9 +156,7 @@ def _authenticate(request: Request, ctx: ApiContext) -> tuple[str, str]:
     raise _refusal("missing_credentials")
 
 
-def _audit_denied(
-    ctx: ApiContext, *, actor: str, role: str, scope: str, path: str
-) -> None:
+def _audit_denied(ctx: ApiContext, *, actor: str, role: str, scope: str, path: str) -> None:
     """Denials are auditable too — best-effort: an audit failure never
     changes the denial outcome."""
     try:
@@ -229,7 +223,10 @@ def require_scope(scope: str) -> Callable[..., str]:
         scopes = ROLE_SCOPES.get(role)
         if scopes is None or scope not in scopes:
             _audit_denied(
-                ctx, actor=actor, role=role, scope=scope,
+                ctx,
+                actor=actor,
+                role=role,
+                scope=scope,
                 path=str(request.url.path),
             )
             raise ForbiddenError(
@@ -249,8 +246,7 @@ def acquire_job_slot(ctx: ApiContext) -> Callable[[], None]:
 
     if not ctx.jobs_limiter.acquire(blocking=False):
         raise ConcurrencyLimitError(
-            "mutation executor saturated — retry when a running "
-            "import/investigation finishes",
+            "mutation executor saturated — retry when a running import/investigation finishes",
             details={"max_concurrent_jobs": ctx.max_concurrent_jobs},
         )
     return ctx.jobs_limiter.release

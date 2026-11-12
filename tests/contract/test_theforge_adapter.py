@@ -15,9 +15,7 @@ from pathlib import Path
 
 import pytest
 
-ADAPTER_SRC = (
-    Path(__file__).resolve().parents[2] / "adapters" / "apisentinel" / "src"
-)
+ADAPTER_SRC = Path(__file__).resolve().parents[2] / "adapters" / "apisentinel" / "src"
 
 pytestmark = pytest.mark.skipif(
     not (ADAPTER_SRC / "theforge_apisentinel").is_dir(),
@@ -69,9 +67,7 @@ def test_manifest_exposes_supported_capabilities_from_snapshot():
 
 def test_catalog_verification_records_live_support(tmp_path):
     """The recorded verification asserts the five ids came back supported."""
-    verification_path = (
-        ADAPTER_SRC / "theforge_apisentinel" / "catalog_verification.json"
-    )
+    verification_path = ADAPTER_SRC / "theforge_apisentinel" / "catalog_verification.json"
     if not verification_path.exists():
         pytest.skip("catalog_verification.json not yet recorded")
     verification = json.loads(verification_path.read_text(encoding="utf-8"))

@@ -128,10 +128,7 @@ def _metric_data_query(q: MetricQuery, query_id: str) -> dict[str, Any]:
             "Metric": {
                 "Namespace": q.namespace,
                 "MetricName": q.metric_name,
-                "Dimensions": [
-                    {"Name": k, "Value": v}
-                    for k, v in sorted(q.dimensions.items())
-                ],
+                "Dimensions": [{"Name": k, "Value": v} for k, v in sorted(q.dimensions.items())],
             },
             "Period": q.period_seconds,
             "Stat": q.stat,
@@ -247,10 +244,7 @@ class CloudWatchCollector:
             return result
         self.meter.check_can_start()
         chunk_size = self._budget.max_metrics_per_query
-        chunks = [
-            queries[i : i + chunk_size]
-            for i in range(0, len(queries), chunk_size)
-        ]
+        chunks = [queries[i : i + chunk_size] for i in range(0, len(queries), chunk_size)]
         for chunk in chunks:
             try:
                 self._collect_chunk(
@@ -266,14 +260,10 @@ class CloudWatchCollector:
                 # mid-collection budget hit → graceful halt, partial data
                 # stays honest and named (never silent truncation)
                 result.budget_exceeded = True
-                result.unknowns.append(
-                    f"budget_exceeded:{','.join(self.meter.exceeded)}"
-                )
+                result.unknowns.append(f"budget_exceeded:{','.join(self.meter.exceeded)}")
                 break
             if self.meter.exceeded:
-                result.unknowns.append(
-                    f"budget_flagged:{','.join(self.meter.exceeded)}"
-                )
+                result.unknowns.append(f"budget_flagged:{','.join(self.meter.exceeded)}")
                 break
         self._finalize(result)
         return result
@@ -289,13 +279,9 @@ class CloudWatchCollector:
         identity: AwsIdentity,
         result: CloudWatchCollectResult,
     ) -> None:
-        id_to_query = {
-            f"q{i}": q for i, q in enumerate(chunk)
-        }
+        id_to_query = {f"q{i}": q for i, q in enumerate(chunk)}
         params: dict[str, Any] = {
-            "MetricDataQueries": [
-                _metric_data_query(q, qid) for qid, q in id_to_query.items()
-            ],
+            "MetricDataQueries": [_metric_data_query(q, qid) for qid, q in id_to_query.items()],
             "StartTime": start,
             "EndTime": end,
             "ScanBy": "TimestampAscending",
@@ -327,9 +313,7 @@ class CloudWatchCollector:
                 result=result,
             )
             response_bytes = len(json.dumps(response, default=str))
-            hit = self.meter.record_page(
-                datapoints=n_dp, response_bytes=response_bytes
-            )
+            hit = self.meter.record_page(datapoints=n_dp, response_bytes=response_bytes)
             if hit is not None:
                 # crossed a cap with this page → stop paging, declare loss
                 for s in series.values():
@@ -350,9 +334,7 @@ class CloudWatchCollector:
                 break
         for s in series.values():
             if s.truncated:
-                result.truncated_queries.append(
-                    f"{s.query.namespace}/{s.query.metric_name}"
-                )
+                result.truncated_queries.append(f"{s.query.namespace}/{s.query.metric_name}")
 
     def _consume_page(
         self,
@@ -366,9 +348,7 @@ class CloudWatchCollector:
         result: CloudWatchCollectResult,
     ) -> int:
         messages = [
-            str(m.get("Value", ""))
-            for m in response.get("Messages") or []
-            if isinstance(m, dict)
+            str(m.get("Value", "")) for m in response.get("Messages") or [] if isinstance(m, dict)
         ]
         if messages:
             result.messages.extend(messages)
@@ -391,23 +371,17 @@ class CloudWatchCollector:
                 "",
             }:
                 s.truncated = True
-                result.unknowns.append(
-                    f"status:{mdr.get('StatusCode')} for {query.metric_name}"
-                )
+                result.unknowns.append(f"status:{mdr.get('StatusCode')} for {query.metric_name}")
             timestamps = mdr.get("Timestamps") or []
             values = mdr.get("Values") or []
             for ts, value in zip(timestamps, values, strict=False):
-                if self.meter.datapoints + page_points >= (
-                    self._budget.max_datapoints
-                ):
+                if self.meter.datapoints + page_points >= (self._budget.max_datapoints):
                     s.truncated = True
                     result.unknowns.append("datapoint_cap:series truncated")
                     continue
                 ts_dt = ts if isinstance(ts, datetime) else self._parse_ts(ts)
                 declared = (
-                    QualityState.PARTIAL
-                    if (s.truncated or s.messages)
-                    else QualityState.COMPLETE
+                    QualityState.PARTIAL if (s.truncated or s.messages) else QualityState.COMPLETE
                 )
                 notes = [f"cloudwatch:GetMetricData page {self.meter.pages + 1}"]
                 if s.messages:

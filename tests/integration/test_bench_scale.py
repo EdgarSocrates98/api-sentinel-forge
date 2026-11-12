@@ -54,12 +54,8 @@ def test_ingest_bench_replay_idempotent(tmp_path: Path) -> None:
     )
     base = datetime(2026, 1, 1, tzinfo=UTC)
     lines = [json.dumps(_observation(i, base)) for i in range(500)]
-    first = pipeline.ingest(
-        source=source, kind="jsonl", content="\n".join(lines).encode()
-    )
-    second = pipeline.ingest(
-        source=source, kind="jsonl", content="\n".join(lines).encode()
-    )
+    first = pipeline.ingest(source=source, kind="jsonl", content="\n".join(lines).encode())
+    second = pipeline.ingest(source=source, kind="jsonl", content="\n".join(lines).encode())
     assert first.accepted == 500
     assert second.accepted == 0  # whole-payload dedup — zero duplication
     with SqliteUnitOfWork(ws.db_path) as uow:

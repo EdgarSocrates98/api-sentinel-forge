@@ -141,9 +141,7 @@ def test_availability_assessment_oracle_met() -> None:
         _counter("ok", 0, 990.0, attributes={"http.response.status_code": 200}),
         _counter("err", 1, 10.0, attributes={"http.response.status_code": 500}),
     ]
-    asmt = evaluate_slo(
-        definition=_definition(), observations=obs, window=WINDOW, evaluated_at=NOW
-    )
+    asmt = evaluate_slo(definition=_definition(), observations=obs, window=WINDOW, evaluated_at=NOW)
     assert asmt.state is AssessmentState.MET
     assert asmt.sli == pytest.approx(0.99)
     assert asmt.eligible == 1000.0 and asmt.good == 990.0 and asmt.bad == 10.0
@@ -175,10 +173,8 @@ def test_simulated_source_provenance_is_labeled_not_promoted() -> None:
     # C101-F009: a MET computed on simulated traffic must be *labeled* —
     # simulated data can never masquerade as real production health.
     obs = [
-        _counter("ok", 0, 990.0, source="sim_1",
-                 attributes={"http.response.status_code": 200}),
-        _counter("err", 1, 10.0, source="sim_1",
-                 attributes={"http.response.status_code": 500}),
+        _counter("ok", 0, 990.0, source="sim_1", attributes={"http.response.status_code": 200}),
+        _counter("err", 1, 10.0, source="sim_1", attributes={"http.response.status_code": 500}),
     ]
     asmt = evaluate_slo(
         definition=_definition(),
@@ -196,8 +192,7 @@ def test_simulated_source_provenance_is_labeled_not_promoted() -> None:
 
 
 def test_unknown_source_kind_leaves_assessment_unchanged() -> None:
-    obs = [_counter("ok", 0, 100.0,
-                    attributes={"http.response.status_code": 200})]
+    obs = [_counter("ok", 0, 100.0, attributes={"http.response.status_code": 200})]
     asmt = evaluate_slo(
         definition=_definition(),
         observations=obs,
@@ -217,9 +212,7 @@ def test_dedicated_indicators_do_not_consume_budget() -> None:
         _counter("denied", 1, 6.0, attributes={"http.response.status_code": 403}),
         _counter("limited", 2, 4.0, attributes={"http.response.status_code": 429}),
     ]
-    asmt = evaluate_slo(
-        definition=_definition(), observations=obs, window=WINDOW, evaluated_at=NOW
-    )
+    asmt = evaluate_slo(definition=_definition(), observations=obs, window=WINDOW, evaluated_at=NOW)
     assert asmt.state is AssessmentState.MET
     assert asmt.sli == pytest.approx(1.0)
     assert asmt.bad == 0.0
@@ -229,9 +222,7 @@ def test_dedicated_indicators_do_not_consume_budget() -> None:
             error_status_classes=["5xx"], error_status_codes=[429]
         )
     )
-    promoted = evaluate_slo(
-        definition=strict, observations=obs, window=WINDOW, evaluated_at=NOW
-    )
+    promoted = evaluate_slo(definition=strict, observations=obs, window=WINDOW, evaluated_at=NOW)
     assert promoted.bad == 4.0
     assert promoted.sli == pytest.approx(0.96)
 
@@ -245,9 +236,7 @@ def test_latency_sli_oracle() -> None:
         thresholds=SloThresholds(latency_ms=75.0),
         target=0.5,
     )
-    asmt = evaluate_slo(
-        definition=definition, observations=obs, window=WINDOW, evaluated_at=NOW
-    )
+    asmt = evaluate_slo(definition=definition, observations=obs, window=WINDOW, evaluated_at=NOW)
     assert asmt.sli == pytest.approx(0.75)
     assert asmt.good == pytest.approx(15.0)
     assert asmt.bad == pytest.approx(5.0)
@@ -261,9 +250,7 @@ def test_latency_sli_without_distribution_is_insufficient() -> None:
         thresholds=SloThresholds(latency_ms=75.0),
         target=0.5,
     )
-    asmt = evaluate_slo(
-        definition=definition, observations=obs, window=WINDOW, evaluated_at=NOW
-    )
+    asmt = evaluate_slo(definition=definition, observations=obs, window=WINDOW, evaluated_at=NOW)
     assert asmt.state is AssessmentState.INSUFFICIENT_DATA
     assert asmt.sli is None
     assert "no_latency_distribution" in asmt.limitations
@@ -273,9 +260,7 @@ def test_latency_sli_without_distribution_is_insufficient() -> None:
 
 
 def test_insufficient_when_no_observations() -> None:
-    asmt = evaluate_slo(
-        definition=_definition(), observations=[], window=WINDOW, evaluated_at=NOW
-    )
+    asmt = evaluate_slo(definition=_definition(), observations=[], window=WINDOW, evaluated_at=NOW)
     assert asmt.state is AssessmentState.INSUFFICIENT_DATA
     assert asmt.sli is None
     assert "no_observations_in_window" in asmt.limitations
@@ -292,9 +277,7 @@ def test_incompatible_when_no_request_plane() -> None:
             value=3.0,
         )
     ]
-    asmt = evaluate_slo(
-        definition=_definition(), observations=obs, window=WINDOW, evaluated_at=NOW
-    )
+    asmt = evaluate_slo(definition=_definition(), observations=obs, window=WINDOW, evaluated_at=NOW)
     assert asmt.state is AssessmentState.INCOMPATIBLE_INPUTS
     assert "no_shared_request_population" in asmt.limitations
 
@@ -304,9 +287,7 @@ def test_all_sampled_is_insufficient_not_healthy() -> None:
         _counter("s", 0, 500.0, quality=QualityState.SAMPLED),
         _counter("s2", 1, 700.0, quality=QualityState.SAMPLED),
     ]
-    asmt = evaluate_slo(
-        definition=_definition(), observations=obs, window=WINDOW, evaluated_at=NOW
-    )
+    asmt = evaluate_slo(definition=_definition(), observations=obs, window=WINDOW, evaluated_at=NOW)
     assert asmt.state is AssessmentState.INSUFFICIENT_DATA
     assert asmt.sli is None
     assert "all_observations_excluded" in asmt.limitations
@@ -316,12 +297,9 @@ def test_all_sampled_is_insufficient_not_healthy() -> None:
 def test_multiple_sources_identified_not_summed() -> None:
     obs = [
         _counter("a", 0, 1000.0, source="src_a"),
-        _counter("b", 1, 10.0, source="src_b",
-                 attributes={"http.response.status_code": 500}),
+        _counter("b", 1, 10.0, source="src_b", attributes={"http.response.status_code": 500}),
     ]
-    asmt = evaluate_slo(
-        definition=_definition(), observations=obs, window=WINDOW, evaluated_at=NOW
-    )
+    asmt = evaluate_slo(definition=_definition(), observations=obs, window=WINDOW, evaluated_at=NOW)
     assert len(asmt.per_source) == 2
     assert asmt.primary_source_id == "src_a"  # largest eligible population
     assert asmt.eligible == 1000.0  # not 1010 — sources never sum
@@ -333,9 +311,7 @@ def test_evaluation_is_reproducible() -> None:
         _counter("ok", 0, 990.0, attributes={"http.response.status_code": 200}),
         _counter("err", 1, 10.0, attributes={"http.response.status_code": 500}),
     ]
-    a = evaluate_slo(
-        definition=_definition(), observations=obs, window=WINDOW, evaluated_at=NOW
-    )
+    a = evaluate_slo(definition=_definition(), observations=obs, window=WINDOW, evaluated_at=NOW)
     b = evaluate_slo(
         definition=_definition(), observations=list(obs), window=WINDOW, evaluated_at=NOW
     )
@@ -346,8 +322,7 @@ def test_evaluation_is_reproducible() -> None:
 
 def test_operation_scoped_slo() -> None:
     obs = [
-        _counter("a", 0, 100.0, operation="op_a",
-                 attributes={"http.response.status_code": 500}),
+        _counter("a", 0, 100.0, operation="op_a", attributes={"http.response.status_code": 500}),
         _counter("b", 1, 100.0, operation="op_b"),
     ]
     asmt = evaluate_slo(

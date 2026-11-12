@@ -44,9 +44,7 @@ def _handoff(**over) -> InvestigationHandoffV1:
 
 class TestHandoffToDoctorRequest:
     def test_v1_handoff_emits_forge_request_v2(self) -> None:
-        req = handoff_to_doctor_request(
-            _handoff(), target="platform/orders", clock="2026-01-01"
-        )
+        req = handoff_to_doctor_request(_handoff(), target="platform/orders", clock="2026-01-01")
         assert req["protocol_version"] == DOCTOR_PROTOCOL_VERSION
         assert req["request_id"] == "hnd_test1"
         assert req["target"] == "platform/orders"
@@ -98,14 +96,9 @@ class TestIngestDoctorBundle:
         """C10-F022: an arbitrary object with a `findings` key is not a
         Doctor bundle — the handoff marker is required, never assumed."""
         with pytest.raises(ContractError, match="handoff_version"):
-            ingest_doctor_bundle(
-                {"schema": "wrong/schema",
-                 "findings": [{"forged": True}]}
-            )
+            ingest_doctor_bundle({"schema": "wrong/schema", "findings": [{"forged": True}]})
         with pytest.raises(ContractError, match="handoff_version"):
-            ingest_doctor_bundle_json(
-                json.dumps({"findings": []})
-            )
+            ingest_doctor_bundle_json(json.dumps({"findings": []}))
 
     def test_malformed_rejected(self) -> None:
         with pytest.raises(ContractError):
@@ -158,9 +151,7 @@ class TestResponseToResult:
         return r
 
     def test_ok_returns_payload(self) -> None:
-        assert response_to_result(self._resp("ok"))["schema"] == (
-            "theforge/ExecutionResult/v1"
-        )
+        assert response_to_result(self._resp("ok"))["schema"] == ("theforge/ExecutionResult/v1")
 
     def test_partial_returns_payload(self) -> None:
         assert response_to_result(self._resp("partial"))["schema"] == (
@@ -169,15 +160,11 @@ class TestResponseToResult:
 
     def test_refused_named(self) -> None:
         with pytest.raises(IntegrationRefused):
-            response_to_result(
-                self._resp("refused", error={"detail": "denied"})
-            )
+            response_to_result(self._resp("refused", error={"detail": "denied"}))
 
     def test_error_unavailable(self) -> None:
         with pytest.raises(IntegrationUnavailable):
-            response_to_result(
-                self._resp("error", error={"detail": "boom"})
-            )
+            response_to_result(self._resp("error", error={"detail": "boom"}))
 
     def test_wrong_protocol_named(self) -> None:
         with pytest.raises(IntegrationRefused):
@@ -185,6 +172,4 @@ class TestResponseToResult:
 
     def test_wrong_result_schema_contract_error(self) -> None:
         with pytest.raises(ContractError):
-            response_to_result(
-                self._resp("ok", payload={"schema": "theforge/Other/v1"})
-            )
+            response_to_result(self._resp("ok", payload={"schema": "theforge/Other/v1"}))

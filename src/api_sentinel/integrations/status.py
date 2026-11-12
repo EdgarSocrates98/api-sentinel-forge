@@ -53,15 +53,14 @@ def _doctor_state() -> dict[str, object]:
             "forge": DOCTOR_FORGE,
             "state": IntegrationState.AVAILABLE.value,
             "mode": DoctorMode.IN_PROCESS.value,
-            "reason": "forge_doctor_api importable — in-process delegation "
-                      "through DoctorBoundary",
+            "reason": "forge_doctor_api importable — in-process delegation through DoctorBoundary",
         }
     return {
         "forge": DOCTOR_FORGE,
         "state": IntegrationState.UNVERIFIED.value,
         "mode": DoctorMode.HANDOFF_FILE.value,
         "reason": "forge_doctor_api not importable — handoff_file transport "
-                  "emits envelopes; the Doctor peer is unconfirmed",
+        "emits envelopes; the Doctor peer is unconfirmed",
     }
 
 
@@ -102,8 +101,8 @@ def _atlas_state(
             "state": IntegrationState.UNAVAILABLE.value,
             "mode": "file",
             "reason": "no atlas export configured — set "
-                      "integrations.atlas.db_path or .export in "
-                      "workspace config",
+            "integrations.atlas.db_path or .export in "
+            "workspace config",
         }
     try:
         FileStructuralContext.load(atlas_manifest)
@@ -131,7 +130,7 @@ def _the_forge_state() -> dict[str, object]:
         "state": IntegrationState.AVAILABLE.value,
         "mode": "local_boundary",
         "reason": "the Sentinel's forge/v1 provider seam lives in this "
-                  "process — describe/health/capabilities/execute are local",
+        "process — describe/health/capabilities/execute are local",
     }
 
 
@@ -142,15 +141,15 @@ def _bridge_state() -> dict[str, object]:
             "state": IntegrationState.UNVERIFIED.value,
             "mode": "in_process",
             "reason": "forge_agent_bridge importable — session governance "
-                      "is Bridge-owned; live delegation not yet confirmed",
+            "is Bridge-owned; live delegation not yet confirmed",
         }
     return {
         "forge": BRIDGE_FORGE,
         "state": IntegrationState.UNVERIFIED.value,
         "mode": "file",
         "reason": "forge_agent_bridge not importable — governed session "
-                  "requests emit envelopes under agent_sessions/ for a "
-                  "separately-run Bridge; the peer is unconfirmed",
+        "requests emit envelopes under agent_sessions/ for a "
+        "separately-run Bridge; the peer is unconfirmed",
     }
 
 
@@ -161,14 +160,14 @@ def _lens_state() -> dict[str, object]:
             "state": IntegrationState.UNVERIFIED.value,
             "mode": "in_process",
             "reason": "forge_lens importable — trace references resolve "
-                      "through the Lens store; payloads stay Lens-owned",
+            "through the Lens store; payloads stay Lens-owned",
         }
     return {
         "forge": LENS_FORGE,
         "state": IntegrationState.UNAVAILABLE.value,
         "mode": "file",
         "reason": "forge_lens not importable — set integrations.lens.refs "
-                  "to an exported refs manifest for trace references",
+        "to an exported refs manifest for trace references",
     }
 
 
@@ -178,16 +177,15 @@ def _data_sentinel_state() -> dict[str, object]:
             "forge": DATA_SENTINEL_FORGE,
             "state": IntegrationState.UNVERIFIED.value,
             "mode": "in_process",
-            "reason": "data_sentinel importable — domain-triggered "
-                      "stale-data handoffs only",
+            "reason": "data_sentinel importable — domain-triggered stale-data handoffs only",
         }
     return {
         "forge": DATA_SENTINEL_FORGE,
         "state": IntegrationState.UNVERIFIED.value,
         "mode": "handoff_file",
         "reason": "data_sentinel not importable — stale-data handoffs "
-                  "emit envelopes under handoffs/ for a separately-run "
-                  "peer; generic telemetry never leaves",
+        "emit envelopes under handoffs/ for a separately-run "
+        "peer; generic telemetry never leaves",
     }
 
 
@@ -198,15 +196,15 @@ def _apiforge_state() -> dict[str, object]:
             "state": IntegrationState.UNVERIFIED.value,
             "mode": "in_process",
             "reason": "apiforge importable — implementation-request "
-                      "handoffs require VERIFIED hypotheses",
+            "handoffs require VERIFIED hypotheses",
         }
     return {
         "forge": APIFORGE_FORGE,
         "state": IntegrationState.UNVERIFIED.value,
         "mode": "handoff_file",
         "reason": "apiforge not importable — implementation-request "
-                  "envelopes emit under handoffs/ for a separately-run "
-                  "peer; the Sentinel never edits API Forge's code",
+        "envelopes emit under handoffs/ for a separately-run "
+        "peer; the Sentinel never edits API Forge's code",
     }
 
 
@@ -220,9 +218,7 @@ def integration_status(
     return sorted(
         (
             _apiforge_state(),
-            _atlas_state(
-                atlas_manifest, atlas_db, atlas_repository, atlas_snapshot_id
-            ),
+            _atlas_state(atlas_manifest, atlas_db, atlas_repository, atlas_snapshot_id),
             _bridge_state(),
             _data_sentinel_state(),
             _doctor_state(),

@@ -91,20 +91,21 @@ class SentinelBoundary:
                 # execute pair is omitted here, never padded with a fake
                 # action; it stays visible in `capabilities()`.
                 continue
-            caps.append({
-                "id": cap.capability_id,
-                "description": cap.notes or f"Sentinel capability {cap.capability_id}",
-                "actions": actions,
-                "default_action": actions[0] if actions else None,
-                "state": (
-                    "supported" if cap.status is CapabilityStatus.AVAILABLE
-                    else "heuristic"
-                ),
-                "operation_class": "read_only",
-                "signals": {"keywords": [cap.capability_id.split(".", 1)[-1]]},
-                "finding_class": _FINDING_CLASS.get(cap.capability_id, "runtime"),
-                "accepts_handoff": cap.capability_id == "api.doctor-handoff",
-            })
+            caps.append(
+                {
+                    "id": cap.capability_id,
+                    "description": cap.notes or f"Sentinel capability {cap.capability_id}",
+                    "actions": actions,
+                    "default_action": actions[0] if actions else None,
+                    "state": (
+                        "supported" if cap.status is CapabilityStatus.AVAILABLE else "heuristic"
+                    ),
+                    "operation_class": "read_only",
+                    "signals": {"keywords": [cap.capability_id.split(".", 1)[-1]]},
+                    "finding_class": _FINDING_CLASS.get(cap.capability_id, "runtime"),
+                    "accepts_handoff": cap.capability_id == "api.doctor-handoff",
+                }
+            )
         return {
             "schema": "theforge/ForgeManifest/v1",
             "id": PROVIDER_ID,
@@ -113,8 +114,10 @@ class SentinelBoundary:
             "ops": ["describe", "health", "capabilities", "execute"],
             "capabilities": caps,
             "execution": {
-                "local": True, "offline": True,
-                "requires_network": False, "deterministic": True,
+                "local": True,
+                "offline": True,
+                "requires_network": False,
+                "deterministic": True,
             },
             "features": ["handoff/v1"],
             "limitations": [
@@ -135,10 +138,7 @@ class SentinelBoundary:
                 {
                     "name": "workspace_db",
                     "ok": db_ok,
-                    "detail": (
-                        str(ws.db_path) if ws
-                        else "no workspace resolvable"
-                    ),
+                    "detail": (str(ws.db_path) if ws else "no workspace resolvable"),
                 },
             ],
         }
@@ -159,7 +159,8 @@ class SentinelBoundary:
             ],
             unknowns=[
                 f"{c.capability_id}: declared, not yet evidence-backed"
-                for c in caps if c.status is CapabilityStatus.DECLARED
+                for c in caps
+                if c.status is CapabilityStatus.DECLARED
             ],
         )
         return payload
@@ -179,22 +180,21 @@ class SentinelBoundary:
         )
         if cap is None:
             raise IntegrationRefused(
-                THE_FORGE, f"unknown capability {capability!r}",
+                THE_FORGE,
+                f"unknown capability {capability!r}",
                 details={"code": "APISENT-UNKNOWN-CAPABILITY"},
             )
         if cap.status is not CapabilityStatus.AVAILABLE:
             raise IntegrationRefused(
                 THE_FORGE,
-                f"capability {capability!r} is {cap.status.value} — "
-                "discovered but not executable",
+                f"capability {capability!r} is {cap.status.value} — discovered but not executable",
                 details={"code": "APISENT-CAPABILITY-UNAVAILABLE"},
             )
         declared = _ACTIONS.get(capability, [])
         if action not in declared:
             raise IntegrationRefused(
                 THE_FORGE,
-                f"unknown action {action!r} for {capability!r} "
-                f"(declared: {sorted(declared)})",
+                f"unknown action {action!r} for {capability!r} (declared: {sorted(declared)})",
                 details={"code": "APISENT-UNKNOWN-ACTION"},
             )
         executor = _EXECUTORS.get((capability, action))
@@ -208,12 +208,14 @@ class SentinelBoundary:
             result: dict[str, Any] = executor(self, payload)
         except NotFoundError as exc:
             raise IntegrationRefused(
-                THE_FORGE, str(exc),
+                THE_FORGE,
+                str(exc),
                 details={"code": "APISENT-NOT-FOUND"},
             ) from exc
         except ValidationError as exc:
             raise IntegrationRefused(
-                THE_FORGE, str(exc),
+                THE_FORGE,
+                str(exc),
                 details={"code": "APISENT-VALIDATION"},
             ) from exc
         except (WorkspaceError, sqlite3.Error, OSError) as exc:
@@ -221,7 +223,8 @@ class SentinelBoundary:
             # store is unreachable, so the pair is a named refusal, never a
             # fabricated empty result nor an APISENT-INTERNAL crash.
             raise IntegrationRefused(
-                THE_FORGE, f"workspace unavailable: {exc}",
+                THE_FORGE,
+                f"workspace unavailable: {exc}",
                 details={"code": "APISENT-WORKSPACE-UNAVAILABLE"},
             ) from exc
         return result
@@ -232,7 +235,8 @@ class SentinelBoundary:
         """The forge/v1 wire gate: Request dict in → Response dict out."""
         if request.get("kind") != "Request" or request.get("protocol") != FORGE_PROTOCOL:
             return self._respond(
-                request, status="refused",
+                request,
+                status="refused",
                 error={
                     "code": "APISENT-PROTOCOL",
                     "detail": f"unsupported protocol {request.get('protocol')!r}",
@@ -245,15 +249,12 @@ class SentinelBoundary:
             if op == "health":
                 return self._respond(request, status="ok", payload=self.health())
             if op == "capabilities":
-                return self._respond(
-                    request, status="ok", payload=self.capabilities(request)
-                )
+                return self._respond(request, status="ok", payload=self.capabilities(request))
             if op == "execute":
-                return self._respond(
-                    request, status="ok", payload=self.execute(request)
-                )
+                return self._respond(request, status="ok", payload=self.execute(request))
             return self._respond(
-                request, status="refused",
+                request,
+                status="refused",
                 error={
                     "code": "APISENT-UNKNOWN-OP",
                     "detail": f"unsupported op {op!r}",
@@ -261,7 +262,8 @@ class SentinelBoundary:
             )
         except IntegrationRefused as exc:
             return self._respond(
-                request, status="refused",
+                request,
+                status="refused",
                 error={
                     "code": exc.details.get("code", "APISENT-REFUSED"),
                     "detail": exc.reason,
@@ -269,12 +271,14 @@ class SentinelBoundary:
             )
         except SentinelError as exc:
             return self._respond(
-                request, status="error",
+                request,
+                status="error",
                 error={"code": exc.code, "detail": exc.message},
             )
         except Exception as exc:
             return self._respond(
-                request, status="error",
+                request,
+                status="error",
                 error={"code": "APISENT-INTERNAL", "detail": str(exc)},
             )
 
@@ -321,9 +325,7 @@ class SentinelBoundary:
             context = payload.get("context") or {}
             for root in (task.get("workspace_root"), context.get("root")):
                 if root and (Path(str(root)) / ".api-sentinel").is_dir():
-                    return resolve_workspace(
-                        explicit=Path(str(root)) / ".api-sentinel"
-                    )
+                    return resolve_workspace(explicit=Path(str(root)) / ".api-sentinel")
         return resolve_workspace()
 
     def _result(
@@ -338,9 +340,7 @@ class SentinelBoundary:
         return {
             "schema": EXECUTION_RESULT_SCHEMA,
             "producer": PRODUCER,
-            "created_at": datetime.now(UTC).strftime(
-                "%Y-%m-%dT%H:%M:%SZ"
-            ),
+            "created_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "status": status,
             "findings": findings or [],
             "evidence": evidence or [],
@@ -355,9 +355,7 @@ class SentinelBoundary:
 Executor = Callable[["SentinelBoundary", dict[str, Any]], dict[str, Any]]
 
 
-def _exec_service_inventory(
-    self: SentinelBoundary, payload: dict[str, Any]
-) -> dict[str, Any]:
+def _exec_service_inventory(self: SentinelBoundary, payload: dict[str, Any]) -> dict[str, Any]:
     from api_sentinel.application.use_cases import ListServices
     from api_sentinel.infrastructure.storage import SqliteUnitOfWork
 
@@ -381,10 +379,7 @@ def _exec_service_inventory(
                 "id": f"svc-row:{s.service_id}",
                 "epistemic": "observed",
                 "subject": s.service_id,
-                "claim": (
-                    f"persisted service row {s.service_name} "
-                    f"env={s.environment_id}"
-                ),
+                "claim": (f"persisted service row {s.service_name} env={s.environment_id}"),
                 "producer": PRODUCER,
             }
             for s in services
@@ -393,9 +388,7 @@ def _exec_service_inventory(
     )
 
 
-def _exec_runtime_observation(
-    self: SentinelBoundary, payload: dict[str, Any]
-) -> dict[str, Any]:
+def _exec_runtime_observation(self: SentinelBoundary, payload: dict[str, Any]) -> dict[str, Any]:
     from api_sentinel.infrastructure.storage import SqliteUnitOfWork
 
     service_id = _param(payload, "service_id")
@@ -417,7 +410,7 @@ def _exec_runtime_observation(
             {
                 "id": "observations",
                 "title": f"{len(obs)} observations"
-                         + (f" for {service_id}" if service_id else " (all services)"),
+                + (f" for {service_id}" if service_id else " (all services)"),
                 "severity": "info",
                 "evidence_ids": [],
             }
@@ -457,9 +450,7 @@ def _wire_severity(value: Any) -> str:
     return _SEVERITY_WIRE.get(str(value), "info")
 
 
-def _ref_evidence(
-    refs: list[str], *, subject: str, claim: str
-) -> list[dict[str, Any]]:
+def _ref_evidence(refs: list[str], *, subject: str, claim: str) -> list[dict[str, Any]]:
     """Sentinel-side evidence refs → theforge Evidence records.
 
     theforge/ExecutionResult/v1 enforces that every finding evidence_id is
@@ -473,13 +464,15 @@ def _ref_evidence(
         if ref in seen:
             continue
         seen.add(ref)
-        out.append({
-            "id": ref,
-            "epistemic": "observed",
-            "subject": subject,
-            "claim": f"{claim} (ref {ref})",
-            "producer": PRODUCER,
-        })
+        out.append(
+            {
+                "id": ref,
+                "epistemic": "observed",
+                "subject": subject,
+                "claim": f"{claim} (ref {ref})",
+                "producer": PRODUCER,
+            }
+        )
     return out
 
 
@@ -489,16 +482,13 @@ def _require(payload: dict[str, Any], name: str) -> Any:
     if value is None or (isinstance(value, str) and not value.strip()):
         raise IntegrationRefused(
             THE_FORGE,
-            f"execute requires parameter {name!r} "
-            "(task.constraints or payload)",
+            f"execute requires parameter {name!r} (task.constraints or payload)",
             details={"code": "APISENT-MISSING-PARAM"},
         )
     return value
 
 
-def _service_scope(
-    payload: dict[str, Any], ws: Workspace
-) -> tuple[str | None, str | None]:
+def _service_scope(payload: dict[str, Any], ws: Workspace) -> tuple[str | None, str | None]:
     """Resolve the service scope for service-scoped execute pairs.
 
     `service_id` in task.constraints wins. Absent that — the forge/v1 wire
@@ -518,8 +508,7 @@ def _service_scope(
     if not ids:
         raise IntegrationRefused(
             THE_FORGE,
-            "execute requires parameter 'service_id' — the workspace "
-            "registers no services",
+            "execute requires parameter 'service_id' — the workspace registers no services",
             details={"code": "APISENT-MISSING-PARAM"},
         )
     return None, (
@@ -551,9 +540,7 @@ def _window(payload: dict[str, Any]) -> tuple[Any, Any]:
     )
 
 
-def _exec_slo_assessment(
-    self: SentinelBoundary, payload: dict[str, Any]
-) -> dict[str, Any]:
+def _exec_slo_assessment(self: SentinelBoundary, payload: dict[str, Any]) -> dict[str, Any]:
     """`api.slo-assessment/evaluate` → EvaluateSlo over real definitions.
 
     `slo_id` selects one definition (optional `revision`); without it every
@@ -606,42 +593,38 @@ def _exec_slo_assessment(
             revision=int(revision) if revision else None,
         )
         evaluated += 1
-        sli = (
-            f"{assessment.sli:.4f}" if assessment.sli is not None else "n/a"
-        )
+        sli = f"{assessment.sli:.4f}" if assessment.sli is not None else "n/a"
         ev_id = f"slo-assessment:{assessment.assessment_id}"
-        evidence.append({
-            "id": ev_id,
-            "epistemic": "observed",
-            "subject": definition.slo_id,
-            "claim": (
-                f"persisted assessment {assessment.assessment_id} "
-                f"rule={assessment.rule_id}@{assessment.rule_version} "
-                f"quality={assessment.quality.value}"
-            ),
-            "producer": PRODUCER,
-        })
-        findings.append({
-            "id": f"{definition.slo_id}@{definition.revision}",
-            "title": (
-                f"SLO {definition.slo_id} rev {definition.revision}: "
-                f"{assessment.state.value} "
-                f"(sli={sli} target={definition.target})"
-            ),
-            "severity": (
-                "info" if assessment.state.value == "MET" else "high"
-            ),
-            "evidence_ids": [ev_id],
-        })
+        evidence.append(
+            {
+                "id": ev_id,
+                "epistemic": "observed",
+                "subject": definition.slo_id,
+                "claim": (
+                    f"persisted assessment {assessment.assessment_id} "
+                    f"rule={assessment.rule_id}@{assessment.rule_version} "
+                    f"quality={assessment.quality.value}"
+                ),
+                "producer": PRODUCER,
+            }
+        )
+        findings.append(
+            {
+                "id": f"{definition.slo_id}@{definition.revision}",
+                "title": (
+                    f"SLO {definition.slo_id} rev {definition.revision}: "
+                    f"{assessment.state.value} "
+                    f"(sli={sli} target={definition.target})"
+                ),
+                "severity": ("info" if assessment.state.value == "MET" else "high"),
+                "evidence_ids": [ev_id],
+            }
+        )
     status = "ok" if evaluated == len(definitions) else "partial"
-    return self._result(
-        status=status, findings=findings, evidence=evidence, unknowns=unknowns
-    )
+    return self._result(status=status, findings=findings, evidence=evidence, unknowns=unknowns)
 
 
-def _exec_anomaly_detection(
-    self: SentinelBoundary, payload: dict[str, Any]
-) -> dict[str, Any]:
+def _exec_anomaly_detection(self: SentinelBoundary, payload: dict[str, Any]) -> dict[str, Any]:
     """`api.anomaly-detection/run` → RunDetection over a real service."""
     from api_sentinel.application.use_cases import RunDetection
     from api_sentinel.infrastructure.storage import SqliteUnitOfWork
@@ -651,9 +634,7 @@ def _exec_anomaly_detection(
     if service_id is None:
         return self._result(status="partial", unknowns=[scope_unknown or ""])
     window_start, window_end = _window(payload)
-    report = RunDetection(
-        SqliteUnitOfWork(ws.db_path), self.clock, self.ids
-    ).execute(
+    report = RunDetection(SqliteUnitOfWork(ws.db_path), self.clock, self.ids).execute(
         service_id=service_id,
         window_start=window_start,
         window_end=window_end,
@@ -664,10 +645,7 @@ def _exec_anomaly_detection(
         findings=[
             {
                 "id": a.anomaly_id,
-                "title": (
-                    f"{a.rule.detector_id} on {a.service_id}: "
-                    f"{a.severity.value}"
-                ),
+                "title": (f"{a.rule.detector_id} on {a.service_id}: {a.severity.value}"),
                 "severity": _wire_severity(a.severity.value),
                 "evidence_ids": list(a.evidence_refs),
             }
@@ -697,18 +675,12 @@ def _exec_anomaly_detection(
         if anomalies
         else [
             "no new anomalies in the requested window"
-            + (
-                f" ({len(report.deduplicated)} deduplicated)"
-                if report.deduplicated
-                else ""
-            )
+            + (f" ({len(report.deduplicated)} deduplicated)" if report.deduplicated else "")
         ],
     )
 
 
-def _exec_incident_list(
-    self: SentinelBoundary, payload: dict[str, Any]
-) -> dict[str, Any]:
+def _exec_incident_list(self: SentinelBoundary, payload: dict[str, Any]) -> dict[str, Any]:
     """`api.incident-investigation/list` → ListIncidents (scoped, honest)."""
     from api_sentinel.application.use_cases import ListIncidents
     from api_sentinel.domain import ValidationError
@@ -723,9 +695,7 @@ def _exec_incident_list(
         try:
             status = IncidentStatus(str(raw_status))
         except ValueError as exc:
-            raise ValidationError(
-                f"unknown incident status {raw_status!r}"
-            ) from exc
+            raise ValidationError(f"unknown incident status {raw_status!r}") from exc
     ws = self._resolve_ws(payload)
     incidents = ListIncidents(SqliteUnitOfWork(ws.db_path)).execute(
         status=status, service_id=service_id, open_only=open_only
@@ -750,18 +720,14 @@ def _exec_incident_list(
     )
 
 
-def _exec_incident_show(
-    self: SentinelBoundary, payload: dict[str, Any]
-) -> dict[str, Any]:
+def _exec_incident_show(self: SentinelBoundary, payload: dict[str, Any]) -> dict[str, Any]:
     """`api.incident-investigation/show` → ShowIncident + journal summary."""
     from api_sentinel.application.use_cases import ShowIncident
     from api_sentinel.infrastructure.storage import SqliteUnitOfWork
 
     incident_id = _require(payload, "incident_id")
     ws = self._resolve_ws(payload)
-    view = ShowIncident(SqliteUnitOfWork(ws.db_path)).execute(
-        incident_id=incident_id
-    )
+    view = ShowIncident(SqliteUnitOfWork(ws.db_path)).execute(incident_id=incident_id)
     i = view.incident
     return self._result(
         status="ok",
@@ -795,9 +761,7 @@ def _exec_incident_show(
     )
 
 
-def _exec_deployment_correlation(
-    self: SentinelBoundary, payload: dict[str, Any]
-) -> dict[str, Any]:
+def _exec_deployment_correlation(self: SentinelBoundary, payload: dict[str, Any]) -> dict[str, Any]:
     """`api.deployment-correlation/correlate` → the LAB-003 report.
 
     Observed edges, structural context (when Atlas is wired in the
@@ -846,29 +810,25 @@ def _exec_deployment_correlation(
         for idx, e in enumerate(report.structural_edges)
     ]
     if report.suspected_origin:
-        edge_findings.append({
-            "id": "suspected-origin",
-            "title": (
-                "suspected origin (observed, not causal): "
-                f"{report.suspected_origin}"
-            ),
-            "severity": "medium",
-            "evidence_ids": [],
-        })
+        edge_findings.append(
+            {
+                "id": "suspected-origin",
+                "title": (f"suspected origin (observed, not causal): {report.suspected_origin}"),
+                "severity": "medium",
+                "evidence_ids": [],
+            }
+        )
     return self._result(
         status="ok" if edge_findings else "partial",
         findings=edge_findings,
         limitations=[
-            "correlation is not causation — observed and structural edges "
-            "stay distinct (docs/06)"
+            "correlation is not causation — observed and structural edges stay distinct (docs/06)"
         ],
         unknowns=list(report.unknowns),
     )
 
 
-def _exec_doctor_handoff(
-    self: SentinelBoundary, payload: dict[str, Any]
-) -> dict[str, Any]:
+def _exec_doctor_handoff(self: SentinelBoundary, payload: dict[str, Any]) -> dict[str, Any]:
     """`api.doctor-handoff/delegate` → DelegateToDoctor (real or named)."""
     from api_sentinel.infrastructure.storage import SqliteUnitOfWork
     from api_sentinel.integrations.service import (
@@ -909,9 +869,7 @@ def _exec_doctor_handoff(
                 "id": handoff_id,
                 "title": f"doctor handoff {outcome.status} ({outcome.mode})",
                 "severity": "info",
-                "evidence_ids": (
-                    [outcome.request_ref] if outcome.request_ref else []
-                ),
+                "evidence_ids": ([outcome.request_ref] if outcome.request_ref else []),
             }
         ],
         evidence=(

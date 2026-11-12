@@ -19,11 +19,5 @@ def integrations_status(
     """`available | unverified | unavailable` per Forge — a named state with
     a reason, never a simulated specialist result."""
     integrations = integration_status(atlas_manifest=ctx.atlas_manifest)
-    unknowns = [
-        f"{i['forge']}:{i['state']}"
-        for i in integrations
-        if i.get("state") != "available"
-    ]
-    return IntegrationStatusResponse(
-        integrations=integrations, unknowns=unknowns
-    )
+    unknowns = [f"{i['forge']}:{i['state']}" for i in integrations if i.get("state") != "available"]
+    return IntegrationStatusResponse(integrations=integrations, unknowns=unknowns)

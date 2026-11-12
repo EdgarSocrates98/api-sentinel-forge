@@ -37,15 +37,17 @@ def main() -> int:
     try:
         request = json.loads(sys.stdin.read())
     except json.JSONDecodeError as exc:
-        print(json.dumps(_error_reply(
-            "APISENT-ADAPTER-BAD-REQUEST",
-            f"stdin is not a JSON request: {exc}",
-        )))
+        print(
+            json.dumps(
+                _error_reply(
+                    "APISENT-ADAPTER-BAD-REQUEST",
+                    f"stdin is not a JSON request: {exc}",
+                )
+            )
+        )
         return 0
     if not isinstance(request, dict):
-        print(json.dumps(_error_reply(
-            "APISENT-ADAPTER-BAD-REQUEST", "request is not an object"
-        )))
+        print(json.dumps(_error_reply("APISENT-ADAPTER-BAD-REQUEST", "request is not an object")))
         return 0
     from api_sentinel.integrations.the_forge.boundary import SentinelBoundary
 

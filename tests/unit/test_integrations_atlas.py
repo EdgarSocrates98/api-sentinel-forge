@@ -60,26 +60,28 @@ class TestAtlasLoad:
     def test_invalid_manifest_named_refused(self, tmp_path: Path) -> None:
         bad = tmp_path / "bad.json"
         bad.write_text(
-            json.dumps({
-                "schema": "api-sentinel/AtlasExport/v1",
-                "exported_at": "2026-01-01T00:00:00Z",
-                "services": [{"name": "orders"}],  # missing required atlas_id
-            }),
+            json.dumps(
+                {
+                    "schema": "api-sentinel/AtlasExport/v1",
+                    "exported_at": "2026-01-01T00:00:00Z",
+                    "services": [{"name": "orders"}],  # missing required atlas_id
+                }
+            ),
             encoding="utf-8",
         )
         # Well-formed JSON, wrong shape → named refusal, never a crash.
         with pytest.raises(IntegrationRefused):
             FileStructuralContext.load(bad)
 
-    def test_unknown_schema_version_rejected_explicitly(
-        self, tmp_path: Path
-    ) -> None:
+    def test_unknown_schema_version_rejected_explicitly(self, tmp_path: Path) -> None:
         bad = tmp_path / "v9.json"
         bad.write_text(
-            json.dumps({
-                "schema": "api-sentinel/AtlasExport/v9",
-                "exported_at": "2026-01-01T00:00:00Z",
-            }),
+            json.dumps(
+                {
+                    "schema": "api-sentinel/AtlasExport/v9",
+                    "exported_at": "2026-01-01T00:00:00Z",
+                }
+            ),
             encoding="utf-8",
         )
         # Unknown version is rejected explicitly (ADR-006) — ContractError.
@@ -109,9 +111,7 @@ class TestResolveService:
         assert ctx.resolve_service(no_ref) is None
         # A ref pointing at a non-existent atlas entity — no name-match guess.
         dangling = _svc(
-            external_refs=[
-                ExternalRef(kind=ATLAS_REF_KIND, ref="atlas:svc:nonexistent")
-            ]
+            external_refs=[ExternalRef(kind=ATLAS_REF_KIND, ref="atlas:svc:nonexistent")]
         )
         assert ctx.resolve_service(dangling) is None
 

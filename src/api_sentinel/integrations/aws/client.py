@@ -257,9 +257,7 @@ def resolve_session(config: AwsSessionConfig) -> tuple[Any, str]:
 
     try:
         if config.profile:
-            session = boto3.Session(
-                profile_name=config.profile, region_name=config.region
-            )
+            session = boto3.Session(profile_name=config.profile, region_name=config.region)
         else:
             session = boto3.Session(region_name=config.region)
     except botocore.exceptions.BotoCoreError as exc:

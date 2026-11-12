@@ -76,9 +76,7 @@ def _run_verifier(root: Path, ev: Path) -> subprocess.CompletedProcess[str]:
 
 
 class TestSelfIncludingReceipt:
-    def test_receipt_embeds_all_steps_including_s18(
-        self, sandbox: Path
-    ) -> None:
+    def test_receipt_embeds_all_steps_including_s18(self, sandbox: Path) -> None:
         steps_dir = sandbox / "steps"
         _seed_steps(steps_dir, ["pass", "pass", "blocked"])
         receipt_path = fe.s18_receipt(sandbox / "ws")
@@ -95,14 +93,11 @@ class TestSelfIncludingReceipt:
         _seed_steps(sandbox / "steps", ["pass"])
         fe.s18_receipt(sandbox / "ws")
         manifest = json.loads(
-            (sandbox / "evidence" / "federated-e2e-manifest.json")
-            .read_text(encoding="utf-8")
+            (sandbox / "evidence" / "federated-e2e-manifest.json").read_text(encoding="utf-8")
         )
         paths = {e["path"].replace("\\", "/") for e in manifest["files"]}
         assert any(p.endswith("steps/S18.json") for p in paths)
-        assert any(
-            p.endswith("federated-e2e-receipt.json") for p in paths
-        )
+        assert any(p.endswith("federated-e2e-receipt.json") for p in paths)
         assert any(p.endswith("artifacts/demo.bin") for p in paths)
 
 
@@ -113,9 +108,7 @@ class TestVerifierAdversarial:
 
     def test_tampered_step_file_detected(self, sandbox: Path) -> None:
         self._run(sandbox)
-        (sandbox / "steps" / "S1.json").write_text(
-            '{"id": "S1", "status": "HAX"}'
-        )
+        (sandbox / "steps" / "S1.json").write_text('{"id": "S1", "status": "HAX"}')
         v = _run_verifier(sandbox, sandbox / "evidence")
         assert v.returncode == 1
         assert "sha256 mismatch" in v.stdout
@@ -140,9 +133,7 @@ class TestVerifierAdversarial:
 
     def test_unmanifested_evidence_detected(self, sandbox: Path) -> None:
         self._run(sandbox)
-        (sandbox / "steps" / "S99.json").write_text(
-            '{"id": "S99", "status": "pass"}'
-        )
+        (sandbox / "steps" / "S99.json").write_text('{"id": "S99", "status": "pass"}')
         v = _run_verifier(sandbox, sandbox / "evidence")
         assert v.returncode == 1
         assert "not in manifest" in v.stdout

@@ -35,20 +35,16 @@ class _CountingUoW(SqliteUnitOfWork):
     """
 
     _NEEDLES = (
-        ("SELECT observation_id, idempotency_key FROM runtime_observations",
-         "dedup_batch_query"),
-        ("SELECT * FROM runtime_observations WHERE observation_id=",
-         "dedup_point_query"),
-        ("SELECT DISTINCT source_id, window_start, window_end FROM runtime_observations",
-         "overlap_batch_query"),
-        ("SELECT DISTINCT source_id FROM runtime_observations",
-         "overlap_window_query"),
-        ("SELECT * FROM api_services WHERE service_id IN",
-         "service_batch_query"),
-        ("SELECT * FROM api_services WHERE environment_id=",
-         "service_by_name_query"),
-        ("SELECT * FROM api_services WHERE service_id=",
-         "service_point_query"),
+        ("SELECT observation_id, idempotency_key FROM runtime_observations", "dedup_batch_query"),
+        ("SELECT * FROM runtime_observations WHERE observation_id=", "dedup_point_query"),
+        (
+            "SELECT DISTINCT source_id, window_start, window_end FROM runtime_observations",
+            "overlap_batch_query",
+        ),
+        ("SELECT DISTINCT source_id FROM runtime_observations", "overlap_window_query"),
+        ("SELECT * FROM api_services WHERE service_id IN", "service_batch_query"),
+        ("SELECT * FROM api_services WHERE environment_id=", "service_by_name_query"),
+        ("SELECT * FROM api_services WHERE service_id=", "service_point_query"),
     )
 
     def __init__(self, db_path: Path | str) -> None:
@@ -99,22 +95,15 @@ def _content(lines: list[dict[str, Any]]) -> bytes:
     return ("\n".join(json.dumps(line) for line in lines) + "\n").encode()
 
 
-def test_dedup_and_service_lookups_are_batched(
-    db_path: Path, tmp_path: Path
-) -> None:
+def test_dedup_and_service_lookups_are_batched(db_path: Path, tmp_path: Path) -> None:
     with SqliteUnitOfWork(db_path) as uow:
         source = seed_service_and_source(uow)
         uow.commit()
 
     uow = _CountingUoW(db_path)
     base = datetime(2026, 1, 1, tzinfo=UTC)
-    lines = [
-        _line(f"obs_{i:04d}", base + timedelta(minutes=i))
-        for i in range(500)
-    ]
-    result = _pipeline(db_path, uow).ingest(
-        source=source, kind="jsonl", content=_content(lines)
-    )
+    lines = [_line(f"obs_{i:04d}", base + timedelta(minutes=i)) for i in range(500)]
+    result = _pipeline(db_path, uow).ingest(source=source, kind="jsonl", content=_content(lines))
     assert result.accepted == 500
     counts = uow.counts
     # No per-item queries remain: zero point lookups for services AND dedup.
@@ -129,17 +118,17 @@ def test_dedup_and_service_lookups_are_batched(
     assert counts.get("overlap_batch_query", 0) == 1, counts
 
 
-def test_overlap_batched_matches_per_window_semantics(
-    db_path: Path, tmp_path: Path
-) -> None:
+def test_overlap_batched_matches_per_window_semantics(db_path: Path, tmp_path: Path) -> None:
     """`overlapping_sources_in_ranges` == union of per-window calls,
     including the gap case: coverage BETWEEN two windows never counts."""
     with SqliteUnitOfWork(db_path) as uow:
         src_a = seed_service_and_source(uow, source_id="src_a")
         src_b = uow.sources.put(
             TelemetrySource(
-                source_id="src_b", kind="jsonl-file",
-                service_id="svc_lab_payments", created_at=NOW,
+                source_id="src_b",
+                kind="jsonl-file",
+                service_id="svc_lab_payments",
+                created_at=NOW,
             )
         )
         uow.commit()
@@ -151,9 +140,7 @@ def test_overlap_batched_matches_per_window_semantics(
         _line("a_1", t0 + timedelta(minutes=2), source_id="src_a"),
         _line("a_2", t0 + timedelta(minutes=5), source_id="src_a"),
     ]
-    r = _pipeline(db_path).ingest(
-        source=src_a, kind="jsonl", content=_content(a_lines)
-    )
+    r = _pipeline(db_path).ingest(source=src_a, kind="jsonl", content=_content(a_lines))
     assert r.accepted == 3
 
     # src_b queries windows [0,1) (overlap), [3,4) (the gap — NO overlap),
@@ -185,26 +172,19 @@ def test_overlap_batched_matches_per_window_semantics(
     assert batched == expected == {"src_a"}
 
     # End-to-end: the ingest itself reports the same overlap set.
-    r = _pipeline(db_path).ingest(
-        source=src_b, kind="jsonl", content=_content(b_lines)
-    )
+    r = _pipeline(db_path).ingest(source=src_b, kind="jsonl", content=_content(b_lines))
     assert r.accepted == 3
     assert r.overlapping_sources == ["src_a"]
 
 
-def test_replay_equivalence_chunked_vs_whole(
-    db_path: Path, tmp_path: Path
-) -> None:
+def test_replay_equivalence_chunked_vs_whole(db_path: Path, tmp_path: Path) -> None:
     """Chunked vs whole ingest → identical accepted/skipped/quarantined and
     identical stored rows; replay of the same payload → full no-op."""
     with SqliteUnitOfWork(db_path) as uow:
         source = seed_service_and_source(uow)
         uow.commit()
     base = datetime(2026, 1, 1, tzinfo=UTC)
-    lines = [
-        _line(f"obs_{i:04d}", base + timedelta(minutes=i))
-        for i in range(300)
-    ]
+    lines = [_line(f"obs_{i:04d}", base + timedelta(minutes=i)) for i in range(300)]
     content = _content(lines)
 
     r1 = _pipeline(db_path).ingest(source=source, kind="jsonl", content=content)
@@ -217,9 +197,7 @@ def test_replay_equivalence_chunked_vs_whole(
         assert uow.observations.count() == 300
 
 
-def test_identical_redelivery_skips_conflicting_quarantines(
-    db_path: Path, tmp_path: Path
-) -> None:
+def test_identical_redelivery_skips_conflicting_quarantines(db_path: Path, tmp_path: Path) -> None:
     """The dedup decision (skip vs conflict-quarantine) is unchanged by
     batching: same id + same content → no-op; same id + different content
     → ``conflicting_observation_id``, never a rewrite."""
@@ -228,26 +206,21 @@ def test_identical_redelivery_skips_conflicting_quarantines(
         uow.commit()
     base = datetime(2026, 1, 1, tzinfo=UTC)
     original = _line("obs_dup", base)
-    r1 = _pipeline(db_path).ingest(
-        source=source, kind="jsonl", content=_content([original])
-    )
+    r1 = _pipeline(db_path).ingest(source=source, kind="jsonl", content=_content([original]))
     assert r1.accepted == 1
 
     # New payload (different batch key): same id verbatim → skipped.
     r2 = _pipeline(db_path).ingest(
-        source=source, kind="jsonl",
+        source=source,
+        kind="jsonl",
         content=_content([original, _line("obs_new", base)]),
     )
     assert (r2.accepted, r2.skipped_duplicates) == (1, 1)
 
     # Same id, different content → conflicting redelivery → quarantine.
     conflicted = dict(original)
-    conflicted["measurement"] = {
-        "kind": "counter", "unit": "requests", "value": 999.0
-    }
-    r3 = _pipeline(db_path).ingest(
-        source=source, kind="jsonl", content=_content([conflicted])
-    )
+    conflicted["measurement"] = {"kind": "counter", "unit": "requests", "value": 999.0}
+    r3 = _pipeline(db_path).ingest(source=source, kind="jsonl", content=_content([conflicted]))
     assert (r3.accepted, r3.quarantined) == (0, 1)
     with SqliteUnitOfWork(db_path) as uow:
         reasons = [e.reason for e in uow.quarantine.list()]
@@ -265,18 +238,11 @@ def test_get_many_and_idempotency_keys_chunked(db_path: Path) -> None:
         source = seed_service_and_source(uow)
         uow.commit()
     base = datetime(2026, 1, 1, tzinfo=UTC)
-    lines = [
-        _line(f"obs_{i:04d}", base + timedelta(minutes=i))
-        for i in range(450)
-    ]
-    _pipeline(db_path).ingest(
-        source=source, kind="jsonl", content=_content(lines)
-    )
+    lines = [_line(f"obs_{i:04d}", base + timedelta(minutes=i)) for i in range(450)]
+    _pipeline(db_path).ingest(source=source, kind="jsonl", content=_content(lines))
     ids = [f"obs_{i:04d}" for i in range(450)] + ["obs_missing"]
     with SqliteUnitOfWork(db_path) as uow:
         keys = uow.observations.idempotency_keys(ids)
         assert len(keys) == 450 and "obs_missing" not in keys
-        many = uow.services.get_many(
-            ["svc_lab_payments", "svc_nope", *([""] * 500)]
-        )
+        many = uow.services.get_many(["svc_lab_payments", "svc_nope", *([""] * 500)])
         assert set(many) == {"svc_lab_payments"}

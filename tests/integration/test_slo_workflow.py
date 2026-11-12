@@ -65,9 +65,7 @@ def _ingest_lab(db_path: Path) -> None:
 def _define(db_path: Path, **kw):
     params = {"service_id": "svc_lab_payments", "target": 0.99, "window_seconds": 3600}
     params.update(kw)
-    return DefineSlo(SqliteUnitOfWork(db_path), FixedClock(NOW), _ids()).execute(
-        **params
-    )
+    return DefineSlo(SqliteUnitOfWork(db_path), FixedClock(NOW), _ids()).execute(**params)
 
 
 def _evaluate(db_path: Path, **kw):
@@ -185,23 +183,40 @@ def test_cli_slo_workflow(tmp_path: Path) -> None:
         return json.loads(result.stdout)
 
     svc = invoke("services", "--register", "payments-api")
-    src = invoke("sources", "--register", "jsonl-file",
-                 "--service-id", svc["service_id"])
+    src = invoke("sources", "--register", "jsonl-file", "--service-id", svc["service_id"])
     # The lab fixture names svc_lab_payments/src_lab_jsonl; the CLI registers
     # generated ids — remap so origin+service validation passes (no guessing).
-    payload = FIXTURE.read_text(encoding="utf-8").replace(
-        "svc_lab_payments", svc["service_id"]
-    ).replace("src_lab_jsonl", src["source_id"])
+    payload = (
+        FIXTURE.read_text(encoding="utf-8")
+        .replace("svc_lab_payments", svc["service_id"])
+        .replace("src_lab_jsonl", src["source_id"])
+    )
     fixture = tmp_path / "lab-remapped.jsonl"
     fixture.write_text(payload, encoding="utf-8")
     invoke("ingest", "--source-id", src["source_id"], "--file", str(fixture))
-    definition = invoke("slo", "define", "--service-id", svc["service_id"],
-                        "--target", "0.99", "--window", "1h",
-                        "--slo-id", "slo_cli")
+    definition = invoke(
+        "slo",
+        "define",
+        "--service-id",
+        svc["service_id"],
+        "--target",
+        "0.99",
+        "--window",
+        "1h",
+        "--slo-id",
+        "slo_cli",
+    )
     assert definition["slo_id"] == "slo_cli" and definition["revision"] == 1
-    asmt = invoke("slo", "evaluate", "--slo-id", "slo_cli",
-                  "--window-start", "2026-01-01T00:00:00+00:00",
-                  "--window-end", "2026-01-01T00:08:00+00:00")
+    asmt = invoke(
+        "slo",
+        "evaluate",
+        "--slo-id",
+        "slo_cli",
+        "--window-start",
+        "2026-01-01T00:00:00+00:00",
+        "--window-end",
+        "2026-01-01T00:08:00+00:00",
+    )
     assert asmt["state"] == "MET"
     assert asmt["eligible"] == pytest.approx(951.0)
     assert asmt["assessment_id"].startswith("asmt_")
@@ -253,8 +268,7 @@ def test_cli_health_unknown_service_named_error(
     monkeypatch.setattr(
         sys,
         "argv",
-        ["api-sentinel", "health", "--service-id", "svc_ghost",
-         "--workspace", ws, "--json"],
+        ["api-sentinel", "health", "--service-id", "svc_ghost", "--workspace", ws, "--json"],
     )
     with pytest.raises(SystemExit) as exc:
         main()

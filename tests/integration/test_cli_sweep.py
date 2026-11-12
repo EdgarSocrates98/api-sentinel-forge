@@ -72,19 +72,33 @@ def seeded(tmp_path_factory: pytest.TempPathFactory) -> dict[str, str]:
     assert r.exit_code == 0
     service_id = json.loads(r.output)["service_id"]
     r = run(
-        "sources", "--register", "sweep-collector",
-        "--service-id", service_id,
+        "sources",
+        "--register",
+        "sweep-collector",
+        "--service-id",
+        service_id,
     )
     assert r.exit_code == 0
     source_id = json.loads(r.output)["source_id"]
     r = run(
-        "slo", "define", "--service-id", service_id,
-        "--target", "0.99", "--window", "15m",
+        "slo",
+        "define",
+        "--service-id",
+        service_id,
+        "--target",
+        "0.99",
+        "--window",
+        "15m",
     )
     assert r.exit_code == 0
     slo_id = json.loads(r.output)["slo_id"]
-    run("detect", "--window-start", "2026-01-01T00:00:00+00:00",
-        "--window-end", "2026-01-01T00:15:00+00:00")
+    run(
+        "detect",
+        "--window-start",
+        "2026-01-01T00:00:00+00:00",
+        "--window-end",
+        "2026-01-01T00:15:00+00:00",
+    )
     return {
         "ws": ws,
         "service_id": service_id,
@@ -117,9 +131,7 @@ _GOVERNED_EXC = (SentinelError, SystemExit, TyperExit)
 
 
 @pytest.mark.parametrize("cmd", CATALOG, ids=lambda c: c.label)
-def test_catalog_command_governed_outcome(
-    cmd: Command, seeded: dict[str, str]
-) -> None:
+def test_catalog_command_governed_outcome(cmd: Command, seeded: dict[str, str]) -> None:
     if cmd.notice:
         pytest.skip("honest notice-only entry — not a CLI invocation")
     if cmd.argv == ("install",):
@@ -129,12 +141,10 @@ def test_catalog_command_governed_outcome(
     exc = result.exception
     if exc is not None:
         assert isinstance(exc, _GOVERNED_EXC), (
-            f"{cmd.label}: ungoverned crash {type(exc).__name__}: {exc}\n"
-            f"argv={argv}"
+            f"{cmd.label}: ungoverned crash {type(exc).__name__}: {exc}\nargv={argv}"
         )
     assert result.exit_code in (0, 1, 2), (
-        f"{cmd.label}: unexpected exit {result.exit_code}\nargv={argv}\n"
-        f"out={result.output[-400:]}"
+        f"{cmd.label}: unexpected exit {result.exit_code}\nargv={argv}\nout={result.output[-400:]}"
     )
 
 
@@ -143,19 +153,45 @@ def test_sweep_coverage_is_the_full_catalog() -> None:
     # group plus the lifecycle subcommands.
     flat = {c.argv for c in CATALOG}
     for expected in (
-        ("doctor",), ("status",), ("capabilities",), ("services",),
-        ("sources",), ("ingest",), ("deps",), ("correlate",), ("detect",),
-        ("incidents",), ("incident", "show"), ("incident", "ack"),
-        ("incident", "resolve"), ("incident", "reopen"), ("health",),
-        ("investigate",), ("integrations",), ("retention",),
-        ("slo", "define"), ("slo", "evaluate"), ("slo", "list"),
-        ("handoff", "doctor"), ("handoff", "ingest"),
-        ("handoff", "apiforge"), ("handoff", "apiforge-ingest"),
-        ("changes", "list"), ("changes", "record"), ("changes", "import"),
-        ("changes", "correlate"), ("hypotheses", "add"),
-        ("hypotheses", "promote"), ("hypotheses", "demote"),
-        ("hypotheses", "verify"), ("aws", "collect"), ("aws", "discover"),
-        ("backup", "create"), ("backup", "restore"), ("version",),
-        ("workspace",), ("install",),
+        ("doctor",),
+        ("status",),
+        ("capabilities",),
+        ("services",),
+        ("sources",),
+        ("ingest",),
+        ("deps",),
+        ("correlate",),
+        ("detect",),
+        ("incidents",),
+        ("incident", "show"),
+        ("incident", "ack"),
+        ("incident", "resolve"),
+        ("incident", "reopen"),
+        ("health",),
+        ("investigate",),
+        ("integrations",),
+        ("retention",),
+        ("slo", "define"),
+        ("slo", "evaluate"),
+        ("slo", "list"),
+        ("handoff", "doctor"),
+        ("handoff", "ingest"),
+        ("handoff", "apiforge"),
+        ("handoff", "apiforge-ingest"),
+        ("changes", "list"),
+        ("changes", "record"),
+        ("changes", "import"),
+        ("changes", "correlate"),
+        ("hypotheses", "add"),
+        ("hypotheses", "promote"),
+        ("hypotheses", "demote"),
+        ("hypotheses", "verify"),
+        ("aws", "collect"),
+        ("aws", "discover"),
+        ("backup", "create"),
+        ("backup", "restore"),
+        ("version",),
+        ("workspace",),
+        ("install",),
     ):
         assert expected in flat, f"catalog missing {expected}"

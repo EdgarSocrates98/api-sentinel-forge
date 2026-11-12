@@ -113,9 +113,7 @@ def validate_snapshot(data: object) -> dict[str, Any]:
         raise SnapshotError("snapshot: expected an object")
     for key in ("specialist_version", "recorded_at", "provenance", "protocol_version"):
         if not isinstance(data.get(key), (str, int)) or data.get(key) in (None, ""):
-            raise SnapshotError(
-                f"snapshot.{key}: expected a non-empty string or integer"
-            )
+            raise SnapshotError(f"snapshot.{key}: expected a non-empty string or integer")
     seams = data.get("seams")
     if not isinstance(seams, list):
         raise SnapshotError("snapshot.seams: expected a list")
@@ -123,9 +121,7 @@ def validate_snapshot(data: object) -> dict[str, Any]:
     for index, item in enumerate(seams):
         seam = _seam(item, index)
         if seam["name"] in seen:
-            raise SnapshotError(
-                f"snapshot.seams[{index}]: duplicate seam {seam['name']!r}"
-            )
+            raise SnapshotError(f"snapshot.seams[{index}]: duplicate seam {seam['name']!r}")
         seen.add(seam["name"])
     return data
 
@@ -142,9 +138,7 @@ def load_snapshot(path: Path = SNAPSHOT_PATH) -> dict[str, Any]:
 def seam_present(snapshot: Mapping[str, Any], name: str) -> bool:
     """Whether the recorded surface has the seam an exposed capability needs."""
     return any(
-        isinstance(item, Mapping)
-        and item.get("name") == name
-        and item.get("present") is True
+        isinstance(item, Mapping) and item.get("name") == name and item.get("present") is True
         for item in snapshot.get("seams") or ()
     )
 
@@ -152,9 +146,9 @@ def seam_present(snapshot: Mapping[str, Any], name: str) -> bool:
 def native_fingerprint(snapshot: Mapping[str, Any]) -> str:
     """The sha256 the manifest declares as ``native_surface_fingerprint``."""
     payload = {k: v for k, v in snapshot.items() if k != "recorded_at"}
-    blob = json.dumps(
-        payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
-    ).encode("utf-8")
+    blob = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode(
+        "utf-8"
+    )
     return hashlib.sha256(blob).hexdigest()
 
 

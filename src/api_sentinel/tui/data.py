@@ -75,8 +75,11 @@ def load_incidents(ws: Workspace) -> PanelData:
         columns=["incident", "status", "severity", "first observed", "group"],
         rows=[
             (
-                i.incident_id, i.status.value, i.severity.value,
-                str(i.first_observed_at), i.group_key,
+                i.incident_id,
+                i.status.value,
+                i.severity.value,
+                str(i.first_observed_at),
+                i.group_key,
             )
             for i in inc
         ],
@@ -93,16 +96,18 @@ def load_slos(ws: Workspace) -> PanelData:
         rows: list[tuple[str, ...]] = []
         for d in defs:
             history = uow.slo_assessments.list(d.slo_id, d.revision)
-            latest = (
-                max(history, key=lambda a: a.evaluated_at) if history else None
-            )
+            latest = max(history, key=lambda a: a.evaluated_at) if history else None
             state = latest.state.value if latest else "not_evaluated"
             sli = f"{latest.sli:.4f}" if latest and latest.sli is not None else "—"
             lims = ",".join(latest.limitations[:2]) if latest else ""
             rows.append(
                 (
-                    f"{d.slo_id}@r{d.revision}", d.service_id,
-                    f"{d.target:.3f}", state, sli, lims,
+                    f"{d.slo_id}@r{d.revision}",
+                    d.service_id,
+                    f"{d.target:.3f}",
+                    state,
+                    sli,
+                    lims,
                 )
             )
     return PanelData(
@@ -123,12 +128,11 @@ def load_health(ws: Workspace) -> PanelData:
         services = uow.services.list()
     for svc in services:
         try:
-            rep = GetServiceHealth(uow, SystemClock()).execute(
-                service_id=svc.service_id
-            )
+            rep = GetServiceHealth(uow, SystemClock()).execute(service_id=svc.service_id)
             rows.append(
                 (
-                    svc.service_id, rep.state.value,
+                    svc.service_id,
+                    rep.state.value,
                     ",".join(rep.unknowns[:2]) if rep.unknowns else "—",
                 )
             )
@@ -150,9 +154,7 @@ def load_integrations(ws: Workspace) -> PanelData:
     except Exception:
         config = {}
     integrations = config.get("integrations")
-    atlas = (
-        integrations.get("atlas") if isinstance(integrations, dict) else None
-    )
+    atlas = integrations.get("atlas") if isinstance(integrations, dict) else None
     atlas = atlas if isinstance(atlas, dict) else {}
 
     def _resolve(key: str) -> Path | None:
@@ -165,19 +167,15 @@ def load_integrations(ws: Workspace) -> PanelData:
         report = integration_status(
             atlas_manifest=_resolve("export"),
             atlas_db=_resolve("db_path"),
-            atlas_repository=(
-                str(atlas["repository"]) if atlas.get("repository") else None
-            ),
+            atlas_repository=(str(atlas["repository"]) if atlas.get("repository") else None),
             atlas_snapshot_id=(
-                int(str(atlas["snapshot_id"]))
-                if atlas.get("snapshot_id") else None
+                int(str(atlas["snapshot_id"])) if atlas.get("snapshot_id") else None
             ),
         )
     except Exception as exc:
         return PanelData(note=f"unavailable — {type(exc).__name__}: {exc}")
     rows: list[tuple[str, ...]] = [
-        (str(d.get("forge", "?")), str(d.get("status", "?")),
-         str(d.get("detail", ""))[:60])
+        (str(d.get("forge", "?")), str(d.get("status", "?")), str(d.get("detail", ""))[:60])
         for d in report
     ]
     return PanelData(columns=["forge", "status", "detail"], rows=rows)

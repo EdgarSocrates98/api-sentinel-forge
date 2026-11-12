@@ -61,9 +61,7 @@ def test_lab001_fixture_ingests_8_of_8(db_path: Path) -> None:
     with SqliteUnitOfWork(db_path) as uow:
         source = seed_service_and_source(uow)
         uow.commit()
-    result = _pipeline(db_path).ingest(
-        source=source, kind="jsonl", content=FIXTURE.read_bytes()
-    )
+    result = _pipeline(db_path).ingest(source=source, kind="jsonl", content=FIXTURE.read_bytes())
     assert result.accepted == 8 and result.quarantined == 0 and result.skipped_duplicates == 0
     with SqliteUnitOfWork(db_path) as uow:
         assert uow.observations.count() == 8
@@ -205,8 +203,10 @@ def test_overlapping_source_is_identified_never_summed(db_path: Path, tmp_path: 
         source = seed_service_and_source(uow)
         uow.sources.put(
             TelemetrySource(
-                source_id="src_gateway", kind="api-gateway",
-                service_id="svc_lab_payments", created_at=datetime(2026, 1, 1, tzinfo=UTC),
+                source_id="src_gateway",
+                kind="api-gateway",
+                service_id="svc_lab_payments",
+                created_at=datetime(2026, 1, 1, tzinfo=UTC),
             )
         )
         uow.commit()
@@ -240,8 +240,16 @@ def test_cli_ingest_end_to_end(tmp_path: Path) -> None:
         uow.commit()
     r = runner.invoke(
         app,
-        ["ingest", "--source-id", "src_lab_jsonl", "--file", str(FIXTURE),
-         "--workspace", str(ws), "--json"],
+        [
+            "ingest",
+            "--source-id",
+            "src_lab_jsonl",
+            "--file",
+            str(FIXTURE),
+            "--workspace",
+            str(ws),
+            "--json",
+        ],
     )
     assert r.exit_code == 0, r.output
     out = json.loads(r.stdout)
@@ -250,8 +258,16 @@ def test_cli_ingest_end_to_end(tmp_path: Path) -> None:
     # replay through the CLI is idempotent too
     r2 = runner.invoke(
         app,
-        ["ingest", "--source-id", "src_lab_jsonl", "--file", str(FIXTURE),
-         "--workspace", str(ws), "--json"],
+        [
+            "ingest",
+            "--source-id",
+            "src_lab_jsonl",
+            "--file",
+            str(FIXTURE),
+            "--workspace",
+            str(ws),
+            "--json",
+        ],
     )
     assert json.loads(r2.stdout)["skipped_duplicates"] == 8
 

@@ -78,13 +78,9 @@ def make_event(
 ) -> IncidentEvent:
     """Build a journal entry with a deterministic id."""
     detail = details or {}
-    disc = discriminator or "|".join(
-        f"{k}={v}" for k, v in sorted(detail.items())
-    ) or (note or "")
+    disc = discriminator or "|".join(f"{k}={v}" for k, v in sorted(detail.items())) or (note or "")
     return IncidentEvent(
-        event_id=event_id_for(
-            incident_id=incident_id, kind=kind, at=at, discriminator=disc
-        ),
+        event_id=event_id_for(incident_id=incident_id, kind=kind, at=at, discriminator=disc),
         incident_id=incident_id,
         at=at,
         actor=actor,

@@ -51,19 +51,19 @@ def _dep_edge_id(
 ) -> str:
     """Deterministic edge identity — re-ingesting a window is idempotent."""
     canonical = "|".join(
-        (service_id, target, operation_id or "",
-         window_start.isoformat(), window_end.isoformat())
+        (service_id, target, operation_id or "", window_start.isoformat(), window_end.isoformat())
     )
     return "dep_" + hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:24]
 
 
 def _change_id(
-    service_id: str, kind: ChangeKind, at: datetime, ref: str | None,
+    service_id: str,
+    kind: ChangeKind,
+    at: datetime,
+    ref: str | None,
 ) -> str:
     """Deterministic change identity — same change re-imported is a no-op."""
-    canonical = "|".join(
-        (service_id, kind.value, at.isoformat(), ref or "")
-    )
+    canonical = "|".join((service_id, kind.value, at.isoformat(), ref or ""))
     return "chg_" + hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:24]
 
 
@@ -120,9 +120,7 @@ class ListChanges:
         with self._uow:
             if self._uow.services.get(service_id) is None:
                 raise NotFoundError(f"service not found: {service_id}")
-            return self._uow.change_events.list_for_service(
-                service_id, at_start, at_end
-            )
+            return self._uow.change_events.list_for_service(service_id, at_start, at_end)
 
 
 class RecordDependency:
@@ -146,9 +144,7 @@ class RecordDependency:
         evidence_refs: list[str] | None = None,
     ) -> DependencyObservation:
         edge = DependencyObservation(
-            edge_id=_dep_edge_id(
-                service_id, target, operation_id, window_start, window_end
-            ),
+            edge_id=_dep_edge_id(service_id, target, operation_id, window_start, window_end),
             service_id=service_id,
             target=target,
             target_kind=target_kind,
@@ -235,9 +231,7 @@ class DelegateToDoctor:
             if service is None:
                 raise NotFoundError(f"service not found: {service_id}")
             anomalies = self._uow.anomalies.list_for_service(service_id)
-            evidence_refs = sorted(
-                {r for a in anomalies for r in a.evidence_refs}
-            )
+            evidence_refs = sorted({r for a in anomalies for r in a.evidence_refs})
             handoff_id = f"hnd_{self._ids.new('h')}"
             handoff = InvestigationHandoffV1(
                 schema_=InvestigationHandoffV1.expected_schema,
@@ -368,10 +362,19 @@ class Correlate:
             )
             incidents = self._uow.incidents.list(service_id=service_id)
             incident = next(
-                (i for i in incidents if i.status.value in {
-                    "DETECTED", "TRIAGED", "INVESTIGATING",
-                    "MITIGATING", "MONITORING", "REOPENED",
-                }),
+                (
+                    i
+                    for i in incidents
+                    if i.status.value
+                    in {
+                        "DETECTED",
+                        "TRIAGED",
+                        "INVESTIGATING",
+                        "MITIGATING",
+                        "MONITORING",
+                        "REOPENED",
+                    }
+                ),
                 incidents[0] if incidents else None,
             )
 
@@ -381,8 +384,7 @@ class Correlate:
             | {r for e in observed for r in e.evidence_refs}
         )
         observed_tuples = [
-            (e.service_id, e.target,
-             f"{e.calls} calls/{e.errors} errors/{e.timeouts} timeouts")
+            (e.service_id, e.target, f"{e.calls} calls/{e.errors} errors/{e.timeouts} timeouts")
             for e in observed
         ]
 
@@ -399,8 +401,11 @@ class Correlate:
             else:
                 for edge in self._structural.dependencies(atlas_ref.atlas_id):
                     structural_tuples.append(
-                        (edge.from_ref, edge.to_ref,
-                         f"{edge.kind} ({edge.resolver or edge.confidence})")
+                        (
+                            edge.from_ref,
+                            edge.to_ref,
+                            f"{edge.kind} ({edge.resolver or edge.confidence})",
+                        )
                     )
         else:
             unknowns.append(
@@ -471,9 +476,7 @@ def load_structural(
         snapshot = atlas.get("snapshot_id")
         return DbStructuralContext.load(
             path,
-            repository=(
-                str(atlas["repository"]) if atlas.get("repository") else None
-            ),
+            repository=(str(atlas["repository"]) if atlas.get("repository") else None),
             snapshot_id=int(snapshot) if snapshot else None,
         )
     export = atlas.get("export")
@@ -491,10 +494,7 @@ def doctor_acl_from_config(
     """Resolve the Doctor adapter: explicit `mode`/`timeout_seconds` from
     `integrations.doctor`, auto-selecting in-process when importable."""
     integrations = config.get("integrations") if isinstance(config, dict) else None
-    doctor = (
-        integrations.get("doctor")
-        if isinstance(integrations, dict) else None
-    )
+    doctor = integrations.get("doctor") if isinstance(integrations, dict) else None
     if not isinstance(doctor, dict):
         return DoctorACL()
     mode = doctor.get("mode")

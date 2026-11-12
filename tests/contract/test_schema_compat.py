@@ -40,9 +40,7 @@ from api_sentinel.contracts.v1.models import (
 )
 from api_sentinel.domain import ContractError
 
-SCHEMAS_DIR = (
-    Path(__file__).resolve().parents[2] / "contracts" / "v1"
-)
+SCHEMAS_DIR = Path(__file__).resolve().parents[2] / "contracts" / "v1"
 
 _VALID: dict[str, tuple[type, dict[str, Any]]] = {
     "anomaly": (
@@ -79,9 +77,7 @@ _VALID: dict[str, tuple[type, dict[str, Any]]] = {
         DeployManifestV1,
         {
             "schema": "api-sentinel/DeployManifest/v1",
-            "deploys": [
-                {"service": "svc_1", "at": "2026-01-01T12:00:00Z"}
-            ],
+            "deploys": [{"service": "svc_1", "at": "2026-01-01T12:00:00Z"}],
         },
     ),
     "evidence_artifact": (
@@ -244,17 +240,13 @@ class TestPerContract:
                 pass  # typed consumer rejects too — the strict case
             else:
                 model_field = model_cls.model_fields.get(field) or next(
-                    f
-                    for f in model_cls.model_fields.values()
-                    if f.alias == field
+                    f for f in model_cls.model_fields.values() if f.alias == field
                 )
                 has_default = (
                     model_field.default is not PydanticUndefined
                     or model_field.default_factory is not None
                 )
-                assert has_default, (
-                    f"{stem}: -{field} accepted with no declared default"
-                )
+                assert has_default, f"{stem}: -{field} accepted with no declared default"
 
     def test_additive_optional_tolerated(
         self, stem: str, model_payload: tuple[type, dict[str, Any]]
@@ -285,9 +277,7 @@ class TestExtensionZones:
     def test_handoff_payload_extension(self) -> None:
         payload = copy.deepcopy(_VALID["investigation_handoff"][1])
         payload["payload"] = {"new_kind_field": "x", "nested": {"a": 1}}
-        Draft202012Validator(_load_schema("investigation_handoff")).validate(
-            payload
-        )
+        Draft202012Validator(_load_schema("investigation_handoff")).validate(payload)
         InvestigationHandoffV1.model_validate(payload)
 
     def test_source_config_extension(self) -> None:
@@ -299,9 +289,7 @@ class TestExtensionZones:
     def test_observation_attributes_extension(self) -> None:
         payload = copy.deepcopy(_VALID["runtime_observation"][1])
         payload["attributes"] = {"custom.dimension": "v", "n": 3}
-        Draft202012Validator(
-            _load_schema("runtime_observation")
-        ).validate(payload)
+        Draft202012Validator(_load_schema("runtime_observation")).validate(payload)
         RuntimeObservationV1.model_validate(payload)
 
     def test_envelope_catalog_matches_schemas(self) -> None:
@@ -317,9 +305,7 @@ class TestCycleTenNegatives:
         """Atlas export: duplicate service or edge ids are a contract
         violation — a merge would fabricate structure."""
         payload = copy.deepcopy(_VALID["atlas_export"][1])
-        payload["services"].append(
-            {"atlas_id": "a1", "name": "dup"}
-        )
+        payload["services"].append({"atlas_id": "a1", "name": "dup"})
         with pytest.raises(ContractError):
             AtlasExportV1.model_validate(payload)
         payload = copy.deepcopy(_VALID["atlas_export"][1])
@@ -346,8 +332,7 @@ class TestCycleTenNegatives:
         wire schema and the typed envelope agree."""
         schema = _load_schema("evidence_artifact")
         validator = Draft202012Validator(schema)
-        for bad in ("deadbeef", "md5:" + "a" * 32,
-                    "sha256:" + "A" * 64, "sha256:" + "a" * 63):
+        for bad in ("deadbeef", "md5:" + "a" * 32, "sha256:" + "A" * 64, "sha256:" + "a" * 63):
             payload = copy.deepcopy(_VALID["evidence_artifact"][1])
             payload["hash"] = bad
             assert not validator.is_valid(payload), bad
@@ -365,9 +350,7 @@ class TestCycleTenNegatives:
         # both layers refuse
         payload = copy.deepcopy(_VALID["investigation_handoff"][1])
         del payload["handoff_id"], payload["kind"]
-        assert not Draft202012Validator(
-            _load_schema("investigation_handoff")
-        ).is_valid(payload)
+        assert not Draft202012Validator(_load_schema("investigation_handoff")).is_valid(payload)
         with pytest.raises(ValidationError):
             InvestigationHandoffV1.model_validate(payload)
 
@@ -386,12 +369,9 @@ class TestCycleTenNegatives:
             ingest_doctor_bundle,
         )
 
-        bundle = {"handoff_version": 2, "handoff_id": "hnd_other",
-                  "findings": []}
+        bundle = {"handoff_version": 2, "handoff_id": "hnd_other", "findings": []}
         with pytest.raises(ContractError, match="correlation"):
-            ingest_doctor_bundle(
-                bundle, expected_handoff_id="hnd_mine"
-            )
+            ingest_doctor_bundle(bundle, expected_handoff_id="hnd_mine")
         # matching correlation passes
         ok = ingest_doctor_bundle(
             {**bundle, "handoff_id": "hnd_mine"},
@@ -416,6 +396,5 @@ class TestCycleTenNegatives:
             response_to_result({})  # missing protocol
         with pytest.raises(IntegrationRefused):
             response_to_result(
-                {"protocol": "forge/v1", "kind": "Response"}
-                | {"status": "half-done"}
+                {"protocol": "forge/v1", "kind": "Response"} | {"status": "half-done"}
             )

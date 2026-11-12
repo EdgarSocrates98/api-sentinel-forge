@@ -49,13 +49,18 @@ def install_command(
             "scope": scope,
             "portal": _portal_present(),
             "actions": [
-                "ensure_workspace", "apply_migrations", "ensure_local_token",
+                "ensure_workspace",
+                "apply_migrations",
+                "ensure_local_token",
                 *(["register_forge_context"] if _context_root(ws) else []),
             ],
         }
-        typer.echo(json.dumps(plan) if as_json else
-                   f"[dry-run] would initialize workspace {ws.root} "
-                   f"(profile={profile}, scope={scope})")
+        typer.echo(
+            json.dumps(plan)
+            if as_json
+            else f"[dry-run] would initialize workspace {ws.root} "
+            f"(profile={profile}, scope={scope})"
+        )
         return
     if not yes and sys.stdin.isatty():
         profile = typer.prompt("Profile", default=profile)
@@ -130,9 +135,15 @@ def update_command(
         raise typer.Exit(2)
     if dry_run:
         typer.echo(
-            json.dumps({"dry_run": True, "workspace": str(ws.root),
-                        "actions": ["apply_migrations", "ensure_local_token"]})
-            if as_json else f"[dry-run] would update workspace {ws.root}"
+            json.dumps(
+                {
+                    "dry_run": True,
+                    "workspace": str(ws.root),
+                    "actions": ["apply_migrations", "ensure_local_token"],
+                }
+            )
+            if as_json
+            else f"[dry-run] would update workspace {ws.root}"
         )
         return
     with SqliteUnitOfWork(ws.db_path):
@@ -145,9 +156,16 @@ def update_command(
     # the install siblings' repair).
     context = _repair_context(ws)
     if as_json:
-        typer.echo(json.dumps({"updated": True, "workspace": str(ws.root),
-                               "token_created": resolved.created,
-                               "context_registry": context}))
+        typer.echo(
+            json.dumps(
+                {
+                    "updated": True,
+                    "workspace": str(ws.root),
+                    "token_created": resolved.created,
+                    "context_registry": context,
+                }
+            )
+        )
         return
     typer.echo(f"Workspace updated: {ws.root}")
     if context is not None:
@@ -168,37 +186,38 @@ def uninstall_command(
     if not ws.root.exists():
         typer.echo(
             json.dumps({"uninstalled": False, "reason": "workspace_absent"})
-            if as_json else f"Nothing to remove at {ws.root}"
+            if as_json
+            else f"Nothing to remove at {ws.root}"
         )
         return
     if dry_run:
         typer.echo(
             json.dumps({"dry_run": True, "would_remove": str(ws.root)})
-            if as_json else f"[dry-run] would remove {ws.root}"
+            if as_json
+            else f"[dry-run] would remove {ws.root}"
         )
         return
     if not yes:
         if not sys.stdin.isatty():
-            typer.echo("refused: uninstall requires --yes in non-interactive mode",
-                       err=True)
+            typer.echo("refused: uninstall requires --yes in non-interactive mode", err=True)
             raise typer.Exit(2)
         typer.confirm(f"Remove workspace {ws.root} (data loss)?", abort=True)
     try:
         shutil.rmtree(ws.root)
     except OSError as exc:
         typer.echo(
-            json.dumps({"uninstalled": False, "reason": "locked",
-                        "detail": str(exc)})
-            if as_json else
-            f"refused: cannot remove {ws.root} — {exc} "
+            json.dumps({"uninstalled": False, "reason": "locked", "detail": str(exc)})
+            if as_json
+            else f"refused: cannot remove {ws.root} — {exc} "
             "(close processes holding it; on Windows do not run from inside it)",
             err=not as_json,
         )
         raise typer.Exit(1) from exc
     context = _unregister_context(ws)
     if as_json:
-        typer.echo(json.dumps({"uninstalled": True, "removed": str(ws.root),
-                               "context_registry": context}))
+        typer.echo(
+            json.dumps({"uninstalled": True, "removed": str(ws.root), "context_registry": context})
+        )
         if context["status"] == "blocked":
             raise typer.Exit(1)
         return
@@ -331,8 +350,7 @@ def _context_manifest(ws: Any, profile: str) -> dict[str, Any]:
         health={
             "status": "healthy",
             "checks": [
-                {"id": "workspace", "status": "PASS",
-                 "detail": "workspace initialized"},
+                {"id": "workspace", "status": "PASS", "detail": "workspace initialized"},
             ],
         },
         components={"runtime_profile": profile},
@@ -351,13 +369,12 @@ def _register_context(ws: Any, profile: str) -> dict[str, Any]:
     if root is None:
         return {"status": "skipped", "detail": "account scope — no workspace context"}
     try:
-        out = fctx.install_transaction(root, _context_manifest(ws, profile),
-                                       owner=FORGE_ID)
+        out = fctx.install_transaction(root, _context_manifest(ws, profile), owner=FORGE_ID)
         docs = out["docs"]
         return {
             "status": "registered",
             "detail": f".forge/context {out['status']} "
-                      f"({len(out['written'])} writes; docs {docs['status']})",
+            f"({len(out['written'])} writes; docs {docs['status']})",
             "root": str(root),
         }
     except fctx.ContextError as exc:
@@ -377,8 +394,7 @@ def _unregister_context(ws: Any) -> dict[str, Any]:
         out = fctx.uninstall_transaction(root, FORGE_ID, owner=FORGE_ID)
         return {
             "status": "unregistered",
-            "detail": f".forge/context {out['status']} "
-                      f"(docs {out['docs']['status']})",
+            "detail": f".forge/context {out['status']} (docs {out['docs']['status']})",
         }
     except fctx.ContextError as exc:
         return {"status": "blocked", "detail": f"{exc.kind}: {exc.detail}"}
@@ -399,8 +415,8 @@ def _repair_context(ws: Any) -> dict[str, Any] | None:
         return {
             "status": "repaired",
             "detail": f"context {out_ctx['status']} "
-                      f"({len(out_ctx['written'])} writes); "
-                      f"docs {out_docs['status']}",
+            f"({len(out_ctx['written'])} writes); "
+            f"docs {out_docs['status']}",
         }
     except fctx.ContextError as exc:
         return {"status": "blocked", "detail": f"{exc.kind}: {exc.detail}"}

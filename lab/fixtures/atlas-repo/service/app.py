@@ -1,4 +1,5 @@
 """Lab service — FastAPI app exposing /orders endpoints."""
+
 from fastapi import FastAPI
 
 app = FastAPI(title="orders-api")

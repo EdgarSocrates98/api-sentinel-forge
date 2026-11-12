@@ -108,10 +108,12 @@ class ApiForgeACL:
         A hypothesis that is not VERIFIED is refused before transport:
         API Forge acts on proven causes, not on correlations.
         """
-        handoff_id = "hnd_af_" + hashlib.sha256(
-            f"{incident.incident_id}|{hypothesis.hypothesis_id}|{at_iso}"
-            .encode()
-        ).hexdigest()[:24]
+        handoff_id = (
+            "hnd_af_"
+            + hashlib.sha256(
+                f"{incident.incident_id}|{hypothesis.hypothesis_id}|{at_iso}".encode()
+            ).hexdigest()[:24]
+        )
         if hypothesis.confidence is not ConfidenceClass.VERIFIED:
             raise IntegrationRefused(
                 APIFORGE_FORGE,
@@ -189,17 +191,11 @@ class ApiForgeACL:
     def ingest(self, response_path: Path) -> ApiForgeIngest:
         """Read an API Forge response back as verbatim evidence."""
         if not response_path.is_file():
-            raise ValidationError(
-                f"api-forge response not found: {response_path}"
-            )
+            raise ValidationError(f"api-forge response not found: {response_path}")
         try:
-            data = json.loads(
-                read_text_bounded(response_path, name="api-forge response")
-            )
+            data = json.loads(read_text_bounded(response_path, name="api-forge response"))
         except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
-            raise ContractError(
-                f"api-forge response unreadable: {exc}"
-            ) from exc
+            raise ContractError(f"api-forge response unreadable: {exc}") from exc
         if not isinstance(data, dict):
             raise ContractError("api-forge response must be a JSON object")
         try:
@@ -207,36 +203,20 @@ class ApiForgeACL:
                 source_file=str(response_path),
                 handoff_id=data.get("handoff_id"),
                 findings=[dict(f) for f in data.get("findings", [])],
-                suggested_changes=[
-                    str(s) for s in data.get("suggested_changes", [])
-                ],
+                suggested_changes=[str(s) for s in data.get("suggested_changes", [])],
                 unknowns=[str(u) for u in data.get("unknowns", [])],
             )
         except (TypeError, PydanticValidationError, ValueError) as exc:
-            raise ContractError(
-                f"api-forge response shape invalid: {exc}"
-            ) from exc
+            raise ContractError(f"api-forge response shape invalid: {exc}") from exc
 
 
-def apiforge_from_config(
-    config: dict[str, object], workspace_root: Path | None
-) -> ApiForgeACL:
+def apiforge_from_config(config: dict[str, object], workspace_root: Path | None) -> ApiForgeACL:
     """Resolve the adapter: `integrations.apiforge.mode` —
     `handoff_file` (default) or `unavailable`."""
     integrations = config.get("integrations") if isinstance(config, dict) else None
-    af = (
-        integrations.get("apiforge")
-        if isinstance(integrations, dict)
-        else None
-    )
-    mode = (
-        str(af.get("mode", "handoff_file"))
-        if isinstance(af, dict)
-        else "handoff_file"
-    )
-    handoffs_dir = (
-        (workspace_root / "handoffs") if workspace_root is not None else None
-    )
+    af = integrations.get("apiforge") if isinstance(integrations, dict) else None
+    mode = str(af.get("mode", "handoff_file")) if isinstance(af, dict) else "handoff_file"
+    handoffs_dir = (workspace_root / "handoffs") if workspace_root is not None else None
     if handoffs_dir is None and mode != "unavailable":
         mode = "unavailable"
     return ApiForgeACL(mode=ApiForgeMode(mode), handoffs_dir=handoffs_dir)

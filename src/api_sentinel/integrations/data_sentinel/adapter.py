@@ -126,9 +126,10 @@ class DataSentinelACL:
         "last_seen": ts, "stale_seconds": n}``) — the allowlisted domain
         fields; `evidence_refs` cite evidence, never copy it.
         """
-        handoff_id = "hnd_ds_" + hashlib.sha256(
-            f"{service_id}|{incident_id or ''}|{at_iso}".encode()
-        ).hexdigest()[:24]
+        handoff_id = (
+            "hnd_ds_"
+            + hashlib.sha256(f"{service_id}|{incident_id or ''}|{at_iso}".encode()).hexdigest()[:24]
+        )
         if not staleness:
             raise IntegrationRefused(
                 DATA_SENTINEL_FORGE,
@@ -195,21 +196,9 @@ def data_sentinel_from_config(
     """Resolve the adapter: `integrations.data_sentinel.mode` —
     `handoff_file` (default) or `unavailable`."""
     integrations = config.get("integrations") if isinstance(config, dict) else None
-    ds = (
-        integrations.get("data_sentinel")
-        if isinstance(integrations, dict)
-        else None
-    )
-    mode = (
-        str(ds.get("mode", "handoff_file"))
-        if isinstance(ds, dict)
-        else "handoff_file"
-    )
-    handoffs_dir = (
-        (workspace_root / "handoffs") if workspace_root is not None else None
-    )
+    ds = integrations.get("data_sentinel") if isinstance(integrations, dict) else None
+    mode = str(ds.get("mode", "handoff_file")) if isinstance(ds, dict) else "handoff_file"
+    handoffs_dir = (workspace_root / "handoffs") if workspace_root is not None else None
     if handoffs_dir is None and mode != "unavailable":
         mode = "unavailable"
-    return DataSentinelACL(
-        mode=DataSentinelMode(mode), handoffs_dir=handoffs_dir
-    )
+    return DataSentinelACL(mode=DataSentinelMode(mode), handoffs_dir=handoffs_dir)

@@ -282,14 +282,22 @@ def services_cmd(
             service_name=register, environment=environment, namespace=namespace
         )
         _emit(
-            {"service_id": svc.service_id, "service_name": svc.service_name,
-             "environment_id": svc.environment_id, "created": True},
+            {
+                "service_id": svc.service_id,
+                "service_name": svc.service_name,
+                "environment_id": svc.environment_id,
+                "created": True,
+            },
             as_json,
         )
         return
     out = [
-        {"service_id": s.service_id, "service_name": s.service_name,
-         "environment_id": s.environment_id, "namespace": s.namespace}
+        {
+            "service_id": s.service_id,
+            "service_name": s.service_name,
+            "environment_id": s.environment_id,
+            "namespace": s.namespace,
+        }
         for s in ListServices(uow).execute()
     ]
     _emit(out, as_json)
@@ -323,9 +331,7 @@ def sources_cmd(
         for pair in config or []:
             key, sep, value = pair.partition("=")
             if not sep or not key.strip():
-                raise ValidationError(
-                    f"invalid --config entry: {pair!r} (expected KEY=VALUE)"
-                )
+                raise ValidationError(f"invalid --config entry: {pair!r} (expected KEY=VALUE)")
             cfg[key.strip()] = value
         src = RegisterSource(uow, SystemClock(), UlidIdFactory()).execute(
             kind=register, service_id=service_id, config=cfg
@@ -334,8 +340,12 @@ def sources_cmd(
         return
     with uow:
         out = [
-            {"source_id": s.source_id, "kind": s.kind, "service_id": s.service_id,
-             "enabled": s.enabled}
+            {
+                "source_id": s.source_id,
+                "kind": s.kind,
+                "service_id": s.service_id,
+                "enabled": s.enabled,
+            }
             for s in uow.sources.list()
         ]
     _emit(out, as_json)
@@ -363,12 +373,8 @@ def workspace(
 
 @app.command()
 def ingest(
-    source_id: Annotated[
-        str, typer.Option("--source-id", help="Registered telemetry source id")
-    ],
-    file: Annotated[
-        Path, typer.Option("--file", help="Batch payload path (JSONL or OTLP JSON)")
-    ],
+    source_id: Annotated[str, typer.Option("--source-id", help="Registered telemetry source id")],
+    file: Annotated[Path, typer.Option("--file", help="Batch payload path (JSONL or OTLP JSON)")],
     kind: Annotated[
         str | None, typer.Option("--kind", help="jsonl | otlp-json (auto-detected if omitted)")
     ] = None,
@@ -440,9 +446,7 @@ def _parse_dt(raw: str, flag: str) -> datetime:
     try:
         return datetime.fromisoformat(raw)
     except ValueError as exc:
-        raise ValidationError(
-            f"invalid {flag} datetime: {raw!r} (expected ISO-8601)"
-        ) from exc
+        raise ValidationError(f"invalid {flag} datetime: {raw!r} (expected ISO-8601)") from exc
 
 
 @slo_app.command("define")
@@ -453,9 +457,7 @@ def slo_define(
     revision: Annotated[int | None, typer.Option("--revision")] = None,
     slo_id: Annotated[str | None, typer.Option("--slo-id")] = None,
     sli: Annotated[str, typer.Option("--sli", help="availability | latency")] = "availability",
-    latency_threshold_ms: Annotated[
-        float | None, typer.Option("--latency-threshold-ms")
-    ] = None,
+    latency_threshold_ms: Annotated[float | None, typer.Option("--latency-threshold-ms")] = None,
     operation_id: Annotated[str | None, typer.Option("--operation-id")] = None,
     error_status: Annotated[
         str | None,
@@ -526,9 +528,7 @@ def slo_list(
 @app.command()
 def health(
     service_id: Annotated[str, typer.Option("--service-id")],
-    stale_after_seconds: Annotated[
-        int, typer.Option("--stale-after-seconds")
-    ] = 300,
+    stale_after_seconds: Annotated[int, typer.Option("--stale-after-seconds")] = 300,
     as_json: _JSON = False,
     workspace: _WS = None,
     user_scope: _USER_SCOPE = False,
@@ -545,12 +545,8 @@ def health(
 @app.command()
 def detect(
     service_id: Annotated[str, typer.Option("--service-id")],
-    window_start: Annotated[
-        str | None, typer.Option("--window-start", help="ISO-8601")
-    ] = None,
-    window_end: Annotated[
-        str | None, typer.Option("--window-end", help="ISO-8601")
-    ] = None,
+    window_start: Annotated[str | None, typer.Option("--window-start", help="ISO-8601")] = None,
+    window_end: Annotated[str | None, typer.Option("--window-end", help="ISO-8601")] = None,
     now: Annotated[
         str | None,
         typer.Option("--now", help="ISO-8601 evaluation instant (replay aid)"),
@@ -564,12 +560,8 @@ def detect(
     uow = _uow(ws)
     report = RunDetection(uow, SystemClock(), UlidIdFactory()).execute(
         service_id=service_id,
-        window_start=(
-            _parse_dt(window_start, "--window-start") if window_start else None
-        ),
-        window_end=(
-            _parse_dt(window_end, "--window-end") if window_end else None
-        ),
+        window_start=(_parse_dt(window_start, "--window-start") if window_start else None),
+        window_end=(_parse_dt(window_end, "--window-end") if window_end else None),
         now=_parse_dt(now, "--now") if now else None,
     )
     _emit(report.model_dump(mode="json"), as_json)
@@ -600,9 +592,7 @@ def incidents_cmd(
             except ValueError as exc:
                 raise ValidationError(
                     f"invalid --status: {status!r}",
-                    details={
-                        "expected": ["open", *sorted(s.value for s in IncidentStatus)]
-                    },
+                    details={"expected": ["open", *sorted(s.value for s in IncidentStatus)]},
                 ) from exc
     out = [
         i.model_dump(mode="json")
@@ -751,9 +741,7 @@ def handoff_doctor(
     timeout: Annotated[
         float, typer.Option("--timeout", help="Delegation budget in seconds")
     ] = 30.0,
-    now: Annotated[
-        str | None, typer.Option("--now", help="ISO-8601 injected clock")
-    ] = None,
+    now: Annotated[str | None, typer.Option("--now", help="ISO-8601 injected clock")] = None,
     as_json: _JSON = False,
     workspace: _WS = None,
     user_scope: _USER_SCOPE = False,
@@ -785,10 +773,7 @@ def handoff_doctor(
         ) from exc
     if timeout != 30.0 and not mode:
         acl = DoctorACL(mode=acl.mode, timeout_seconds=timeout)
-    caps = (
-        [c.strip() for c in capability.split(",") if c.strip()]
-        if capability else None
-    )
+    caps = [c.strip() for c in capability.split(",") if c.strip()] if capability else None
     outcome = DelegateToDoctor(
         uow, SystemClock(), UlidIdFactory(), acl, workspace_root=ws.root
     ).execute(
@@ -803,9 +788,7 @@ def handoff_doctor(
 
 @handoff_app.command("ingest")
 def handoff_ingest(
-    bundle: Annotated[
-        Path, typer.Option("--bundle", help="Doctor-emitted bundle path")
-    ],
+    bundle: Annotated[Path, typer.Option("--bundle", help="Doctor-emitted bundle path")],
     as_json: _JSON = False,
     workspace: _WS = None,
     user_scope: _USER_SCOPE = False,
@@ -829,9 +812,7 @@ def handoff_apiforge(
         str | None,
         typer.Option("--evidence-ref", help="Extra evidence refs (CSV)"),
     ] = None,
-    now: Annotated[
-        str | None, typer.Option("--now", help="ISO-8601 injected clock")
-    ] = None,
+    now: Annotated[str | None, typer.Option("--now", help="ISO-8601 injected clock")] = None,
     as_json: _JSON = False,
     workspace: _WS = None,
     user_scope: _USER_SCOPE = False,
@@ -858,8 +839,7 @@ def handoff_apiforge(
         if incident is None:
             raise NotFoundError(f"incident not found: {incident_id}")
         hypothesis = next(
-            (h for h in incident.hypotheses
-             if h.hypothesis_id == hypothesis_id),
+            (h for h in incident.hypotheses if h.hypothesis_id == hypothesis_id),
             None,
         )
         if hypothesis is None:
@@ -1001,9 +981,7 @@ def changes_import(
         str | None,
         typer.Option("--source", help="Change source label (default: file)"),
     ] = None,
-    now: Annotated[
-        str | None, typer.Option("--now", help="ISO-8601 injected clock")
-    ] = None,
+    now: Annotated[str | None, typer.Option("--now", help="ISO-8601 injected clock")] = None,
     as_json: _JSON = False,
     workspace: _WS = None,
     user_scope: _USER_SCOPE = False,
@@ -1020,9 +998,7 @@ def changes_import(
     ws = _ws(workspace, user_scope)
     uow = _uow(ws)
     clock_now = _parse_dt(now, "--now") if now else SystemClock().now()
-    report = ImportDeployManifest(uow, clock_now).execute(
-        file=file, source=source
-    )
+    report = ImportDeployManifest(uow, clock_now).execute(file=file, source=source)
     _emit(report.model_dump(mode="json"), as_json)
 
 
@@ -1059,13 +1035,9 @@ def investigate(
     principal: Annotated[
         str, typer.Option("--principal", help="Authorized session principal")
     ] = "cli",
-    provider: Annotated[
-        str | None, typer.Option("--provider", help="Provider selection")
-    ] = None,
+    provider: Annotated[str | None, typer.Option("--provider", help="Provider selection")] = None,
     model: Annotated[str | None, typer.Option("--model")] = None,
-    cost_limit: Annotated[
-        float | None, typer.Option("--cost-limit", help="USD budget cap")
-    ] = None,
+    cost_limit: Annotated[float | None, typer.Option("--cost-limit", help="USD budget cap")] = None,
     approval: Annotated[
         str | None,
         typer.Option("--approval", help="Granted action scope (repeatable)"),
@@ -1073,12 +1045,8 @@ def investigate(
     budget_bytes: Annotated[
         int, typer.Option("--budget-bytes", help="Context pack byte budget")
     ] = 65536,
-    idempotency_key: Annotated[
-        str | None, typer.Option("--idempotency-key")
-    ] = None,
-    now: Annotated[
-        str | None, typer.Option("--now", help="ISO-8601 injected clock")
-    ] = None,
+    idempotency_key: Annotated[str | None, typer.Option("--idempotency-key")] = None,
+    now: Annotated[str | None, typer.Option("--now", help="ISO-8601 injected clock")] = None,
     as_json: _JSON = False,
     workspace: _WS = None,
     user_scope: _USER_SCOPE = False,
@@ -1102,15 +1070,10 @@ def investigate(
     ensure_workspace(ws)
     uow = _uow(ws)
     config = _load_cfg(ws)
-    session_port: AgentSessionPort = bridge_session_from_config(
-        config, ws.root
-    )
+    session_port: AgentSessionPort = bridge_session_from_config(config, ws.root)
     structural = load_structural(config, ws.root)
     clock_now = _parse_dt(now, "--now") if now else SystemClock().now()
-    approvals = (
-        [a.strip() for a in approval.split(",") if a.strip()]
-        if approval else []
-    )
+    approvals = [a.strip() for a in approval.split(",") if a.strip()] if approval else []
     outcome = RunAgenticInvestigation(
         uow,
         clock_now,
@@ -1147,13 +1110,9 @@ def hypotheses_add(
         str | None,
         typer.Option("--evidence-against", help="Evidence refs (CSV)"),
     ] = None,
-    unknown: Annotated[
-        str | None, typer.Option("--unknown", help="Unknown note (CSV)")
-    ] = None,
+    unknown: Annotated[str | None, typer.Option("--unknown", help="Unknown note (CSV)")] = None,
     note: Annotated[str | None, typer.Option("--note")] = None,
-    now: Annotated[
-        str | None, typer.Option("--now", help="ISO-8601 injected clock")
-    ] = None,
+    now: Annotated[str | None, typer.Option("--now", help="ISO-8601 injected clock")] = None,
     as_json: _JSON = False,
     workspace: _WS = None,
     user_scope: _USER_SCOPE = False,
@@ -1168,9 +1127,7 @@ def hypotheses_add(
     ws = _ws(workspace, user_scope)
     uow = _uow(ws)
     clock_now = _parse_dt(now, "--now") if now else SystemClock().now()
-    hypothesis, _incident = AddHypothesis(
-        uow, clock_now, UlidIdFactory()
-    ).execute(
+    hypothesis, _incident = AddHypothesis(uow, clock_now, UlidIdFactory()).execute(
         incident_id=incident_id,
         text=text,
         confidence=confidence,
@@ -1194,9 +1151,7 @@ def hypotheses_promote(
         ),
     ],
     note: Annotated[str | None, typer.Option("--note")] = None,
-    now: Annotated[
-        str | None, typer.Option("--now", help="ISO-8601 injected clock")
-    ] = None,
+    now: Annotated[str | None, typer.Option("--now", help="ISO-8601 injected clock")] = None,
     as_json: _JSON = False,
     workspace: _WS = None,
     user_scope: _USER_SCOPE = False,
@@ -1231,9 +1186,7 @@ def hypotheses_demote(
         typer.Option("--evidence-against", help="Evidence refs (CSV)"),
     ] = None,
     note: Annotated[str | None, typer.Option("--note")] = None,
-    now: Annotated[
-        str | None, typer.Option("--now", help="ISO-8601 injected clock")
-    ] = None,
+    now: Annotated[str | None, typer.Option("--now", help="ISO-8601 injected clock")] = None,
     as_json: _JSON = False,
     workspace: _WS = None,
     user_scope: _USER_SCOPE = False,
@@ -1258,19 +1211,13 @@ def hypotheses_demote(
 def hypotheses_verify(
     incident_id: Annotated[str, typer.Option("--incident-id")],
     hypothesis_id: Annotated[str, typer.Option("--hypothesis-id")],
-    window_start: Annotated[
-        str, typer.Option("--window-start", help="ISO-8601 post-change start")
-    ],
-    window_end: Annotated[
-        str, typer.Option("--window-end", help="ISO-8601 post-change end")
-    ],
+    window_start: Annotated[str, typer.Option("--window-start", help="ISO-8601 post-change start")],
+    window_end: Annotated[str, typer.Option("--window-end", help="ISO-8601 post-change end")],
     doctor: Annotated[
         bool,
         typer.Option("--doctor", help="Include a Doctor handoff step"),
     ] = False,
-    now: Annotated[
-        str | None, typer.Option("--now", help="ISO-8601 injected clock")
-    ] = None,
+    now: Annotated[str | None, typer.Option("--now", help="ISO-8601 injected clock")] = None,
     as_json: _JSON = False,
     workspace: _WS = None,
     user_scope: _USER_SCOPE = False,
@@ -1317,12 +1264,8 @@ def deps_cmd(
         str | None,
         typer.Option("--record", help="Observed target to record an edge for"),
     ] = None,
-    window_start: Annotated[
-        str | None, typer.Option("--window-start", help="ISO-8601")
-    ] = None,
-    window_end: Annotated[
-        str | None, typer.Option("--window-end", help="ISO-8601")
-    ] = None,
+    window_start: Annotated[str | None, typer.Option("--window-start", help="ISO-8601")] = None,
+    window_end: Annotated[str | None, typer.Option("--window-end", help="ISO-8601")] = None,
     target_kind: Annotated[str, typer.Option("--target-kind")] = "service",
     calls: Annotated[int, typer.Option("--calls")] = 0,
     errors: Annotated[int, typer.Option("--errors")] = 0,
@@ -1337,8 +1280,8 @@ def deps_cmd(
     if record is not None:
         if window_start is None or window_end is None:
             typer.echo(
-                "error: --window-start and --window-end are required with "
-                "--record", err=True,
+                "error: --window-start and --window-end are required with --record",
+                err=True,
             )
             raise typer.Exit(EXIT_USAGE)
         edge = RecordDependency(uow, SystemClock()).execute(
@@ -1355,10 +1298,8 @@ def deps_cmd(
         return
     edges = ListDependencies(uow).execute(
         service_id=service_id,
-        window_start=_parse_dt(window_start, "--window-start")
-        if window_start else None,
-        window_end=_parse_dt(window_end, "--window-end")
-        if window_end else None,
+        window_start=_parse_dt(window_start, "--window-start") if window_start else None,
+        window_end=_parse_dt(window_end, "--window-end") if window_end else None,
     )
     _emit([e.model_dump(mode="json") for e in edges], as_json)
 
@@ -1366,12 +1307,8 @@ def deps_cmd(
 @app.command()
 def correlate(
     service_id: Annotated[str, typer.Option("--service-id")],
-    window_start: Annotated[
-        str | None, typer.Option("--window-start", help="ISO-8601")
-    ] = None,
-    window_end: Annotated[
-        str | None, typer.Option("--window-end", help="ISO-8601")
-    ] = None,
+    window_start: Annotated[str | None, typer.Option("--window-start", help="ISO-8601")] = None,
+    window_end: Annotated[str | None, typer.Option("--window-end", help="ISO-8601")] = None,
     as_json: _JSON = False,
     workspace: _WS = None,
     user_scope: _USER_SCOPE = False,
@@ -1388,10 +1325,8 @@ def correlate(
     structural = load_structural(config, ws.root)
     report = Correlate(uow, structural=structural).execute(
         service_id=service_id,
-        window_start=_parse_dt(window_start, "--window-start")
-        if window_start else None,
-        window_end=_parse_dt(window_end, "--window-end")
-        if window_end else None,
+        window_start=_parse_dt(window_start, "--window-start") if window_start else None,
+        window_end=_parse_dt(window_end, "--window-end") if window_end else None,
     )
     _emit(report.model_dump(mode="json"), as_json)
 
@@ -1433,9 +1368,7 @@ def _aws_clients(
 @aws_app.command("collect")
 def aws_collect(
     source_id: Annotated[str, typer.Option("--source-id")],
-    window: Annotated[
-        str, typer.Option("--window", help="Lookback window, e.g. 30m")
-    ] = "30m",
+    window: Annotated[str, typer.Option("--window", help="Lookback window, e.g. 30m")] = "30m",
     end: Annotated[
         str | None,
         typer.Option("--end", help="ISO-8601 window end (default: now)"),
@@ -1453,15 +1386,9 @@ def aws_collect(
         ),
     ] = None,
     max_calls: Annotated[int | None, typer.Option("--max-calls")] = None,
-    max_datapoints: Annotated[
-        int | None, typer.Option("--max-datapoints")
-    ] = None,
-    max_lookback_minutes: Annotated[
-        int | None, typer.Option("--max-lookback-minutes")
-    ] = None,
-    max_runtime_seconds: Annotated[
-        float | None, typer.Option("--max-runtime-seconds")
-    ] = None,
+    max_datapoints: Annotated[int | None, typer.Option("--max-datapoints")] = None,
+    max_lookback_minutes: Annotated[int | None, typer.Option("--max-lookback-minutes")] = None,
+    max_runtime_seconds: Annotated[float | None, typer.Option("--max-runtime-seconds")] = None,
     max_retries: Annotated[int | None, typer.Option("--max-retries")] = None,
     max_pages: Annotated[int | None, typer.Option("--max-pages")] = None,
     max_estimated_cost_usd: Annotated[
@@ -1530,19 +1457,13 @@ def aws_collect(
 
 @aws_app.command("discover")
 def aws_discover(
-    profile: Annotated[
-        str | None, typer.Option("--profile", help="AWS profile name")
-    ] = None,
-    region: Annotated[
-        str | None, typer.Option("--region", help="Region scope")
-    ] = None,
+    profile: Annotated[str | None, typer.Option("--profile", help="AWS profile name")] = None,
+    region: Annotated[str | None, typer.Option("--region", help="Region scope")] = None,
     account_id: Annotated[
         str | None,
         typer.Option("--account-id", help="Expected 12-digit account id"),
     ] = None,
-    role_arn: Annotated[
-        str | None, typer.Option("--role-arn", help="Role to assume first")
-    ] = None,
+    role_arn: Annotated[str | None, typer.Option("--role-arn", help="Role to assume first")] = None,
     simulate: Annotated[
         str | None,
         typer.Option(
@@ -1632,9 +1553,7 @@ def backup_create(
 
 @backup_app.command("restore")
 def backup_restore(
-    from_dir: Annotated[
-        Path, typer.Option("--from", help="Backup directory to restore")
-    ],
+    from_dir: Annotated[Path, typer.Option("--from", help="Backup directory to restore")],
     force: Annotated[
         bool,
         typer.Option("--force", help="Replace a live workspace (moved aside)"),
@@ -1683,15 +1602,9 @@ def retention(
         int | None,
         typer.Option("--hourly-days", help="Hourly-class observation tier"),
     ] = None,
-    quarantine_days: Annotated[
-        int | None, typer.Option("--quarantine-days")
-    ] = None,
-    incidents_days: Annotated[
-        int | None, typer.Option("--incidents-days")
-    ] = None,
-    evidence_days: Annotated[
-        int | None, typer.Option("--evidence-days")
-    ] = None,
+    quarantine_days: Annotated[int | None, typer.Option("--quarantine-days")] = None,
+    incidents_days: Annotated[int | None, typer.Option("--incidents-days")] = None,
+    evidence_days: Annotated[int | None, typer.Option("--evidence-days")] = None,
     audit_days: Annotated[
         int | None,
         typer.Option("--audit-days", help="Opt-in audit purge (off by default)"),
@@ -1747,9 +1660,7 @@ def _is_loopback(host: str) -> bool:
 
 @app.command()
 def serve(
-    host: Annotated[
-        str, typer.Option("--host", help="Bind address (loopback only)")
-    ] = "127.0.0.1",
+    host: Annotated[str, typer.Option("--host", help="Bind address (loopback only)")] = "127.0.0.1",
     port: Annotated[int, typer.Option("--port", help="Bind port")] = 8080,
     allow_remote: Annotated[
         bool,
@@ -1806,9 +1717,7 @@ def serve(
     ws = _ws(workspace, user_scope)
     ensure_workspace(ws)
     stdin_token = sys.stdin.readline().strip() if token_stdin else None
-    auth, resolved = resolve_auth(
-        ws, _load_cfg(ws), stdin_token=stdin_token
-    )
+    auth, resolved = resolve_auth(ws, _load_cfg(ws), stdin_token=stdin_token)
     if resolved.created:
         typer.echo(
             f"generated workspace API token at {resolved.path} —\n"

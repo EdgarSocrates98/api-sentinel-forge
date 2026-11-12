@@ -23,10 +23,7 @@ from api_sentinel.integrations.service import (
 )
 
 NOW = datetime(2026, 1, 1, tzinfo=UTC)
-LAB = (
-    Path(__file__).resolve().parents[2]
-    / "lab/fixtures/lab-003-dependency-cascade"
-)
+LAB = Path(__file__).resolve().parents[2] / "lab/fixtures/lab-003-dependency-cascade"
 
 
 def _uow(db: Path) -> SqliteUnitOfWork:
@@ -95,8 +92,11 @@ class TestHandoffFileRoundTrip:
         _seed_services(db)
         acl = DoctorACL(mode=DoctorMode.HANDOFF_FILE)
         outcome = DelegateToDoctor(
-            _uow(db), FixedClock(NOW), SequentialIdFactory(),
-            acl, workspace_root=ws,
+            _uow(db),
+            FixedClock(NOW),
+            SequentialIdFactory(),
+            acl,
+            workspace_root=ws,
         ).execute(service_id="svc_orders", target="platform/orders")
         assert outcome.status == "delegated"
         assert outcome.request_ref is not None
@@ -115,8 +115,11 @@ class TestHandoffFileRoundTrip:
         _seed_services(db)
         acl = DoctorACL(mode=DoctorMode.HANDOFF_FILE)
         outcome = DelegateToDoctor(
-            _uow(db), FixedClock(NOW), SequentialIdFactory(),
-            acl, workspace_root=ws,
+            _uow(db),
+            FixedClock(NOW),
+            SequentialIdFactory(),
+            acl,
+            workspace_root=ws,
         ).execute(service_id="svc_orders", target="t")
         with _uow(db) as uow:
             record = uow.handoff_records.get(outcome.handoff.handoff_id)
@@ -154,10 +157,14 @@ class TestTimeoutNamedState:
         _seed_services(db)
         acl = DoctorACL(mode=DoctorMode.IN_PROCESS, timeout_seconds=0.001)
         outcome = DelegateToDoctor(
-            _uow(db), FixedClock(NOW), SequentialIdFactory(),
-            acl, workspace_root=tmp_path / "ws",
+            _uow(db),
+            FixedClock(NOW),
+            SequentialIdFactory(),
+            acl,
+            workspace_root=tmp_path / "ws",
         ).execute(
-            service_id="svc_orders", target="t",
+            service_id="svc_orders",
+            target="t",
             context_root=tmp_path,
         )
         # Not importable → named UNAVAILABLE, not a simulated run.
@@ -168,11 +175,12 @@ class TestTimeoutNamedState:
         _seed_services(db)
         acl = DoctorACL(mode=DoctorMode.IN_PROCESS, timeout_seconds=5)
         outcome = DelegateToDoctor(
-            _uow(db), FixedClock(NOW), SequentialIdFactory(),
-            acl, workspace_root=tmp_path / "ws",
-        ).execute(
-            service_id="svc_orders", target="t", context_root=None
-        )
+            _uow(db),
+            FixedClock(NOW),
+            SequentialIdFactory(),
+            acl,
+            workspace_root=tmp_path / "ws",
+        ).execute(service_id="svc_orders", target="t", context_root=None)
         # Either importable→refused (no context_root) or not-importable→unavailable.
         assert outcome.status in ("refused", "unavailable")
 
@@ -188,9 +196,7 @@ class TestLab003Cascade:
         db = tmp_path / "s.db"
         self._setup(db)
         atlas = FileStructuralContext.load(LAB / "atlas-export.json")
-        report = Correlate(_uow(db), structural=atlas).execute(
-            service_id="svc_orders"
-        )
+        report = Correlate(_uow(db), structural=atlas).execute(service_id="svc_orders")
         # The observed edge with timeouts — payments→payments-db is the
         # worst offender *for payments*; orders' own worst observed edge is
         # payments (30 errors). The oracle checks the *observed* dependency.
@@ -201,9 +207,7 @@ class TestLab003Cascade:
         db = tmp_path / "s.db"
         self._setup(db)
         atlas = FileStructuralContext.load(LAB / "atlas-export.json")
-        report = Correlate(_uow(db), structural=atlas).execute(
-            service_id="svc_orders"
-        )
+        report = Correlate(_uow(db), structural=atlas).execute(service_id="svc_orders")
         # Observed edges labeled 'observed', structural 'structural' — distinct.
         assert all(e.kind == "observed" for e in report.observed_edges)
         assert all(e.kind == "structural" for e in report.structural_edges)
@@ -217,9 +221,7 @@ class TestLab003Cascade:
         db = tmp_path / "s.db"
         self._setup(db)
         atlas = FileStructuralContext.load(LAB / "atlas-export.json")
-        report = Correlate(_uow(db), structural=atlas).execute(
-            service_id="svc_orders"
-        )
+        report = Correlate(_uow(db), structural=atlas).execute(service_id="svc_orders")
         assert report.hypotheses, "expected a candidate hypothesis"
         for h in report.hypotheses:
             assert h.confidence.value == "HYPOTHESIZED"
@@ -230,22 +232,16 @@ class TestLab003Cascade:
     def test_without_atlas_honest_unknown(self, tmp_path: Path) -> None:
         db = tmp_path / "s.db"
         self._setup(db)
-        report = Correlate(_uow(db), structural=None).execute(
-            service_id="svc_orders"
-        )
+        report = Correlate(_uow(db), structural=None).execute(service_id="svc_orders")
         assert report.structural_edges == []
         assert any("structural" in u for u in report.unknowns)
 
-    def test_unresolved_identity_honest_unknown_no_guess(
-        self, tmp_path: Path
-    ) -> None:
+    def test_unresolved_identity_honest_unknown_no_guess(self, tmp_path: Path) -> None:
         """A service without code_atlas_identity stays UNKNOWN (LAB-006)."""
         db = tmp_path / "s.db"
         with _uow(db) as uow:
             env = uow.environments.get_by_name("lab") or uow.environments.put(
-                ServiceEnvironment(
-                    environment_id="env_lab", name="lab", created_at=NOW
-                )
+                ServiceEnvironment(environment_id="env_lab", name="lab", created_at=NOW)
             )
             uow.services.put(
                 ApiService(
@@ -259,9 +255,7 @@ class TestLab003Cascade:
             )
             uow.commit()
         atlas = FileStructuralContext.load(LAB / "atlas-export.json")
-        report = Correlate(_uow(db), structural=atlas).execute(
-            service_id="svc_unmapped"
-        )
+        report = Correlate(_uow(db), structural=atlas).execute(service_id="svc_unmapped")
         assert report.structural_edges == []
         assert any("unresolved" in u for u in report.unknowns)
 

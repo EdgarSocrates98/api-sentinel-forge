@@ -44,8 +44,8 @@ PROXIMITY_DISCLAIMER = (
 
 #: Explainable proximity buckets (seconds before the anchor) → weight.
 _PROXIMITY_BUCKETS: list[tuple[float, float]] = [
-    (300.0, 1.0),   # <= 5 min
-    (900.0, 0.8),   # <= 15 min
+    (300.0, 1.0),  # <= 5 min
+    (900.0, 0.8),  # <= 15 min
     (1800.0, 0.6),  # <= 30 min
     (3600.0, 0.4),  # <= 60 min
 ]
@@ -135,10 +135,7 @@ def correlate_changes(
             "scope:same_service",
         ]
         score = proximity * kind_weight
-        if (
-            incident.operation_id
-            and change.details.get("operation_id") == incident.operation_id
-        ):
+        if incident.operation_id and change.details.get("operation_id") == incident.operation_id:
             score += 0.2
             reasons.append("scope:operation_match(+0.2)")
         candidates.append(
@@ -154,9 +151,7 @@ def correlate_changes(
             f"changes_after_anchor_excluded:{after_anchor} — a change "
             "after the first signal cannot precede it"
         )
-    candidates.sort(
-        key=lambda c: (-c.score, c.delta_seconds, c.change.change_id)
-    )
+    candidates.sort(key=lambda c: (-c.score, c.delta_seconds, c.change.change_id))
     return ChangeCorrelationReport(
         incident_id=incident.incident_id,
         service_id=incident.service_id,
@@ -209,9 +204,7 @@ class ImportDeployManifest:
         source: str | None = None,
     ) -> ManifestImportReport:
         try:
-            data = json.loads(
-                read_text_bounded(file, name="deploy manifest")
-            )
+            data = json.loads(read_text_bounded(file, name="deploy manifest"))
         except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
             raise ValidationError(
                 f"deploy manifest unreadable: {file}",
@@ -222,8 +215,7 @@ class ImportDeployManifest:
         schema = data.get("schema")
         if schema != DeployManifestV1.expected_schema:
             raise ContractError(
-                f"unsupported schema {schema!r}, expected "
-                f"'{DeployManifestV1.expected_schema}'",
+                f"unsupported schema {schema!r}, expected '{DeployManifestV1.expected_schema}'",
                 details={
                     "received": schema,
                     "expected": DeployManifestV1.expected_schema,
@@ -262,8 +254,7 @@ class ImportDeployManifest:
             if service_id is None:
                 skipped += 1
                 unknowns.append(
-                    f"service_unresolved:{rec.service} — no unique match; "
-                    "never name-guessed"
+                    f"service_unresolved:{rec.service} — no unique match; never name-guessed"
                 )
                 continue
             try:
@@ -271,8 +262,7 @@ class ImportDeployManifest:
             except ValueError:
                 skipped += 1
                 unknowns.append(
-                    f"kind_unsupported:{rec.kind} for {service_id} — "
-                    "skipped, never defaulted"
+                    f"kind_unsupported:{rec.kind} for {service_id} — skipped, never defaulted"
                 )
                 continue
             known = self._known_change(service_id, kind, rec)
@@ -324,9 +314,7 @@ class CorrelateIncidentChanges:
             incident = uow.incidents.get(incident_id)
             if incident is None:
                 raise NotFoundError(f"incident not found: {incident_id}")
-            changes = uow.change_events.list_for_service(
-                incident.service_id
-            )
+            changes = uow.change_events.list_for_service(incident.service_id)
         return correlate_changes(
             incident=incident,
             changes=changes,

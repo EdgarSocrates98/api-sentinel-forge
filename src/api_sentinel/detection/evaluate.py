@@ -143,9 +143,7 @@ def evaluate_rule(
     if policy.suppressed_until is not None and request.now < policy.suppressed_until:
         return _result(
             EvaluationOutcome.SKIPPED_PLANNED_SUPPRESSION,
-            notes=[
-                f"planned_suppression:{policy.suppress_reason or 'suppressed_until'}"
-            ],
+            notes=[f"planned_suppression:{policy.suppress_reason or 'suppressed_until'}"],
         )
 
     span = timedelta(seconds=request.window.seconds)
@@ -157,8 +155,7 @@ def evaluate_rule(
         for i in range(policy.confirm_windows)
     ]
     results: list[DetectionResult] = [
-        detector.evaluate(request.model_copy(update={"window": w}), context)
-        for w in windows
+        detector.evaluate(request.model_copy(update={"window": w}), context) for w in windows
     ]
     current = results[0]
     unknowns = sorted({u for r in results for u in r.unknowns})
@@ -178,9 +175,7 @@ def evaluate_rule(
 
     for draft in current.anomalies:
         confirmations = 1 + sum(
-            1
-            for r in results[1:]
-            if any(d.dedup_key == draft.dedup_key for d in r.anomalies)
+            1 for r in results[1:] if any(d.dedup_key == draft.dedup_key for d in r.anomalies)
         )
         if confirmations < policy.confirm_windows:
             suppressed.append(
@@ -226,9 +221,7 @@ def evaluate_rule(
     )
 
 
-def materialize_anomaly(
-    *, rule: DetectionRule, detector: Detector, draft: AnomalyDraft
-) -> Anomaly:
+def materialize_anomaly(*, rule: DetectionRule, detector: Detector, draft: AnomalyDraft) -> Anomaly:
     """Draft → persisted anomaly with deterministic identity."""
     return Anomaly(
         anomaly_id=_draft_anomaly_id(rule, draft),

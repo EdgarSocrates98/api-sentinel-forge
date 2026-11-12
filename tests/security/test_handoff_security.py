@@ -64,17 +64,13 @@ class TestPathGuards:
         with pytest.raises(ValidationError):
             safe_child_name(bad)
 
-    def test_resolve_under_root_refuses_literal_escape(
-        self, tmp_path: Path
-    ) -> None:
+    def test_resolve_under_root_refuses_literal_escape(self, tmp_path: Path) -> None:
         root = tmp_path / "handoffs"
         root.mkdir()
         with pytest.raises(ValidationError):
             resolve_under_root(root, root / ".." / "outside")
 
-    def test_resolve_under_root_refuses_symlink_escape(
-        self, tmp_path: Path
-    ) -> None:
+    def test_resolve_under_root_refuses_symlink_escape(self, tmp_path: Path) -> None:
         root = tmp_path / "handoffs"
         root.mkdir()
         outside = tmp_path / "outside"
@@ -119,9 +115,7 @@ class TestReceiptBoundary:
         with pytest.raises(ValidationError):
             write_receipt(tmp_path / "receipts", receipt)
 
-    def test_receipt_carries_correlation_and_state_split(
-        self, tmp_path: Path
-    ) -> None:
+    def test_receipt_carries_correlation_and_state_split(self, tmp_path: Path) -> None:
         receipt = DelegationReceipt(
             receipt_id="rcpt_hnd_lab1",
             to_forge="forge-doctor-api",
@@ -143,9 +137,7 @@ class TestReceiptBoundary:
 
 
 class TestDoctorHandoffBoundary:
-    def test_crafted_handoff_id_cannot_escape(
-        self, tmp_path: Path
-    ) -> None:
+    def test_crafted_handoff_id_cannot_escape(self, tmp_path: Path) -> None:
         acl = DoctorACL(mode=DoctorMode.HANDOFF_FILE)
         handoffs = tmp_path / "handoffs"
         with pytest.raises(ValidationError):
@@ -156,9 +148,7 @@ class TestDoctorHandoffBoundary:
             )
         assert not (tmp_path / "escape").exists()
 
-    def test_handoff_emits_under_root_with_correlation(
-        self, tmp_path: Path
-    ) -> None:
+    def test_handoff_emits_under_root_with_correlation(self, tmp_path: Path) -> None:
         acl = DoctorACL(mode=DoctorMode.HANDOFF_FILE)
         result = acl.delegate(
             _handoff("hnd_lab_sec1"),
@@ -166,29 +156,20 @@ class TestDoctorHandoffBoundary:
             handoffs_dir=tmp_path / "handoffs",
         )
         assert result.status == "delegated"
-        emitted = (
-            tmp_path / "handoffs" / "hnd_lab_sec1" / "doctor_request.json"
-        )
+        emitted = tmp_path / "handoffs" / "hnd_lab_sec1" / "doctor_request.json"
         assert emitted.is_file()
 
-    def test_ingest_correlation_mismatch_is_refused(
-        self, tmp_path: Path
-    ) -> None:
+    def test_ingest_correlation_mismatch_is_refused(self, tmp_path: Path) -> None:
         bundle = tmp_path / "bundle.json"
         bundle.write_text(
-            json.dumps(
-                {"handoff_version": 2, "handoff_id": "hnd_other",
-                 "findings": []}
-            ),
+            json.dumps({"handoff_version": 2, "handoff_id": "hnd_other", "findings": []}),
             encoding="utf-8",
         )
         acl = DoctorACL(mode=DoctorMode.HANDOFF_FILE)
         with pytest.raises(ContractError, match="correlation mismatch"):
             acl.ingest(bundle, expected_handoff_id="hnd_mine")
 
-    def test_ingest_oversized_bundle_is_refused(
-        self, tmp_path: Path
-    ) -> None:
+    def test_ingest_oversized_bundle_is_refused(self, tmp_path: Path) -> None:
         big = tmp_path / "bundle.json"
         big.write_bytes(b" " * (MAX_INBOUND_BYTES + 1))
         acl = DoctorACL(mode=DoctorMode.HANDOFF_FILE)
@@ -197,9 +178,7 @@ class TestDoctorHandoffBoundary:
 
 
 class TestSessionSlotBoundary:
-    def test_crafted_session_request_id_cannot_escape(
-        self, tmp_path: Path
-    ) -> None:
+    def test_crafted_session_request_id_cannot_escape(self, tmp_path: Path) -> None:
         from api_sentinel.integrations.bridge.adapter import (
             FileAgentSession,
         )

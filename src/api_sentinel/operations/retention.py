@@ -110,18 +110,12 @@ def _protected_evidence(conn: Any, surviving_incidents: set[str]) -> set[str]:
         if row:
             _evidence_refs_in(json.loads(row["state"]), protected)
     for row in conn.execute("SELECT evidence_refs FROM anomalies"):
-        _evidence_refs_in(
-            {"evidence_refs": json.loads(row["evidence_refs"])}, protected
-        )
-    for row in conn.execute(
-        "SELECT context_pack, result FROM investigations"
-    ):
+        _evidence_refs_in({"evidence_refs": json.loads(row["evidence_refs"])}, protected)
+    for row in conn.execute("SELECT context_pack, result FROM investigations"):
         _evidence_refs_in(json.loads(row["context_pack"]), protected)
         _evidence_refs_in(json.loads(row["result"]), protected)
     for row in conn.execute("SELECT evidence_refs FROM dependency_observations"):
-        _evidence_refs_in(
-            {"evidence_refs": json.loads(row["evidence_refs"])}, protected
-        )
+        _evidence_refs_in({"evidence_refs": json.loads(row["evidence_refs"])}, protected)
     return protected
 
 
@@ -201,8 +195,7 @@ def run_retention(
             "hourly": _cutoff(now, policy.observations_hourly_days),
         }
         obs_rows = conn.execute(
-            "SELECT observation_id, window_start, window_end"
-            " FROM runtime_observations"
+            "SELECT observation_id, window_start, window_end FROM runtime_observations"
         ).fetchall()
         obs_delete: list[str] = []
         obs_class_counts = {"detailed": 0, "minute": 0, "hourly": 0}
@@ -218,8 +211,7 @@ def run_retention(
         quarantine_rows = [
             r["item_id"]
             for r in conn.execute(
-                "SELECT item_id, created_at FROM ingestion_quarantine"
-                " WHERE created_at < ?",
+                "SELECT item_id, created_at FROM ingestion_quarantine WHERE created_at < ?",
                 (_cutoff(now, policy.quarantine_days),),
             )
         ]
@@ -227,8 +219,7 @@ def run_retention(
         # --- terminal incidents past policy ---
         incident_cutoff = _cutoff(now, policy.incidents_days)
         incident_rows = conn.execute(
-            "SELECT incident_id, status, resolved_at, detected_at"
-            " FROM incidents"
+            "SELECT incident_id, status, resolved_at, detected_at FROM incidents"
         ).fetchall()
         surviving_incidents: set[str] = set()
         purge_incidents: list[str] = []
@@ -346,15 +337,12 @@ def run_retention(
         referenced_blobs = {
             r["blob_ref"].removeprefix("sha256:")
             for r in conn.execute(
-                "SELECT blob_ref FROM evidence_artifacts"
-                " WHERE blob_ref IS NOT NULL"
+                "SELECT blob_ref FROM evidence_artifacts WHERE blob_ref IS NOT NULL"
             )
         }
         if ws.blobs_dir.is_dir():
             report.orphan_blob_files = sum(
-                1
-                for p in ws.blobs_dir.iterdir()
-                if p.is_file() and p.name not in referenced_blobs
+                1 for p in ws.blobs_dir.iterdir() if p.is_file() and p.name not in referenced_blobs
             )
     finally:
         conn.close()
@@ -383,8 +371,7 @@ def run_retention(
                     "workspace",
                     str(ws.root),
                     json.dumps(
-                        {k: str(v) for k, v in report.deleted.items()}
-                        | {"receipt": str(receipt)}
+                        {k: str(v) for k, v in report.deleted.items()} | {"receipt": str(receipt)}
                     ),
                 ),
             )

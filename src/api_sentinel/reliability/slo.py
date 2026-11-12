@@ -237,9 +237,7 @@ def evaluate_slo(
             )
         )
     if simulated_sources:
-        limitations.append(
-            "simulated_source_data:" + ",".join(simulated_sources)
-        )
+        limitations.append("simulated_source_data:" + ",".join(simulated_sources))
 
     primary: WindowAggregate | None = None
     if aggregates:

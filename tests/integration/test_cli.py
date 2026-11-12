@@ -78,15 +78,22 @@ _LAB_QUERIES = (
 def _aws_workspace(tmp_path: Path) -> tuple[str, str]:
     """Service + cloudwatch source registered through the real CLI."""
     ws = str(tmp_path / "ws")
-    r = _invoke("services", "--register", "payments-api",
-                "--workspace", ws, "--json")
+    r = _invoke("services", "--register", "payments-api", "--workspace", ws, "--json")
     assert r.exit_code == 0, r.stdout
     sid = json.loads(r.stdout)["service_id"]
     r = _invoke(
-        "sources", "--register", "cloudwatch", "--service-id", sid,
-        "--config", "region=us-east-1",
-        "--config", f"queries_json={_LAB_QUERIES}",
-        "--workspace", ws, "--json",
+        "sources",
+        "--register",
+        "cloudwatch",
+        "--service-id",
+        sid,
+        "--config",
+        "region=us-east-1",
+        "--config",
+        f"queries_json={_LAB_QUERIES}",
+        "--workspace",
+        ws,
+        "--json",
     )
     assert r.exit_code == 0, r.stdout
     return ws, json.loads(r.stdout)["source_id"]
@@ -96,8 +103,19 @@ def test_aws_collect_simulated_lab013(tmp_path: Path) -> None:
     ws, source_id = _aws_workspace(tmp_path)
     end = "2030-01-01T12:00:00+00:00"
     r = _invoke(
-        "aws", "collect", "--source-id", source_id, "--window", "30m",
-        "--end", end, "--simulate", "lab013", "--workspace", ws, "--json",
+        "aws",
+        "collect",
+        "--source-id",
+        source_id,
+        "--window",
+        "30m",
+        "--end",
+        end,
+        "--simulate",
+        "lab013",
+        "--workspace",
+        ws,
+        "--json",
     )
     assert r.exit_code == 0, r.stdout
     report = json.loads(r.stdout)
@@ -109,8 +127,19 @@ def test_aws_collect_simulated_lab013(tmp_path: Path) -> None:
     assert report["receipt_path"]
     # same window re-collected → identical content → pipeline dedup
     r2 = _invoke(
-        "aws", "collect", "--source-id", source_id, "--window", "30m",
-        "--end", end, "--simulate", "lab013", "--workspace", ws, "--json",
+        "aws",
+        "collect",
+        "--source-id",
+        source_id,
+        "--window",
+        "30m",
+        "--end",
+        end,
+        "--simulate",
+        "lab013",
+        "--workspace",
+        ws,
+        "--json",
     )
     assert r2.exit_code == 0, r2.stdout
     report2 = json.loads(r2.stdout)
@@ -120,8 +149,14 @@ def test_aws_collect_simulated_lab013(tmp_path: Path) -> None:
 
 def test_aws_discover_simulated(tmp_path: Path) -> None:
     r = _invoke(
-        "aws", "discover", "--region", "us-east-1",
-        "--simulate", "lab013", "--workspace", str(tmp_path / "ws"),
+        "aws",
+        "discover",
+        "--region",
+        "us-east-1",
+        "--simulate",
+        "lab013",
+        "--workspace",
+        str(tmp_path / "ws"),
         "--json",
     )
     assert r.exit_code == 0, r.stdout
@@ -136,19 +171,35 @@ def test_aws_discover_simulated(tmp_path: Path) -> None:
 
 def test_aws_collect_refuses_credential_config(tmp_path: Path) -> None:
     ws = str(tmp_path / "ws")
-    r = _invoke("services", "--register", "payments-api",
-                "--workspace", ws, "--json")
+    r = _invoke("services", "--register", "payments-api", "--workspace", ws, "--json")
     sid = json.loads(r.stdout)["service_id"]
     r = _invoke(
-        "sources", "--register", "cloudwatch", "--service-id", sid,
-        "--config", "region=us-east-1",
-        "--config", "aws_access_key_id=AKIAIOSFODNN7EXAMPLE",
-        "--workspace", ws, "--json",
+        "sources",
+        "--register",
+        "cloudwatch",
+        "--service-id",
+        sid,
+        "--config",
+        "region=us-east-1",
+        "--config",
+        "aws_access_key_id=AKIAIOSFODNN7EXAMPLE",
+        "--workspace",
+        ws,
+        "--json",
     )
     source_id = json.loads(r.stdout)["source_id"]
     r = _invoke(
-        "aws", "collect", "--source-id", source_id, "--window", "30m",
-        "--simulate", "lab013", "--workspace", ws, "--json",
+        "aws",
+        "collect",
+        "--source-id",
+        source_id,
+        "--window",
+        "30m",
+        "--simulate",
+        "lab013",
+        "--workspace",
+        ws,
+        "--json",
     )
     assert r.exit_code != 0
     # the fake key never reaches stdout/stderr or any written receipt

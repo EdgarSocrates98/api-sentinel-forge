@@ -231,9 +231,7 @@ class DefineSlo:
         slo_id: str | None = None,
     ) -> SloDefinition:
         if not 0.0 < target < 1.0:
-            raise ValidationError(
-                "SLO target must be in (0, 1)", details={"target": target}
-            )
+            raise ValidationError("SLO target must be in (0, 1)", details={"target": target})
         if window_seconds <= 0:
             raise ValidationError(
                 "SLO window must be positive", details={"window_seconds": window_seconds}
@@ -250,9 +248,7 @@ class DefineSlo:
                 ]
                 revision = (max(revisions) + 1) if revisions else 1
             if revision < 1:
-                raise ValidationError(
-                    "SLO revision must be >= 1", details={"revision": revision}
-                )
+                raise ValidationError("SLO revision must be >= 1", details={"revision": revision})
             try:
                 definition = SloDefinition(
                     slo_id=slo_id,
@@ -330,8 +326,7 @@ class EvaluateSlo:
                 window=window,
                 evaluated_at=_now(self._clock),
                 source_kinds={
-                    s.source_id: s.kind
-                    for s in self._uow.sources.list(definition.service_id)
+                    s.source_id: s.kind for s in self._uow.sources.list(definition.service_id)
                 },
             )
             self._uow.slo_assessments.put(assessment)
@@ -369,15 +364,11 @@ class GetServiceHealth:
     def __init__(self, uow: UnitOfWork, clock: Clock) -> None:
         self._uow, self._clock = uow, clock
 
-    def execute(
-        self, *, service_id: str, stale_after_seconds: int = 300
-    ) -> ServiceHealthReport:
+    def execute(self, *, service_id: str, stale_after_seconds: int = 300) -> ServiceHealthReport:
         with self._uow:
             if self._uow.services.get(service_id) is None:
                 raise NotFoundError(f"service not found: {service_id}")
-            source_ids = [
-                s.source_id for s in self._uow.sources.list(service_id)
-            ]
+            source_ids = [s.source_id for s in self._uow.sources.list(service_id)]
             observations = self._uow.observations.list_for_service(service_id)
             return assess_service_health(
                 service_id=service_id,
@@ -525,9 +516,7 @@ class RunDetection:
                             )
                         )
                 for draft in evaluation.anomalies:
-                    anomaly = materialize_anomaly(
-                        rule=rule, detector=detector, draft=draft
-                    )
+                    anomaly = materialize_anomaly(rule=rule, detector=detector, draft=draft)
                     existing = uow.anomalies.get(anomaly.anomaly_id)
                     if existing is not None:
                         deduplicated.append(anomaly.anomaly_id)
@@ -658,9 +647,7 @@ class RunDetection:
                 continue
             if incident.group_key in fired_group_keys:
                 continue
-            rule_ref = next(
-                (r for r in incident.rule_refs if r.detector_id == kind), None
-            )
+            rule_ref = next((r for r in incident.rule_refs if r.detector_id == kind), None)
             if rule_ref is None:
                 continue
             event = recovery_observed(
@@ -816,19 +803,13 @@ def _service_health_coverage(
         sources_registered=len(source_ids),
         sources_observed=len({o.source_id for o in observations}),
         observations=len(observations),
-        latest_window_end=max(
-            (o.window_end for o in observations), default=None
-        ),
+        latest_window_end=max((o.window_end for o in observations), default=None),
     )
     return health, coverage
 
 
 def _open_incident_count(uow: UnitOfWork, service_id: str) -> int:
-    return sum(
-        1
-        for i in uow.incidents.list(service_id=service_id)
-        if i.status in OPEN_STATUSES
-    )
+    return sum(1 for i in uow.incidents.list(service_id=service_id) if i.status in OPEN_STATUSES)
 
 
 class ListServiceSummaries:
@@ -840,25 +821,17 @@ class ListServiceSummaries:
     def execute(self) -> list[ServiceSummary]:
         with self._uow as uow:
             now = _now(self._clock)
-            return [
-                self._one(uow, service, now) for service in uow.services.list()
-            ]
+            return [self._one(uow, service, now) for service in uow.services.list()]
 
     @staticmethod
-    def _one(
-        uow: UnitOfWork, service: ApiService, now: datetime
-    ) -> ServiceSummary:
-        health, coverage = _service_health_coverage(
-            uow, service.service_id, now=now
-        )
+    def _one(uow: UnitOfWork, service: ApiService, now: datetime) -> ServiceSummary:
+        health, coverage = _service_health_coverage(uow, service.service_id, now=now)
         return ServiceSummary(
             service=service,
             health=health,
             coverage=coverage,
             open_incidents=_open_incident_count(uow, service.service_id),
-            slo_definitions=len(
-                uow.slo_definitions.list(service.service_id)
-            ),
+            slo_definitions=len(uow.slo_definitions.list(service.service_id)),
         )
 
 
@@ -882,9 +855,7 @@ class GetServiceDetail:
             service = uow.services.get(service_id)
             if service is None:
                 raise NotFoundError(f"service not found: {service_id}")
-            health, coverage = _service_health_coverage(
-                uow, service_id, now=_now(self._clock)
-            )
+            health, coverage = _service_health_coverage(uow, service_id, now=_now(self._clock))
             return ServiceDetail(
                 service=service,
                 health=health,
@@ -962,9 +933,7 @@ class ListServiceOperations:
                     **self._stats(group),
                 )
             )
-        views.sort(
-            key=lambda v: (v.operation_ref or "", v.operation_id or "")
-        )
+        views.sort(key=lambda v: (v.operation_ref or "", v.operation_id or ""))
         return views
 
     @staticmethod
@@ -1050,20 +1019,14 @@ class GetServiceMetrics:
         with self._uow as uow:
             if uow.services.get(service_id) is None:
                 raise NotFoundError(f"service not found: {service_id}")
-            observations = uow.observations.list_for_service(
-                service_id, window_start, window_end
-            )
+            observations = uow.observations.list_for_service(service_id, window_start, window_end)
         if operation_id is not None:
-            observations = [
-                o for o in observations if o.operation_id == operation_id
-            ]
+            observations = [o for o in observations if o.operation_id == operation_id]
 
         unknowns: list[str] = []
         if not observations:
             unknowns.append(
-                "no_observations"
-                if operation_id is None
-                else "no_observations_for_operation"
+                "no_observations" if operation_id is None else "no_observations_for_operation"
             )
 
         groups: dict[tuple[datetime, datetime], list[Any]] = {}
@@ -1117,10 +1080,7 @@ class GetServiceMetrics:
         """Visible gaps: a missing slot is reported, never silently skipped."""
         if len(windows) < 2:
             return []
-        deltas = [
-            (b[0] - a[0]).total_seconds()
-            for a, b in pairwise(windows)
-        ]
+        deltas = [(b[0] - a[0]).total_seconds() for a, b in pairwise(windows)]
         positive = [d for d in deltas if d > 0]
         if not positive:
             return []
@@ -1133,9 +1093,7 @@ class GetServiceMetrics:
                     MetricsGap(
                         after_window_end=a_end,
                         before_window_start=b_start,
-                        estimated_missing_windows=max(
-                            1, round(delta / nominal) - 1
-                        ),
+                        estimated_missing_windows=max(1, round(delta / nominal) - 1),
                     )
                 )
         return gaps
@@ -1188,9 +1146,7 @@ class GetServiceSlos:
                     )
                 )
             unknowns = [] if entries else ["no_slo_definitions"]
-            return ServiceSloPanel(
-                service_id=service_id, slos=entries, unknowns=unknowns
-            )
+            return ServiceSloPanel(service_id=service_id, slos=entries, unknowns=unknowns)
 
 
 class ProductForgeLink(FrozenModel):
@@ -1230,9 +1186,7 @@ class GetServiceLinks:
             service = uow.services.get(service_id)
             if service is None:
                 raise NotFoundError(f"service not found: {service_id}")
-            links = sorted(
-                service.external_refs, key=lambda r: (r.kind, r.ref)
-            )
+            links = sorted(service.external_refs, key=lambda r: (r.kind, r.ref))
         pf = next((r for r in links if _is_product_forge_ref(r)), None)
         unknowns: list[str] = []
         if pf is None:
@@ -1245,13 +1199,15 @@ class GetServiceLinks:
             unknowns.append("product_forge_correspondence_unproven")
         elif pf.provenance == "verified":
             correspondence = ProductForgeLink(
-                state="proven", ref=pf,
+                state="proven",
+                ref=pf,
                 reason="verified identity correspondence recorded on the "
                 "canonical service identity",
             )
         else:
             correspondence = ProductForgeLink(
-                state="declared", ref=pf,
+                state="declared",
+                ref=pf,
                 reason=f"external_ref provenance is {pf.provenance!r}, not "
                 "verified — the Portal may display the link but must not "
                 "activate the Product Forge experience",
@@ -1276,9 +1232,7 @@ class IncidentTimeline(FrozenModel):
     incident: Incident
     events: list[IncidentEvent] = Field(default_factory=list)
     change_events: list[ChangeEvent] = Field(default_factory=list)
-    dependency_observations: list[DependencyObservation] = Field(
-        default_factory=list
-    )
+    dependency_observations: list[DependencyObservation] = Field(default_factory=list)
     investigations: list[Investigation] = Field(default_factory=list)
     hypotheses: list[Hypothesis] = Field(default_factory=list)
     verifications: list[VerificationRecord] = Field(default_factory=list)
@@ -1309,15 +1263,10 @@ class GetIncidentTimeline:
                 incident.service_id, window_start=incident.first_observed_at
             )
             investigations = uow.investigations.list_for_incident(incident_id)
-        truncated = (
-            len(changes) > self.RELATED_LIMIT
-            or len(edges) > self.RELATED_LIMIT
-        )
+        truncated = len(changes) > self.RELATED_LIMIT or len(edges) > self.RELATED_LIMIT
         unknowns: list[str] = []
         if truncated:
-            unknowns.append(
-                f"related_events_truncated_at_{self.RELATED_LIMIT}"
-            )
+            unknowns.append(f"related_events_truncated_at_{self.RELATED_LIMIT}")
         return IncidentTimeline(
             incident=incident,
             events=events,
@@ -1353,9 +1302,7 @@ class ListAnomalies:
             except ValueError as exc:
                 raise ValidationError(
                     f"invalid anomaly status: {status!r}",
-                    details={
-                        "expected": sorted(s.value for s in AnomalyStatus)
-                    },
+                    details={"expected": sorted(s.value for s in AnomalyStatus)},
                 ) from exc
         if not 1 <= limit <= self.MAX_LIMIT:
             raise ValidationError(
@@ -1386,9 +1333,7 @@ class IncidentDetail(FrozenModel):
     evidence_unresolved: list[str] = Field(default_factory=list)
 
 
-def _resolve_evidence(
-    uow: UnitOfWork, refs: list[str]
-) -> tuple[list[EvidenceArtifact], list[str]]:
+def _resolve_evidence(uow: UnitOfWork, refs: list[str]) -> tuple[list[EvidenceArtifact], list[str]]:
     found: list[EvidenceArtifact] = []
     unresolved: list[str] = []
     for ref in refs:
@@ -1412,8 +1357,7 @@ class GetIncidentDetail:
             events = uow.incident_events.list(incident_id)
             anomalies = uow.anomalies.list_for_incident(incident_id)
             refs = sorted(
-                set(incident.evidence_refs)
-                | {r for a in anomalies for r in a.evidence_refs}
+                set(incident.evidence_refs) | {r for a in anomalies for r in a.evidence_refs}
             )
             evidence, unresolved = _resolve_evidence(uow, refs)
             return IncidentDetail(
@@ -1496,9 +1440,7 @@ class StartInvestigation:
         """Returns (investigation, replayed)."""
         with self._uow as uow:
             if idempotency_key:
-                existing = uow.investigations.get_by_idempotency_key(
-                    idempotency_key
-                )
+                existing = uow.investigations.get_by_idempotency_key(idempotency_key)
                 if existing is not None:
                     return existing, True
             incident = uow.incidents.get(incident_id)
@@ -1506,16 +1448,12 @@ class StartInvestigation:
                 raise NotFoundError(f"incident not found: {incident_id}")
             service = uow.services.get(incident.service_id)
             if service is None:
-                raise NotFoundError(
-                    f"service not found: {incident.service_id}"
-                )
+                raise NotFoundError(f"service not found: {incident.service_id}")
             now = _now(self._clock)
             pack, summary = self._assemble(uow, incident=incident, now=now)
             investigation_id = (
                 "inv_"
-                + hashlib.sha256(
-                    f"{incident_id}|{idempotency_key}".encode()
-                ).hexdigest()[:24]
+                + hashlib.sha256(f"{incident_id}|{idempotency_key}".encode()).hexdigest()[:24]
                 if idempotency_key
                 else self._ids.new("inv")
             )
@@ -1565,32 +1503,24 @@ class StartInvestigation:
         if len(anomalies) > self.ANOMALY_CAP:
             anomalies = anomalies[-self.ANOMALY_CAP :]
             truncated.append("anomalies")
-        refs = sorted(
-            set(incident.evidence_refs)
-            | {r for a in anomalies for r in a.evidence_refs}
-        )
+        refs = sorted(set(incident.evidence_refs) | {r for a in anomalies for r in a.evidence_refs})
         if len(refs) > self.EVIDENCE_CAP:
             refs = refs[: self.EVIDENCE_CAP]
             truncated.append("evidence")
         evidence, unresolved = _resolve_evidence(uow, refs)
 
-        health, _ = _service_health_coverage(
-            uow, incident.service_id, now=now
-        )
+        health, _ = _service_health_coverage(uow, incident.service_id, now=now)
         edges = uow.dependency_observations.list_for_service(
             incident.service_id, window_start=incident.first_observed_at
         )[: self.EDGE_CAP]
 
-        unknowns: list[str] = [
-            f"evidence_unresolved:{r}" for r in unresolved
-        ]
+        unknowns: list[str] = [f"evidence_unresolved:{r}" for r in unresolved]
         structural, structural_edges = self._structural_view(uow, incident)
         if structural.state != "AVAILABLE":
             unknowns.append(f"structural_context:{structural.reason}")
 
         observed_tuples = [
-            (e.service_id, e.target,
-             f"{e.calls} calls/{e.errors} errors/{e.timeouts} timeouts")
+            (e.service_id, e.target, f"{e.calls} calls/{e.errors} errors/{e.timeouts} timeouts")
             for e in edges
         ]
         suspected = _suspected_origin(edges)
@@ -1649,14 +1579,11 @@ class StartInvestigation:
             return StructuralContextView(
                 state="UNAVAILABLE",
                 reason=self._structural_reason
-                or "no structural context configured — structural graph "
-                "unavailable",
+                or "no structural context configured — structural graph unavailable",
             ), []
         service = uow.services.get(incident.service_id)
         if service is None:
-            return StructuralContextView(
-                state="UNAVAILABLE", reason="service row missing"
-            ), []
+            return StructuralContextView(state="UNAVAILABLE", reason="service row missing"), []
         ref = self._structural.resolve_service(service)
         if ref is None:
             return StructuralContextView(
@@ -1668,9 +1595,7 @@ class StartInvestigation:
         dependencies = self._structural.dependencies(ref.atlas_id)
         dependents = self._structural.dependents(ref.atlas_id)
         edge_tuples = [
-            (e.from_ref, e.to_ref,
-             f"{e.kind} ({e.resolver or e.confidence})")
-            for e in dependencies
+            (e.from_ref, e.to_ref, f"{e.kind} ({e.resolver or e.confidence})") for e in dependencies
         ]
         return (
             StructuralContextView(
@@ -1690,9 +1615,7 @@ def _suspected_origin(edges: list[DependencyObservation]) -> str | None:
     causal claim."""
     if not edges:
         return None
-    worst = max(
-        edges, key=lambda e: (e.errors + e.timeouts, e.calls, e.target)
-    )
+    worst = max(edges, key=lambda e: (e.errors + e.timeouts, e.calls, e.target))
     if worst.errors + worst.timeouts == 0:
         return None
     return worst.target
@@ -1708,9 +1631,7 @@ class GetInvestigation:
         with self._uow as uow:
             row = uow.investigations.get(investigation_id)
             if row is None:
-                raise NotFoundError(
-                    f"investigation not found: {investigation_id}"
-                )
+                raise NotFoundError(f"investigation not found: {investigation_id}")
             return row
 
 
@@ -1752,17 +1673,11 @@ class StartIngestionJob:
         with self._uow as uow:
             source = uow.sources.get(source_id)
             if source is None:
-                raise NotFoundError(
-                    f"telemetry source not found: {source_id}"
-                )
+                raise NotFoundError(f"telemetry source not found: {source_id}")
             if not source.enabled:
-                raise ValidationError(
-                    f"telemetry source is disabled: {source_id}"
-                )
+                raise ValidationError(f"telemetry source is disabled: {source_id}")
             if idempotency_key:
-                existing = uow.ingestion_jobs.get_by_idempotency_key(
-                    idempotency_key
-                )
+                existing = uow.ingestion_jobs.get_by_idempotency_key(idempotency_key)
                 if existing is not None:
                     return existing, True
 
@@ -1798,14 +1713,16 @@ class StartIngestionJob:
             uow.commit()
 
         try:
-            result = IngestionPipeline(
-                self._uow, self._clock, self._ids, self._redactor
-            ).ingest(source=source, kind=kind, content=content)
+            result = IngestionPipeline(self._uow, self._clock, self._ids, self._redactor).ingest(
+                source=source, kind=kind, content=content
+            )
         except Exception as exc:
             message = getattr(exc, "message", str(exc))
             self._finish(
-                job, status=IngestionJobStatus.FAILED,
-                error=self._redactor(message)[:500], actor=actor,
+                job,
+                status=IngestionJobStatus.FAILED,
+                error=self._redactor(message)[:500],
+                actor=actor,
             )
             raise
 

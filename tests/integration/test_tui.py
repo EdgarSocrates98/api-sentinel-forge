@@ -31,9 +31,7 @@ from api_sentinel.tui.data import resolve_ws
 
 
 def _pilot_app(ws_dir: Path | None = None) -> SentinelApp:
-    ws = resolve_ws(
-        str(ws_dir / ".api-sentinel") if ws_dir else None, False
-    )
+    ws = resolve_ws(str(ws_dir / ".api-sentinel") if ws_dir else None, False)
     return SentinelApp(ws, str(ws_dir) if ws_dir else None)
 
 
@@ -52,8 +50,13 @@ def test_every_panel_renders(tmp_path: Path) -> None:
         app = _pilot_app(tmp_path)
         async with app.run_test() as pilot:
             for key in (
-                "services", "incidents", "slos",
-                "health", "integrations", "commands", "dash",
+                "services",
+                "incidents",
+                "slos",
+                "health",
+                "integrations",
+                "commands",
+                "dash",
             ):
                 await app._refresh(key)
                 await pilot.pause()
@@ -78,10 +81,15 @@ def test_catalog_covers_cli_surface() -> None:
 
 def test_build_argv() -> None:
     cmd = Command(
-        "g", "x", ("incident", "ack"),
+        "g",
+        "x",
+        ("incident", "ack"),
     )
     assert build_argv(cmd, {}, ws="C:/ws") == [
-        "incident", "ack", "--workspace", "C:/ws",
+        "incident",
+        "ack",
+        "--workspace",
+        "C:/ws",
     ]
 
 
@@ -97,8 +105,9 @@ def test_wizard_runs_real_command_no_fields(tmp_path: Path) -> None:
             for _ in range(40):  # let the thread worker finish
                 await pilot.pause(0.05)
                 log = app.query_one("#out")
-                if "version" in "\n".join(str(ln) for ln in log.lines) or \
-                        "0.1.0" in "\n".join(str(ln) for ln in log.lines):
+                if "version" in "\n".join(str(ln) for ln in log.lines) or "0.1.0" in "\n".join(
+                    str(ln) for ln in log.lines
+                ):
                     return
             pytest.fail("version output never reached the log")
 
@@ -135,9 +144,7 @@ def test_untrusted_log_text_is_not_parsed_as_rich_markup(tmp_path: Path) -> None
 
 
 def test_wizard_required_field_blocks() -> None:
-    cmd = next(
-        c for c in CATALOG if c.label.startswith("incident ack")
-    )
+    cmd = next(c for c in CATALOG if c.label.startswith("incident ack"))
     screen = WizardScreen(cmd)
 
     async def go() -> None:
@@ -157,9 +164,7 @@ def test_tui_command_registered() -> None:
 
 
 def test_missing_textual_is_named_error(tmp_path: Path, monkeypatch) -> None:
-    monkeypatch.setattr(
-        "api_sentinel.tui.textual_available", lambda: False
-    )
+    monkeypatch.setattr("api_sentinel.tui.textual_available", lambda: False)
     from api_sentinel.domain import ValidationError
 
     with pytest.raises(ValidationError, match=r"tui.*extra") as ei:
@@ -173,14 +178,16 @@ def test_real_workspace_rows(tmp_path: Path) -> None:
     ws_dir.mkdir()
     runner = CliRunner()
     # install a real workspace + register a service through the real CLI
-    assert runner.invoke(
-        cli_app,
-        ["install", "--yes", "--workspace", str(ws_dir)],
-    ).exit_code == 0
+    assert (
+        runner.invoke(
+            cli_app,
+            ["install", "--yes", "--workspace", str(ws_dir)],
+        ).exit_code
+        == 0
+    )
     r = runner.invoke(
         cli_app,
-        ["services", "--register", "svc_tui_1",
-         "--workspace", str(ws_dir / ".api-sentinel")],
+        ["services", "--register", "svc_tui_1", "--workspace", str(ws_dir / ".api-sentinel")],
     )
     assert r.exit_code == 0
 
@@ -190,10 +197,7 @@ def test_real_workspace_rows(tmp_path: Path) -> None:
             await app._refresh("services")
             await pilot.pause()
             table = app.query_one("#body_inner DataTable")
-            rows = [
-                " ".join(str(c) for c in table.get_row_at(i))
-                for i in range(table.row_count)
-            ]
+            rows = [" ".join(str(c) for c in table.get_row_at(i)) for i in range(table.row_count)]
             assert any("svc_tui_1" in r for r in rows), rows
 
     asyncio.run(go())

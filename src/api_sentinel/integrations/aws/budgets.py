@@ -141,7 +141,7 @@ class AwsCollectBudget(FrozenModel):
         prefix = "budget."
         for key, value in config.items():
             if key.startswith(prefix):
-                field_name = key[len(prefix):]
+                field_name = key[len(prefix) :]
                 if field_name in cls.model_fields:
                     values[field_name] = value
         for key, value in (overrides or {}).items():
@@ -182,9 +182,7 @@ class BudgetMeter:
 
     @property
     def estimated_cost_usd(self) -> float:
-        return (
-            self.metrics_requested / 1000.0
-        ) * COST_PER_1000_METRIC_QUERIES_USD
+        return (self.metrics_requested / 1000.0) * COST_PER_1000_METRIC_QUERIES_USD
 
     def _flag(self, knob: str) -> None:
         if knob not in self.exceeded:
@@ -212,8 +210,7 @@ class BudgetMeter:
         reason = self.halt_reason()
         if reason is not None:
             raise AwsBudgetExceeded(
-                f"collection budget already exhausted before first call: "
-                f"{reason}",
+                f"collection budget already exhausted before first call: {reason}",
                 details={
                     "knob": reason,
                     **{k: str(v) for k, v in self.summary().items()},
@@ -232,9 +229,7 @@ class BudgetMeter:
                 details={"knob": reason},
             )
 
-    def record_page(
-        self, *, datapoints: int, response_bytes: int
-    ) -> str | None:
+    def record_page(self, *, datapoints: int, response_bytes: int) -> str | None:
         """Count a response page; returns the knob newly hit, if any."""
         self.pages += 1
         self.datapoints += datapoints

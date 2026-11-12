@@ -61,9 +61,7 @@ class FileStructuralContext:
                 "graph (code-atlas) and point the workspace config at it",
             )
         try:
-            data = json.loads(
-                read_text_bounded(p, name="atlas export")
-            )
+            data = json.loads(read_text_bounded(p, name="atlas export"))
         except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
             raise IntegrationUnavailable(
                 ATLAS_FORGE, f"Atlas manifest unreadable: {p} ({type(exc).__name__})"

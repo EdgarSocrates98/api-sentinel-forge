@@ -34,8 +34,8 @@ from api_sentinel.integrations.lens.adapter import (
 
 _REPO = Path(__file__).resolve().parents[2]
 _LENS_REPO = _REPO.parent / "forge-lens"
-_LENS_EXE = _LENS_REPO / ".venv" / "Scripts" / (
-    "forge-lens.exe" if os.name == "nt" else "forge-lens"
+_LENS_EXE = (
+    _LENS_REPO / ".venv" / "Scripts" / ("forge-lens.exe" if os.name == "nt" else "forge-lens")
 )
 _EXPORTER = _REPO / "lab" / "lens_export_refs.py"
 _FIXTURE = _LENS_REPO / "tests" / "fixtures" / "native-ingest.json"
@@ -75,8 +75,13 @@ def test_lens_trace_correlation_real_chain(tmp_path: Path) -> None:
     # Lens stores under the *envelope* project_id, not the trace-level one.
     project_id = str(doc.get("project_id") or "default")
     probe = _lens(
-        "traces", "list", "--json", "-n", "50",
-        "--project", project_id,
+        "traces",
+        "list",
+        "--json",
+        "-n",
+        "50",
+        "--project",
+        project_id,
         cwd=project_dir,
     )
     assert '"trace_id"' in probe.stdout, probe.stdout + probe.stderr
@@ -116,8 +121,7 @@ def test_lens_trace_correlation_real_chain(tmp_path: Path) -> None:
     # Allowlist: no span/prompt keys may leak into the manifest.
     raw = json.loads(manifest.read_text(encoding="utf-8"))
     assert all(
-        set(r) <= {"trace_id", "session_id", "service_id", "at", "provenance"}
-        for r in raw["refs"]
+        set(r) <= {"trace_id", "session_id", "service_id", "at", "provenance"} for r in raw["refs"]
     )
 
 
@@ -129,6 +133,4 @@ def test_lens_unavailable_is_named_state(tmp_path: Path) -> None:
     assert absent_transport.status == "unavailable"
     with pytest.raises(IntegrationUnavailable):
         # configured-but-absent manifest is an explicit contract failure
-        lens_from_config(
-            {"integrations": {"lens": {"refs": "missing.json"}}}, tmp_path
-        )
+        lens_from_config({"integrations": {"lens": {"refs": "missing.json"}}}, tmp_path)

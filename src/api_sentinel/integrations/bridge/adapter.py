@@ -94,8 +94,7 @@ def _validate_loopback_url(base_url: str) -> urllib.parse.ParseResult:
         raise ValueError(f"bridge host does not resolve safely: {host!r}") from exc
     if not resolved or not all(address.is_loopback for address in resolved):
         raise ValueError(
-            "bridge base_url must resolve exclusively to loopback addresses: "
-            f"{base_url!r}"
+            f"bridge base_url must resolve exclusively to loopback addresses: {base_url!r}"
         )
     return parsed
 
@@ -142,9 +141,7 @@ class FileAgentSession:
     def __init__(self, sessions_dir: Path) -> None:
         self._dir = sessions_dir
 
-    def open_session(
-        self, request: AgentSessionRequest
-    ) -> AgentSessionResult:
+    def open_session(self, request: AgentSessionRequest) -> AgentSessionResult:
         try:
             slot = safe_slot(
                 self._dir,
@@ -190,9 +187,7 @@ class UnavailableAgentSession:
             "simulated session"
         )
 
-    def open_session(
-        self, request: AgentSessionRequest
-    ) -> AgentSessionResult:
+    def open_session(self, request: AgentSessionRequest) -> AgentSessionResult:
         return AgentSessionResult(
             status=STATUS_UNAVAILABLE,
             detail=self._reason,
@@ -224,9 +219,7 @@ class HttpAgentSession:
         self._bearer = bearer
         self._timeout = timeout_seconds
 
-    def open_session(
-        self, request: AgentSessionRequest
-    ) -> AgentSessionResult:
+    def open_session(self, request: AgentSessionRequest) -> AgentSessionResult:
         gov = request.governance
         if not gov.provider:
             return AgentSessionResult(
@@ -243,10 +236,7 @@ class HttpAgentSession:
             "provider": gov.provider,
             "workspace_id": gov.workspace,
             "model": gov.model,
-            "title": (
-                f"sentinel:{request.incident_id}:"
-                f"{request.session_request_id[:16]}"
-            ),
+            "title": (f"sentinel:{request.incident_id}:{request.session_request_id[:16]}"),
             "context": {
                 "schema": "forge/ProductAgentSessionContext/v2",
                 "workspace_id": gov.workspace,
@@ -288,8 +278,7 @@ class HttpAgentSession:
         except urllib.error.HTTPError as exc:
             detail = self._http_detail(exc)
             status = (
-                STATUS_REFUSED if exc.code in (400, 401, 403, 409, 413, 422, 429)
-                else STATUS_FAILED
+                STATUS_REFUSED if exc.code in (400, 401, 403, 409, 413, 422, 429) else STATUS_FAILED
             )
             return AgentSessionResult(
                 status=status,
@@ -301,7 +290,7 @@ class HttpAgentSession:
             return AgentSessionResult(
                 status=STATUS_FAILED,
                 detail=f"transport_timeout: bridge did not answer in "
-                       f"{self._timeout}s — session creation state unknown",
+                f"{self._timeout}s — session creation state unknown",
                 session_request_id=request.session_request_id,
                 governance=gov,
             )
@@ -350,8 +339,7 @@ class HttpAgentSession:
                 f"session {session_id} created by Forge Agent Bridge "
                 f"(provider {out.get('provider') or body['provider']}); "
                 "execution, providers, approvals, budgets and event "
-                "storage remain Bridge-governed"
-                + (f"; mcp_denied={denied}" if denied else "")
+                "storage remain Bridge-governed" + (f"; mcp_denied={denied}" if denied else "")
             ),
             session_request_id=request.session_request_id,
             governance=gov,
@@ -389,14 +377,15 @@ def _pair_exchange(base_url: str, pair_token: str, timeout: float) -> str | None
     """Master pair token → scoped session token (Bridge-local exchange)."""
     req = urllib.request.Request(  # noqa: S310 — loopback-only by contract
         f"{base_url.rstrip('/')}/pair/exchange",
-        data=json.dumps({
-            "pair_token": pair_token,
-            "device_name": "api-sentinel",
-            "scopes": ["session:manage", "session:read"],
-        }).encode("utf-8"),
+        data=json.dumps(
+            {
+                "pair_token": pair_token,
+                "device_name": "api-sentinel",
+                "scopes": ["session:manage", "session:read"],
+            }
+        ).encode("utf-8"),
         method="POST",
-        headers={"Content-Type": "application/json",
-                 "Origin": "http://127.0.0.1"},
+        headers={"Content-Type": "application/json", "Origin": "http://127.0.0.1"},
     )
     try:
         _validate_loopback_url(base_url)
@@ -408,15 +397,13 @@ def _pair_exchange(base_url: str, pair_token: str, timeout: float) -> str | None
     return str(token) if token else None
 
 
-def _resolve_bearer(config: dict[str, Any], base_url: str,
-                    timeout: float) -> str | None:
+def _resolve_bearer(config: dict[str, Any], base_url: str, timeout: float) -> str | None:
     """Bearer resolution: explicit config/env, else pair-token exchange."""
     explicit = config.get("bearer") or os.environ.get("FAB_BEARER")
     if explicit:
         return str(explicit)
     pair_path = Path(
-        config.get("pair_token_path")
-        or (Path.home() / ".forge-bridge" / "pair.token")
+        config.get("pair_token_path") or (Path.home() / ".forge-bridge" / "pair.token")
     )
     if pair_path.is_file():
         master = pair_path.read_text(encoding="utf-8").strip()
@@ -443,9 +430,7 @@ def bridge_session_from_config(
     same named state, never an unauthenticated attempt.
     """
     integrations = config.get("integrations") if isinstance(config, dict) else None
-    bridge = (
-        integrations.get("bridge") if isinstance(integrations, dict) else None
-    )
+    bridge = integrations.get("bridge") if isinstance(integrations, dict) else None
     cfg: dict[str, Any] = bridge if isinstance(bridge, dict) else {}
     mode = str(cfg.get("mode", "file"))
     if mode == "unavailable":

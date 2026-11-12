@@ -19,9 +19,7 @@ def textual_available() -> bool:
     return importlib.util.find_spec("textual") is not None
 
 
-def run(
-    workspace: str | None = None, user_scope: bool = False
-) -> int:
+def run(workspace: str | None = None, user_scope: bool = False) -> int:
     if not textual_available():
         from api_sentinel.domain import ValidationError
 

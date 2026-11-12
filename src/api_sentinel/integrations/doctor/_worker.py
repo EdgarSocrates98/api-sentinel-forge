@@ -84,13 +84,17 @@ def _run(request: dict[str, Any], context_root: Path, out_dir: Path) -> int:
     try:
         payload = json.dumps(raw, default=str)
     except (TypeError, ValueError):
-        _write_meta(out_dir, {"status": "invalid_response",
-                            "detail": "bundle.to_dict() not JSON-serializable"})
+        _write_meta(
+            out_dir,
+            {"status": "invalid_response", "detail": "bundle.to_dict() not JSON-serializable"},
+        )
         return EXIT_INVALID_RESPONSE
     blob = payload.encode("utf-8")
     if len(blob) > MAX_BUNDLE_BYTES:
-        _write_meta(out_dir, {"status": "invalid_response",
-                            "detail": f"bundle exceeds {MAX_BUNDLE_BYTES} bytes"})
+        _write_meta(
+            out_dir,
+            {"status": "invalid_response", "detail": f"bundle exceeds {MAX_BUNDLE_BYTES} bytes"},
+        )
         return EXIT_INVALID_RESPONSE
     (out_dir / "bundle.json").write_bytes(blob)
     _write_meta(out_dir, {"status": "completed", "bundle_bytes": len(blob)})
@@ -99,29 +103,26 @@ def _run(request: dict[str, Any], context_root: Path, out_dir: Path) -> int:
 
 def main(argv: list[str]) -> int:
     if len(argv) != 3:
-        sys.stderr.write(
-            "usage: _worker.py <request.json> <out_dir>\n"
-        )
+        sys.stderr.write("usage: _worker.py <request.json> <out_dir>\n")
         return EXIT_USAGE
     request_path, out_dir = Path(argv[1]), Path(argv[2])
     try:
         payload = _read_request(request_path)
     except (OSError, ValueError, UnicodeDecodeError) as exc:
-        _write_meta(out_dir, {"status": "invalid_request",
-                            "detail": f"{type(exc).__name__}: {exc}"[:400]})
+        _write_meta(
+            out_dir, {"status": "invalid_request", "detail": f"{type(exc).__name__}: {exc}"[:400]}
+        )
         return EXIT_USAGE
     import importlib.util
 
     if importlib.util.find_spec("forge_doctor_api") is None:
-        _write_meta(out_dir, {"status": "unavailable",
-                            "detail": "forge_doctor_api not importable"})
+        _write_meta(out_dir, {"status": "unavailable", "detail": "forge_doctor_api not importable"})
         return EXIT_UNAVAILABLE
     context_root = Path(payload["context_root"])
     try:
         return _run(payload["request"], context_root, out_dir)
     except Exception as exc:
-        _write_meta(out_dir, {"status": "failed",
-                            "detail": f"{type(exc).__name__}: {exc}"[:400]})
+        _write_meta(out_dir, {"status": "failed", "detail": f"{type(exc).__name__}: {exc}"[:400]})
         return EXIT_FAILED
 
 

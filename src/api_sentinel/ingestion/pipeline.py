@@ -68,14 +68,11 @@ class IngestionPipeline:
         self._redactor = redactor
         self._policy = policy or IngestionPolicy()
 
-    def ingest(
-        self, *, source: TelemetrySource, kind: str | None, content: bytes
-    ) -> IngestResult:
+    def ingest(self, *, source: TelemetrySource, kind: str | None, content: bytes) -> IngestResult:
         # --- Validate (size): a bounded refusal, never silent truncation ---
         if len(content) > self._policy.max_batch_bytes:
             raise ValidationError(
-                f"batch exceeds max_batch_bytes ({len(content)} > "
-                f"{self._policy.max_batch_bytes})",
+                f"batch exceeds max_batch_bytes ({len(content)} > {self._policy.max_batch_bytes})",
                 details={"max_batch_bytes": self._policy.max_batch_bytes},
             )
         importer = kind or detect_kind(content)
@@ -118,14 +115,11 @@ class IngestionPipeline:
             outcome = (
                 parse_jsonl(content)
                 if importer == "jsonl"
-                else parse_otlp_json(
-                    content, resolve_service=self._service_resolver(uow, source)
-                )
+                else parse_otlp_json(content, resolve_service=self._service_resolver(uow, source))
             )
             if outcome.total_items > self._policy.max_items:
                 raise ValidationError(
-                    f"batch exceeds max_items ({outcome.total_items} > "
-                    f"{self._policy.max_items})",
+                    f"batch exceeds max_items ({outcome.total_items} > {self._policy.max_items})",
                     details={"max_items": self._policy.max_items},
                 )
 
@@ -144,16 +138,18 @@ class IngestionPipeline:
             # per dedup candidate, overlapping_sources per window) with one
             # bounded read each. Semantics are identical — same rows, same
             # decisions; only the query shape changed.
-            needed_service_ids = {
-                item.service_id or source.service_id for item in outcome.items
-            }
+            needed_service_ids = {item.service_id or source.service_id for item in outcome.items}
             known_services = uow.services.get_many(needed_service_ids)
 
             assessed: list[tuple[ImportedItem, NormalizedObservation]] = []
             for item in outcome.items:
                 obs = self._assess_item(
-                    known_services, source, item, batch_id,
-                    ingest_time, processing_time,
+                    known_services,
+                    source,
+                    item,
+                    batch_id,
+                    ingest_time,
+                    processing_time,
                 )
                 if isinstance(obs, QuarantineEntry):
                     pending_quarantine.append(obs)
@@ -163,9 +159,7 @@ class IngestionPipeline:
             # One batched dedup read for every candidate id: prior key by
             # observation_id, identical to per-row `get(...).idempotency_key`.
             prior_keys = (
-                uow.observations.idempotency_keys(
-                    [o.observation_id for _, o in assessed]
-                )
+                uow.observations.idempotency_keys([o.observation_id for _, o in assessed])
                 if assessed
                 else {}
             )
@@ -180,17 +174,17 @@ class IngestionPipeline:
                         # conflicting redelivery → quarantine, never a silent rewrite
                         pending_quarantine.append(
                             self._quarantine(
-                                batch_id, "conflicting_observation_id",
-                                item.model_dump_json(), ingest_time,
+                                batch_id,
+                                "conflicting_observation_id",
+                                item.model_dump_json(),
+                                ingest_time,
                             )
                         )
                     continue
                 seen_ids[obs.observation_id] = obs.idempotency_key
                 pending_obs.append(obs)
                 qualities.append(obs.quality)
-                overlap_windows.add(
-                    (obs.service_id, obs.window_start, obs.window_end)
-                )
+                overlap_windows.add((obs.service_id, obs.window_start, obs.window_end))
 
             for qc in outcome.quarantine:
                 pending_quarantine.append(
@@ -200,23 +194,20 @@ class IngestionPipeline:
             # --- Persist & Aggregate (single transaction) ---
             windows_by_service: dict[str, set[tuple[datetime, datetime]]] = {}
             for service_id, w_start, w_end in overlap_windows:
-                windows_by_service.setdefault(service_id, set()).add(
-                    (w_start, w_end)
-                )
+                windows_by_service.setdefault(service_id, set()).add((w_start, w_end))
             overlapping = sorted(
                 {
                     src
                     for service_id, windows in windows_by_service.items()
                     for src in uow.observations.overlapping_sources_in_ranges(
-                        service_id, windows,
+                        service_id,
+                        windows,
                         exclude_source_id=source.source_id,
                     )
                 }
             )
             signal_types = list(
-                dict.fromkeys(
-                    _KIND_SIGNAL[o.measurement.kind.value] for o in pending_obs
-                )
+                dict.fromkeys(_KIND_SIGNAL[o.measurement.kind.value] for o in pending_obs)
             )
             notes = []
             if overlapping:
@@ -260,11 +251,7 @@ class IngestionPipeline:
                         "accepted": str(len(pending_obs)),
                         "quarantined": str(len(pending_quarantine)),
                         "skipped_duplicates": str(skipped),
-                        **(
-                            {"overlapping_sources": ",".join(overlapping)}
-                            if overlapping
-                            else {}
-                        ),
+                        **({"overlapping_sources": ",".join(overlapping)} if overlapping else {}),
                     },
                 )
             )
@@ -312,10 +299,7 @@ class IngestionPipeline:
         processing_time: datetime,
     ) -> NormalizedObservation | QuarantineEntry:
         # --- Validate (origin): the envelope must speak for this channel ---
-        if (
-            item.declared_source_id is not None
-            and item.declared_source_id != source.source_id
-        ):
+        if item.declared_source_id is not None and item.declared_source_id != source.source_id:
             return self._quarantine(
                 batch_id, "origin_mismatch", item.model_dump_json(), ingest_time
             )

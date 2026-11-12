@@ -111,9 +111,7 @@ def run(args: list[str], ws: Path | None = None, timeout: int = 120) -> Cmd:
     cmd = [str(CLI), *args]
     if ws is not None:
         cmd += ["--workspace", str(ws)]
-    proc = subprocess.run(
-        cmd, capture_output=True, text=True, env=_env(), timeout=timeout
-    )
+    proc = subprocess.run(cmd, capture_output=True, text=True, env=_env(), timeout=timeout)
     return Cmd(proc.returncode, proc.stdout.strip(), proc.stderr.strip())
 
 
@@ -190,9 +188,7 @@ def main() -> int:
     for name in ("payments-api", "orders-api", "checkout-api"):
         if name not in svc:
             continue
-        c = run(
-            ["sources", "--register", "jsonl-file", "--service-id", svc[name], "--json"], ws
-        )
+        c = run(["sources", "--register", "jsonl-file", "--service-id", svc[name], "--json"], ws)
         show(st, c, f"sources --register jsonl-file --service-id {svc[name]} --json")
         data = c.json()
         if isinstance(data, dict) and data.get("source_id"):
@@ -207,17 +203,20 @@ def main() -> int:
     STEPS.append(st)
     print("\n== S4 ingest + changes import ==")
     lab001 = remap(
-        FIXTURES / "lab-001-elevated-latency.jsonl", tmp,
+        FIXTURES / "lab-001-elevated-latency.jsonl",
+        tmp,
         {"svc_lab_payments": svc["payments-api"], "src_lab_jsonl": src["payments-api"]},
     )
     lab002 = remap(
-        FIXTURES / "lab-002-persistent-503.jsonl", tmp,
+        FIXTURES / "lab-002-persistent-503.jsonl",
+        tmp,
         {"svc_lab_checkout": svc["orders-api"], "src_lab_jsonl": src["orders-api"]},
     )
     lab004_dir = FIXTURES / "lab-004-regressive-deploy"
     st.emit(f"dir listing lab-004: {sorted(p.name for p in lab004_dir.iterdir())}")
     lab004 = remap(
-        lab004_dir / "observations.jsonl", tmp,
+        lab004_dir / "observations.jsonl",
+        tmp,
         {"svc_lab_checkout": svc["checkout-api"], "src_lab_jsonl": src["checkout-api"]},
     )
     for label, sid, f, want in (
@@ -228,22 +227,28 @@ def main() -> int:
         c = run(["ingest", "--source-id", sid, "--file", str(f), "--json"], ws)
         show(st, c, f"ingest --source-id {sid} --file {f.name} --json")
         d = c.json() or {}
-        st.check(d.get("accepted") == want and d.get("quarantined") == 0,
-                 f"{label}: accepted={want} quarantined=0 (got {d.get('accepted')}/"
-                 f"{d.get('quarantined')})")
+        st.check(
+            d.get("accepted") == want and d.get("quarantined") == 0,
+            f"{label}: accepted={want} quarantined=0 (got {d.get('accepted')}/"
+            f"{d.get('quarantined')})",
+        )
     # idempotent re-ingest of the same bytes -> whole-batch dedup
     c = run(["ingest", "--source-id", src["payments-api"], "--file", str(lab001), "--json"], ws)
     show(st, c, "ingest lab-001 again --json")
     d = c.json() or {}
-    st.check(d.get("accepted") == 0 and d.get("skipped_duplicates") == 8,
-             f"re-ingest dedup: skipped_duplicates=8 (got {d.get('skipped_duplicates')})")
+    st.check(
+        d.get("accepted") == 0 and d.get("skipped_duplicates") == 8,
+        f"re-ingest dedup: skipped_duplicates=8 (got {d.get('skipped_duplicates')})",
+    )
     manifest = lab004_dir / "deploy-manifest.json"
     if manifest.exists():
         c = run(["changes", "import", "--file", str(manifest), "--json"], ws)
         show(st, c, "changes import --file deploy-manifest.json --json")
         d = c.json() or {}
-        st.check(d.get("imported") == 2 and d.get("skipped") == 0,
-                 f"manifest imported=2 skipped=0 (got {d.get('imported')}/{d.get('skipped')})")
+        st.check(
+            d.get("imported") == 2 and d.get("skipped") == 0,
+            f"manifest imported=2 skipped=0 (got {d.get('imported')}/{d.get('skipped')})",
+        )
     else:
         st.emit("deploy-manifest.json absent — skipped honestly")
 
@@ -254,8 +259,18 @@ def main() -> int:
     slo_ids: dict[str, str] = {}
     for name in ("payments-api", "orders-api"):
         c = run(
-            ["slo", "define", "--service-id", svc[name],
-             "--target", "0.99", "--window", "1h", "--json"], ws,
+            [
+                "slo",
+                "define",
+                "--service-id",
+                svc[name],
+                "--target",
+                "0.99",
+                "--window",
+                "1h",
+                "--json",
+            ],
+            ws,
         )
         show(st, c, f"slo define --service-id {svc[name]} --target 0.99 --window 1h --json")
         d = c.json() or {}
@@ -271,13 +286,25 @@ def main() -> int:
         if name not in slo_ids:
             continue
         c = run(
-            ["slo", "evaluate", "--slo-id", slo_ids[name],
-             "--window-start", a, "--window-end", b, "--json"], ws,
+            [
+                "slo",
+                "evaluate",
+                "--slo-id",
+                slo_ids[name],
+                "--window-start",
+                a,
+                "--window-end",
+                b,
+                "--json",
+            ],
+            ws,
         )
         show(st, c, f"slo evaluate --slo-id {slo_ids[name]} {a}..{b} --json")
         d = c.json() or {}
-        st.emit(f"assessment[{name}]: state={d.get('state')} "
-                f"sli={d.get('sli')} eligible={d.get('eligible')}")
+        st.emit(
+            f"assessment[{name}]: state={d.get('state')} "
+            f"sli={d.get('sli')} eligible={d.get('eligible')}"
+        )
 
     # ------------------------------------------------------------------
     st = Step("S6 detect (latency+error) + dedup re-run")
@@ -289,8 +316,18 @@ def main() -> int:
         "checkout-api": ("2026-01-01T00:04:00Z", "2026-01-01T00:10:00Z"),
     }
     for name, (a, b) in windows.items():
-        args = ["detect", "--service-id", svc[name], "--window-start", a,
-                "--window-end", b, "--now", NOW, "--json"]
+        args = [
+            "detect",
+            "--service-id",
+            svc[name],
+            "--window-start",
+            a,
+            "--window-end",
+            b,
+            "--now",
+            NOW,
+            "--json",
+        ]
         c = run(args, ws)
         show(st, c, f"detect --service-id {svc[name]} {a}..{b} --now {NOW} --json")
         d = c.json() or {}
@@ -301,10 +338,10 @@ def main() -> int:
         # dedup: identical re-run must produce zero new anomalies
         c2 = run(args, ws)
         d2 = c2.json() or {}
-        st.check(c2.rc == 0 and not (d2.get("anomalies") or [])
-                 and bool(d2.get("deduplicated")),
-                 f"{name}: re-detect 0 new anomalies, deduplicated="
-                 f"{d2.get('deduplicated')}")
+        st.check(
+            c2.rc == 0 and not (d2.get("anomalies") or []) and bool(d2.get("deduplicated")),
+            f"{name}: re-detect 0 new anomalies, deduplicated={d2.get('deduplicated')}",
+        )
 
     # ------------------------------------------------------------------
     st = Step("S7 incidents list + ack + show")
@@ -315,42 +352,60 @@ def main() -> int:
     incs = c.json() if isinstance(c.json(), list) else []
     st.check(len(incs) >= 1, f"incidents exist ({len(incs)})")
     co_inc = next(
-        (i for i in incs
-         if i.get("service_id") == svc["checkout-api"]
-         and "error_ratio" in str(i.get("group_key", ""))),
+        (
+            i
+            for i in incs
+            if i.get("service_id") == svc["checkout-api"]
+            and "error_ratio" in str(i.get("group_key", ""))
+        ),
         None,
     )
     inc_id = str(co_inc["incident_id"]) if co_inc else ""
     st.check(bool(inc_id), "checkout error_ratio incident found")
-    st.emit(f"checkout incident: {inc_id} "
-            f"first_observed_at={co_inc.get('first_observed_at') if co_inc else '?'}")
+    st.emit(
+        f"checkout incident: {inc_id} "
+        f"first_observed_at={co_inc.get('first_observed_at') if co_inc else '?'}"
+    )
     if inc_id:
-        c = run(["incident", "ack", inc_id, "--actor", "e2e",
-                 "--note", "e2e triage", "--json"], ws)
+        c = run(["incident", "ack", inc_id, "--actor", "e2e", "--note", "e2e triage", "--json"], ws)
         show(st, c, f"incident ack {inc_id} --json")
         st.check((c.json() or {}).get("status") == "TRIAGED", "ack -> TRIAGED")
         c = run(["incident", "show", inc_id, "--json"], ws)
         show(st, c, f"incident show {inc_id} --json")
         d = c.json() or {}
-        st.check((d.get("incident") or {}).get("status") == "TRIAGED",
-                 "show: status TRIAGED")
-        st.check(len(d.get("events") or []) >= 2,
-                 f"show: journal events present ({len(d.get('events') or [])})")
+        st.check((d.get("incident") or {}).get("status") == "TRIAGED", "show: status TRIAGED")
+        st.check(
+            len(d.get("events") or []) >= 2,
+            f"show: journal events present ({len(d.get('events') or [])})",
+        )
 
     # ------------------------------------------------------------------
     st = Step("S8 investigate --incident-id")
     STEPS.append(st)
     print("\n== S8 investigate ==")
     if inc_id:
-        c = run(["investigate", "--incident-id", inc_id,
-                 "--provider", "claude", "--cost-limit", "2.0", "--json"], ws)
+        c = run(
+            [
+                "investigate",
+                "--incident-id",
+                inc_id,
+                "--provider",
+                "claude",
+                "--cost-limit",
+                "2.0",
+                "--json",
+            ],
+            ws,
+        )
         show(st, c, f"investigate --incident-id {inc_id} --provider claude --json")
         d = c.json() or {}
         sess = d.get("session") or {}
         st.emit(f"session.status={sess.get('status')} detail={sess.get('detail')!r}")
         st.check(bool(d.get("pack")), "bounded context pack emitted")
-        st.check(sess.get("status") in ("delegated", "unavailable", "refused"),
-                 f"honest session status (got {sess.get('status')!r})")
+        st.check(
+            sess.get("status") in ("delegated", "unavailable", "refused"),
+            f"honest session status (got {sess.get('status')!r})",
+        )
         envelopes = list((ws / "agent_sessions").glob("**/*"))
         envelopes = [p for p in envelopes if p.is_file()]
         st.emit(f"agent_sessions files: {len(envelopes)}")
@@ -368,51 +423,91 @@ def main() -> int:
         show(st, c, f"changes correlate --incident-id {inc_id} --json")
         d = c.json() or {}
         cands = d.get("candidates") or []
-        st.emit(f"anchor={d.get('anchor')} candidates={len(cands)} "
-                f"unknowns={d.get('unknowns')}")
+        st.emit(f"anchor={d.get('anchor')} candidates={len(cands)} unknowns={d.get('unknowns')}")
         if cands:
             top = cands[0]
             ch = top.get("change") or {}
             change_id = str(ch.get("change_id") or "")
-            st.check(ch.get("kind") == "deploy" and abs(top.get("delta_seconds", -1) - 30) < 1,
-                     f"deploy ranked first delta~30s (got kind={ch.get('kind')} "
-                     f"delta={top.get('delta_seconds')})")
+            st.check(
+                ch.get("kind") == "deploy" and abs(top.get("delta_seconds", -1) - 30) < 1,
+                f"deploy ranked first delta~30s (got kind={ch.get('kind')} "
+                f"delta={top.get('delta_seconds')})",
+            )
             st.check(bool(d.get("proximity_ne_cause")), "proximity!=cause disclaimer present")
         else:
             st.check(False, "correlate produced no candidates")
     if inc_id and change_id:
         c = run(
-            ["hypotheses", "add", "--incident-id", inc_id,
-             "--text", "deploy sha_a11ce99 (v2.7.0) preceded the 503 regression",
-             "--confidence", "CORRELATED", "--evidence-for", change_id, "--json"], ws,
+            [
+                "hypotheses",
+                "add",
+                "--incident-id",
+                inc_id,
+                "--text",
+                "deploy sha_a11ce99 (v2.7.0) preceded the 503 regression",
+                "--confidence",
+                "CORRELATED",
+                "--evidence-for",
+                change_id,
+                "--json",
+            ],
+            ws,
         )
         show(st, c, "hypotheses add --confidence CORRELATED --json")
         d = c.json() or {}
         hyp_id = str(d.get("hypothesis_id") or "")
-        st.check(bool(hyp_id) and d.get("confidence") == "CORRELATED",
-                 f"hypothesis CORRELATED (got {d.get('confidence')})")
+        st.check(
+            bool(hyp_id) and d.get("confidence") == "CORRELATED",
+            f"hypothesis CORRELATED (got {d.get('confidence')})",
+        )
     if inc_id and hyp_id:
         c = run(
-            ["hypotheses", "verify", "--incident-id", inc_id,
-             "--hypothesis-id", hyp_id, "--window-start", "2026-01-01T00:10:00Z",
-             "--window-end", "2026-01-01T00:12:00Z", "--json"], ws,
+            [
+                "hypotheses",
+                "verify",
+                "--incident-id",
+                inc_id,
+                "--hypothesis-id",
+                hyp_id,
+                "--window-start",
+                "2026-01-01T00:10:00Z",
+                "--window-end",
+                "2026-01-01T00:12:00Z",
+                "--json",
+            ],
+            ws,
         )
         show(st, c, "hypotheses verify --window 00:10..00:12 --json")
         d = c.json() or {}
         ver_id = str(d.get("verification_id") or "")
-        st.emit(f"verdict={d.get('verdict')} receipts="
-                f"{[(r.get('step_id'), r.get('status')) for r in d.get('receipts') or []]}")
-        st.check(d.get("verdict") == "VERIFIED" and bool(ver_id),
-                 f"verify -> VERIFIED (got {d.get('verdict')})")
+        st.emit(
+            f"verdict={d.get('verdict')} receipts="
+            f"{[(r.get('step_id'), r.get('status')) for r in d.get('receipts') or []]}"
+        )
+        st.check(
+            d.get("verdict") == "VERIFIED" and bool(ver_id),
+            f"verify -> VERIFIED (got {d.get('verdict')})",
+        )
     if inc_id and hyp_id and ver_id:
         c = run(
-            ["hypotheses", "promote", "--incident-id", inc_id,
-             "--hypothesis-id", hyp_id, "--verification-id", ver_id, "--json"], ws,
+            [
+                "hypotheses",
+                "promote",
+                "--incident-id",
+                inc_id,
+                "--hypothesis-id",
+                hyp_id,
+                "--verification-id",
+                ver_id,
+                "--json",
+            ],
+            ws,
         )
         show(st, c, "hypotheses promote --verification-id --json")
         d = c.json() or {}
-        st.check(d.get("confidence") == "VERIFIED",
-                 f"promote -> VERIFIED (got {d.get('confidence')})")
+        st.check(
+            d.get("confidence") == "VERIFIED", f"promote -> VERIFIED (got {d.get('confidence')})"
+        )
 
     # ------------------------------------------------------------------
     st = Step("S10 handoff doctor + receipt secret-scan")
@@ -421,10 +516,10 @@ def main() -> int:
     c = run(["handoff", "doctor", "--service-id", svc["checkout-api"], "--json"], ws)
     show(st, c, f"handoff doctor --service-id {svc['checkout-api']} --json")
     d = c.json() or {}
-    st.emit(f"handoff status={d.get('status')} mode={d.get('mode')} "
-            f"request_ref={d.get('request_ref')}")
-    docs = [p for sub in ("handoffs", "receipts")
-            for p in (ws / sub).glob("**/*") if p.is_file()]
+    st.emit(
+        f"handoff status={d.get('status')} mode={d.get('mode')} request_ref={d.get('request_ref')}"
+    )
+    docs = [p for sub in ("handoffs", "receipts") for p in (ws / sub).glob("**/*") if p.is_file()]
     st.check(len(docs) >= 1, f"handoff/receipt files under workspace ({len(docs)})")
     leaks: list[str] = []
     for p in docs:
@@ -447,9 +542,11 @@ def main() -> int:
     serve_env = _env()
     serve_env["API_SENTINEL_TOKEN"] = lab_token
     proc = subprocess.Popen(
-        [str(CLI), "serve", "--host", "127.0.0.1", "--port", str(port),
-         "--workspace", str(ws)],
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=serve_env,
+        [str(CLI), "serve", "--host", "127.0.0.1", "--port", str(port), "--workspace", str(ws)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        env=serve_env,
     )
     base = f"http://127.0.0.1:{port}"
     authz = {"Authorization": f"Bearer {lab_token}"}
@@ -475,18 +572,23 @@ def main() -> int:
                     r.headers.get("www-authenticate", "").startswith("Bearer"),
                     "401 carries WWW-Authenticate: Bearer",
                 )
-                r = http.get("/v1/services", headers={
-                    "X-Sentinel-Role": "admin"})
+                r = http.get("/v1/services", headers={"X-Sentinel-Role": "admin"})
                 st.emit(f"GET /v1/services (self-declared admin) -> {r.status_code}")
                 st.check(r.status_code == 401, "role spoof without credentials -> 401")
                 for path in (
-                    "/v1/health", "/v1/capabilities", "/v1/services",
-                    f"/v1/services/{svc['payments-api']}", "/v1/incidents",
-                    f"/v1/incidents/{inc_id}/timeline", "/v1/integrations/status",
+                    "/v1/health",
+                    "/v1/capabilities",
+                    "/v1/services",
+                    f"/v1/services/{svc['payments-api']}",
+                    "/v1/incidents",
+                    f"/v1/incidents/{inc_id}/timeline",
+                    "/v1/integrations/status",
                 ):
                     r = http.get(path, headers=authz)
-                    st.emit(f"GET {path} -> {r.status_code} "
-                            f"{r.headers.get('content-type', '')} ({len(r.content)}B)")
+                    st.emit(
+                        f"GET {path} -> {r.status_code} "
+                        f"{r.headers.get('content-type', '')} ({len(r.content)}B)"
+                    )
                     st.check(r.status_code == 200, f"GET {path} == 200")
                 r = http.post(
                     f"/v1/incidents/{inc_id}/investigations",
@@ -500,11 +602,12 @@ def main() -> int:
                     json={"idempotency_key": "e2e-inv-1"},
                     headers=authz,
                 )
-                st.emit(f"POST replay -> {r2.status_code} replayed="
-                        f"{(r2.json() or {}).get('replayed') if r2.content else '?'}")
+                st.emit(
+                    f"POST replay -> {r2.status_code} replayed="
+                    f"{(r2.json() or {}).get('replayed') if r2.content else '?'}"
+                )
                 st.check(r2.status_code in (200, 201), "idempotent replay accepted")
-                r3 = http.post(f"/v1/incidents/{inc_id}/execute", json={},
-                               headers=authz)
+                r3 = http.post(f"/v1/incidents/{inc_id}/execute", json={}, headers=authz)
                 ctype = r3.headers.get("content-type", "")
                 st.emit(f"POST /v1/incidents/{inc_id}/execute -> {r3.status_code} {ctype}")
                 st.check(r3.status_code == 404, "POST /execute -> 404")
@@ -531,15 +634,16 @@ def main() -> int:
     if bdir:
         c = run(["backup", "restore", "--from", str(bdir), "--json"], ws2)
         show(st, c, f"backup restore --from {bdir} --workspace WS2 --json")
-        st.check(c.rc == 0 and (c.json() or {}).get("integrity") == "ok",
-                 f"restore integrity=ok (got {(c.json() or {}).get('integrity')})")
+        st.check(
+            c.rc == 0 and (c.json() or {}).get("integrity") == "ok",
+            f"restore integrity=ok (got {(c.json() or {}).get('integrity')})",
+        )
         r_svc = len(run(["services", "--json"], ws2).json() or [])
         r_src = len(run(["sources", "--json"], ws2).json() or [])
         r_inc = len(run(["incidents", "--json"], ws2).json() or [])
         st.emit(f"counts primary: services={n_svc} sources={n_src} incidents={n_inc}")
         st.emit(f"counts restored: services={r_svc} sources={r_src} incidents={r_inc}")
-        st.check((r_svc, r_src, r_inc) == (n_svc, n_src, n_inc),
-                 "restored counts identical")
+        st.check((r_svc, r_src, r_inc) == (n_svc, n_src, n_inc), "restored counts identical")
 
     # ------------------------------------------------------------------
     st = Step("S13 retention dry-run + doctor self-observability")
@@ -554,8 +658,10 @@ def main() -> int:
     show(st, c, "doctor --workspace WS --json")
     d = c.json() or {}
     block = d.get("sentinel") or {}
-    st.check(bool(block.get("state")), f"sentinel self-observability present (state="
-                                       f"{block.get('state')})")
+    st.check(
+        bool(block.get("state")),
+        f"sentinel self-observability present (state={block.get('state')})",
+    )
 
     # ------------------------------------------------------------------
     st = Step("S14 restart-recovery (fresh process, same workspace)")
@@ -563,8 +669,10 @@ def main() -> int:
     print("\n== S14 restart recovery ==")
     c = run(["services", "--json"], ws)
     ids = sorted(s.get("service_id") for s in (c.json() or []))
-    st.check(c.rc == 0 and ids == sorted(svc.values()),
-             "services --json returns the same 3 services after restart")
+    st.check(
+        c.rc == 0 and ids == sorted(svc.values()),
+        "services --json returns the same 3 services after restart",
+    )
 
     # ------------------------------------------------------------------
     st = Step("S15 capabilities honest states")
@@ -576,19 +684,25 @@ def main() -> int:
     honest = {cap["capability_id"]: cap["status"] for cap in caps}
     for k, v in honest.items():
         st.emit(f"capability: {k} = {v}")
-    st.check(all(v in ("available", "declared", "unavailable") for v in honest.values()),
-             "all capability states in {available,declared,unavailable}")
-    st.check(honest.get("api.agentic-investigation") in ("declared", "unavailable"),
-             f"agentic-investigation honestly non-available "
-             f"(got {honest.get('api.agentic-investigation')})")
+    st.check(
+        all(v in ("available", "declared", "unavailable") for v in honest.values()),
+        "all capability states in {available,declared,unavailable}",
+    )
+    st.check(
+        honest.get("api.agentic-investigation") in ("declared", "unavailable"),
+        f"agentic-investigation honestly non-available "
+        f"(got {honest.get('api.agentic-investigation')})",
+    )
 
     # ------------------------------------------------------------------
     print("\n===== SUMMARY =====")
     fails = [s for s in STEPS if s.status != "PASS"]
     for s in STEPS:
         print(f"{s.status:>5}  {s.name}")
-    print(f"\nverdict: {'PASS' if not fails else 'FAIL'} "
-          f"({len(STEPS) - len(fails)}/{len(STEPS)} steps)")
+    print(
+        f"\nverdict: {'PASS' if not fails else 'FAIL'} "
+        f"({len(STEPS) - len(fails)}/{len(STEPS)} steps)"
+    )
     transcript = work / "e2e-transcript.txt"
     transcript.write_text(
         "\n".join(f"== {s.name} [{s.status}]\n" + "\n".join(s.lines) for s in STEPS),

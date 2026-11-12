@@ -31,8 +31,11 @@ from theforge_apisentinel.catalog import (
 
 _SEAMS = (
     ("sentinel_boundary", "api_sentinel.integrations.the_forge.boundary", "SentinelBoundary"),
-    ("handoff_translate", "api_sentinel.integrations.the_forge.handoff",
-     "handoff_to_forge_request"),
+    (
+        "handoff_translate",
+        "api_sentinel.integrations.the_forge.handoff",
+        "handoff_to_forge_request",
+    ),
     ("handoff_response", "api_sentinel.integrations.the_forge.handoff", "response_to_result"),
 )
 
@@ -97,13 +100,8 @@ def verify_catalog() -> dict[str, Any]:
         "provider": manifest.get("id", "api-sentinel-forge"),
         "expected": list(EXPECTED_CAPABILITIES),
         "live_states": {cid: live.get(cid) for cid in EXPECTED_CAPABILITIES},
-        "extra_live_ids": sorted(
-            cid for cid in live if cid not in EXPECTED_CAPABILITIES
-        ),
-        "collisions": [
-            cid for cid in EXPECTED_CAPABILITIES
-            if live.get(cid) != "supported"
-        ],
+        "extra_live_ids": sorted(cid for cid in live if cid not in EXPECTED_CAPABILITIES),
+        "collisions": [cid for cid in EXPECTED_CAPABILITIES if live.get(cid) != "supported"],
     }
     verification["all_supported"] = not verification["collisions"]
     return verification
@@ -112,7 +110,8 @@ def verify_catalog() -> dict[str, Any]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m theforge_apisentinel.record")
     parser.add_argument(
-        "--out", default=None,
+        "--out",
+        default=None,
         help="write the snapshot here instead of the packaged one",
     )
     args = parser.parse_args(argv)
@@ -121,7 +120,8 @@ def main(argv: list[str] | None = None) -> int:
     target = Path(args.out) if args.out else SNAPSHOT_PATH
     target.write_text(
         json.dumps(fresh, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
-        encoding="utf-8", newline="\n",
+        encoding="utf-8",
+        newline="\n",
     )
     print(f"recorded native surface {fresh['specialist_version']} -> {target}")
     try:
@@ -131,11 +131,10 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     VERIFICATION_PATH.write_text(
         json.dumps(verification, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8", newline="\n",
+        encoding="utf-8",
+        newline="\n",
     )
-    supported = sum(
-        1 for v in verification["live_states"].values() if v == "supported"
-    )
+    supported = sum(1 for v in verification["live_states"].values() if v == "supported")
     print(
         f"catalog verification: {supported}/{len(EXPECTED_CAPABILITIES)} "
         f"supported -> {VERIFICATION_PATH}"

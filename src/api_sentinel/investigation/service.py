@@ -111,20 +111,15 @@ class RunAgenticInvestigation:
     ) -> AgenticInvestigationOutcome:
         with self._uow as uow:
             if idempotency_key:
-                existing = uow.investigations.get_by_idempotency_key(
-                    idempotency_key
-                )
+                existing = uow.investigations.get_by_idempotency_key(idempotency_key)
                 if existing is not None:
                     pack = ContextPack.model_validate(existing.context_pack)
                     session = AgentSessionResult(
                         status="delegated",
                         session_ref=None,
-                        detail="replayed idempotency key — prior attempt "
-                               "returned verbatim",
+                        detail="replayed idempotency key — prior attempt returned verbatim",
                         session_request_id="",
-                        governance=_replay_governance(
-                            existing, principal, workspace
-                        ),
+                        governance=_replay_governance(existing, principal, workspace),
                     )
                     return AgenticInvestigationOutcome(
                         investigation=existing,
@@ -162,16 +157,11 @@ class RunAgenticInvestigation:
         events = uow.incident_events.list(incident.incident_id)
         events = events[-_EVENT_CAP:]
         refs = sorted(
-            set(incident.evidence_refs)
-            | {r for a in anomalies for r in a.evidence_refs}
+            set(incident.evidence_refs) | {r for a in anomalies for r in a.evidence_refs}
         )[:_EVIDENCE_CAP]
-        evidence = [
-            a for a in (uow.evidence.get(r) for r in refs) if a is not None
-        ]
+        evidence = [a for a in (uow.evidence.get(r) for r in refs) if a is not None]
         unresolved = [r for r in refs if uow.evidence.get(r) is None]
-        source_ids = [
-            s.source_id for s in uow.sources.list(incident.service_id)
-        ]
+        source_ids = [s.source_id for s in uow.sources.list(incident.service_id)]
         observations = uow.observations.list_for_service(incident.service_id)
         health = assess_service_health(
             service_id=incident.service_id,
@@ -181,9 +171,7 @@ class RunAgenticInvestigation:
             policy=HealthPolicy(),
         )
         structural = self._structural_view(uow, incident)
-        changes = uow.change_events.list_for_service(
-            incident.service_id
-        )[:_CHANGE_CAP]
+        changes = uow.change_events.list_for_service(incident.service_id)[:_CHANGE_CAP]
         unknowns: list[str] = []
         unknowns.extend(f"evidence_unresolved:{r}" for r in unresolved)
         if structural.state != "AVAILABLE":
@@ -200,9 +188,7 @@ class RunAgenticInvestigation:
             evidence=evidence,
             indicators=health,
             structural=structural,
-            change_events=[
-                c.change for c in correlation.candidates
-            ],
+            change_events=[c.change for c in correlation.candidates],
             log_excerpts=self._log_excerpts(uow, anomalies),
             built_at=self._now,
             budget_bytes=self._budget,
@@ -221,9 +207,7 @@ class RunAgenticInvestigation:
             )
         return pack
 
-    def _log_excerpts(
-        self, uow: UnitOfWork, anomalies: list[Any]
-    ) -> list[tuple[str, str]]:
+    def _log_excerpts(self, uow: UnitOfWork, anomalies: list[Any]) -> list[tuple[str, str]]:
         """Redacted log excerpts — only `message`/`body`-style attributes.
 
         Payload capture is off by default (docs/07): an observation
@@ -244,21 +228,16 @@ class RunAgenticInvestigation:
                     excerpts.append((ref, message))
         return excerpts[:20]
 
-    def _structural_view(
-        self, uow: UnitOfWork, incident: Incident
-    ) -> StructuralContextView:
+    def _structural_view(self, uow: UnitOfWork, incident: Incident) -> StructuralContextView:
         if self._structural is None:
             return StructuralContextView(
                 state="UNAVAILABLE",
                 reason=self._structural_reason
-                or "no structural context configured — structural graph "
-                "unavailable",
+                or "no structural context configured — structural graph unavailable",
             )
         service = uow.services.get(incident.service_id)
         if service is None:
-            return StructuralContextView(
-                state="UNAVAILABLE", reason="service row missing"
-            )
+            return StructuralContextView(state="UNAVAILABLE", reason="service row missing")
         ref = self._structural.resolve_service(service)
         if ref is None:
             return StructuralContextView(
@@ -319,10 +298,7 @@ class RunAgenticInvestigation:
             "unknowns": pack.unknowns,
         }
         investigation_id = (
-            "inv_"
-            + hashlib.sha256(
-                f"{incident_id}|{idempotency_key}".encode()
-            ).hexdigest()[:24]
+            "inv_" + hashlib.sha256(f"{incident_id}|{idempotency_key}".encode()).hexdigest()[:24]
             if idempotency_key
             else self._ids.new("inv")
         )
@@ -348,10 +324,7 @@ class RunAgenticInvestigation:
                         actor=actor,
                         from_status=incident.status,
                         to_status=incident.status,
-                        note=(
-                            f"agent session {session.status}: "
-                            f"{session.detail}"
-                        ),
+                        note=(f"agent session {session.status}: {session.detail}"),
                         details={
                             "investigation_id": investigation_id,
                             "pack_id": pack.pack_id,
@@ -361,14 +334,11 @@ class RunAgenticInvestigation:
                             "provider": session.governance.provider or "",
                             "cost_limit_usd": (
                                 str(session.governance.cost_limit_usd)
-                                if session.governance.cost_limit_usd
-                                is not None
+                                if session.governance.cost_limit_usd is not None
                                 else ""
                             ),
                         },
-                        discriminator=(
-                            f"session|{investigation_id}|{session.status}"
-                        ),
+                        discriminator=(f"session|{investigation_id}|{session.status}"),
                     )
                 )
             uow.handoff_records.put(
@@ -376,9 +346,7 @@ class RunAgenticInvestigation:
                     handoff_id=f"hnd_{investigation_id}",
                     to_forge=BRIDGE_FORGE,
                     kind="agent-session",
-                    status=_HANDOFF_STATUS.get(
-                        session.status, HandoffStatus.FAILED
-                    ),
+                    status=_HANDOFF_STATUS.get(session.status, HandoffStatus.FAILED),
                     request_ref=session.session_ref,
                     detail=session.detail,
                     created_at=self._now,
@@ -406,17 +374,11 @@ class RunAgenticInvestigation:
         )
 
 
-def _replay_governance(
-    existing: Investigation, principal: str, workspace: str
-) -> Any:
+def _replay_governance(existing: Investigation, principal: str, workspace: str) -> Any:
     """Governance echo for a replayed investigation — honest, not guessed."""
     from api_sentinel.investigation.agent_session import SessionGovernance
 
-    session = (
-        existing.result.get("session", {})
-        if isinstance(existing.result, dict)
-        else {}
-    )
+    session = existing.result.get("session", {}) if isinstance(existing.result, dict) else {}
     return SessionGovernance(
         principal=str(session.get("principal") or principal),
         workspace=str(session.get("workspace") or workspace),
@@ -426,7 +388,5 @@ def _replay_governance(
             if session.get("cost_limit_usd") not in (None, "")
             else None
         ),
-        approvals=[
-            a for a in str(session.get("approvals", "")).split(",") if a
-        ],
+        approvals=[a for a in str(session.get("approvals", "")).split(",") if a],
     )

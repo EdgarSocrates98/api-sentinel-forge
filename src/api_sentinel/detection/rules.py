@@ -122,9 +122,7 @@ class ErrorRatioOverLimit:
     def detector_version(self) -> str:
         return self.VERSION
 
-    def evaluate(
-        self, request: DetectionRequest, context: DetectionContext
-    ) -> DetectionResult:
+    def evaluate(self, request: DetectionRequest, context: DetectionContext) -> DetectionResult:
         cfg = self._cfg
         anomalies: list[AnomalyDraft] = []
         notes: list[str] = []
@@ -205,9 +203,7 @@ class P95OverLatencyTarget:
     def detector_version(self) -> str:
         return self.VERSION
 
-    def evaluate(
-        self, request: DetectionRequest, context: DetectionContext
-    ) -> DetectionResult:
+    def evaluate(self, request: DetectionRequest, context: DetectionContext) -> DetectionResult:
         cfg = self._cfg
         anomalies: list[AnomalyDraft] = []
         notes: list[str] = []
@@ -246,8 +242,7 @@ class P95OverLatencyTarget:
                     severity=cfg.severity,
                     explanation=Explanation(
                         summary=(
-                            f"p95 latency {p95:g}ms over target "
-                            f"{cfg.max_p95_ms:g}ms on {scope}"
+                            f"p95 latency {p95:g}ms over target {cfg.max_p95_ms:g}ms on {scope}"
                         ),
                         math=(
                             f"p95 = {p95:g}ms > {cfg.max_p95_ms:g}ms over "
@@ -295,9 +290,7 @@ class SourceSilence:
     def detector_version(self) -> str:
         return self.VERSION
 
-    def evaluate(
-        self, request: DetectionRequest, context: DetectionContext
-    ) -> DetectionResult:
+    def evaluate(self, request: DetectionRequest, context: DetectionContext) -> DetectionResult:
         cfg = self._cfg
         anomalies: list[AnomalyDraft] = []
         unknowns: list[str] = []
@@ -314,11 +307,7 @@ class SourceSilence:
             if not source.enabled:
                 notes.append(f"source_disabled:{source.source_id}")
                 continue
-            ends = [
-                o.window_end
-                for o in context.observations
-                if o.source_id == source.source_id
-            ]
+            ends = [o.window_end for o in context.observations if o.source_id == source.source_id]
             if not ends:
                 # Never observed: we cannot distinguish "stopped" from
                 # "never started" — an explicit unknown, not an anomaly.
@@ -391,9 +380,7 @@ class BudgetBurnAcceleration:
     def detector_version(self) -> str:
         return self.VERSION
 
-    def evaluate(
-        self, request: DetectionRequest, context: DetectionContext
-    ) -> DetectionResult:
+    def evaluate(self, request: DetectionRequest, context: DetectionContext) -> DetectionResult:
         cfg = self._cfg
         anomalies: list[AnomalyDraft] = []
         notes: list[str] = []
@@ -485,9 +472,7 @@ class StatusUnexpectedOnOperation:
         def _classes(cls, v: list[str]) -> list[str]:
             for klass in v:
                 if len(klass) != 3 or not klass[0].isdigit() or klass[1:] != "xx":
-                    raise ValueError(
-                        f"invalid status class: {klass!r} (expected e.g. '5xx')"
-                    )
+                    raise ValueError(f"invalid status class: {klass!r} (expected e.g. '5xx')")
             return v
 
     def __init__(self, config: dict[str, Any]) -> None:
@@ -519,9 +504,7 @@ class StatusUnexpectedOnOperation:
             return float(m.count or 0.0)
         return 0.0
 
-    def evaluate(
-        self, request: DetectionRequest, context: DetectionContext
-    ) -> DetectionResult:
+    def evaluate(self, request: DetectionRequest, context: DetectionContext) -> DetectionResult:
         cfg = self._cfg
         if not cfg.unexpected_status_codes and not cfg.unexpected_status_classes:
             return DetectionResult(
@@ -531,9 +514,7 @@ class StatusUnexpectedOnOperation:
             )
         anomalies: list[AnomalyDraft] = []
         limitations: list[str] = []
-        hits: dict[
-            tuple[str | None, str | None], dict[str, Any]
-        ] = {}
+        hits: dict[tuple[str | None, str | None], dict[str, Any]] = {}
         for obs in context.observations:
             if obs.service_id != context.service_id or not request.window.contains(obs):
                 continue
@@ -549,9 +530,7 @@ class StatusUnexpectedOnOperation:
                 continue
             weight = self._weight(obs)
             key = (obs.operation_id, operation_ref(obs.attributes, obs.operation_id))
-            slot = hits.setdefault(
-                key, {"count": 0.0, "statuses": {}, "obs": []}
-            )
+            slot = hits.setdefault(key, {"count": 0.0, "statuses": {}, "obs": []})
             slot["count"] += weight
             slot["statuses"][code] = slot["statuses"].get(code, 0.0) + weight
             slot["obs"].append(obs)
@@ -560,9 +539,7 @@ class StatusUnexpectedOnOperation:
             if count < cfg.min_requests:
                 continue
             statuses = slot["statuses"]
-            status_text = ",".join(
-                f"{code}:{n:g}" for code, n in sorted(statuses.items())
-            )
+            status_text = ",".join(f"{code}:{n:g}" for code, n in sorted(statuses.items()))
             scope = ref or "service"
             anomalies.append(
                 AnomalyDraft(
@@ -573,10 +550,7 @@ class StatusUnexpectedOnOperation:
                     window=request.window,
                     severity=cfg.severity,
                     explanation=Explanation(
-                        summary=(
-                            f"unexpected status on {scope}: {status_text} "
-                            f"requests in window"
-                        ),
+                        summary=(f"unexpected status on {scope}: {status_text} requests in window"),
                         math=(
                             f"unexpected status requests = {count:g} >= "
                             f"{cfg.min_requests:g}; statuses {status_text} "
@@ -627,9 +601,7 @@ class TimeoutGrowthAfterDeploy:
     def detector_version(self) -> str:
         return self.VERSION
 
-    def evaluate(
-        self, request: DetectionRequest, context: DetectionContext
-    ) -> DetectionResult:
+    def evaluate(self, request: DetectionRequest, context: DetectionContext) -> DetectionResult:
         cfg = self._cfg
         anomalies: list[AnomalyDraft] = []
         notes: list[str] = []
@@ -641,9 +613,7 @@ class TimeoutGrowthAfterDeploy:
                 detector_version=self.VERSION,
                 unknowns=["no_observations_in_window"],
             )
-        horizon_start = request.window.end - timedelta(
-            seconds=cfg.deploy_lookback_seconds
-        )
+        horizon_start = request.window.end - timedelta(seconds=cfg.deploy_lookback_seconds)
         releases = sorted(
             (
                 r
@@ -655,11 +625,7 @@ class TimeoutGrowthAfterDeploy:
             key=lambda r: (r.deployed_at or request.window.end, r.release_id),
         )
         release_refs = [f"rel:{r.release_id}@{r.version}" for r in releases]
-        release_text = (
-            "; releases in lookback: " + ", ".join(release_refs)
-            if releases
-            else ""
-        )
+        release_text = "; releases in lookback: " + ", ".join(release_refs) if releases else ""
         for agg in aggregates:
             if agg.plane is None or agg.eligible_requests < cfg.min_requests:
                 continue
@@ -669,9 +635,7 @@ class TimeoutGrowthAfterDeploy:
             if ratio <= cfg.max_timeout_ratio:
                 continue
             if not releases:
-                notes.append(
-                    f"no_release_in_lookback:{agg.operation_id or 'service'}"
-                )
+                notes.append(f"no_release_in_lookback:{agg.operation_id or 'service'}")
                 continue
             obs = _group_observations(context, agg)
             scope = _scope_label(agg, obs)
@@ -693,8 +657,7 @@ class TimeoutGrowthAfterDeploy:
                         math=(
                             f"timeout_ratio = timeouts/eligible = "
                             f"{agg.timeout_requests:g}/{agg.eligible_requests:g} = "
-                            f"{_fmt(ratio)} > {cfg.max_timeout_ratio:g}"
-                            + release_text
+                            f"{_fmt(ratio)} > {cfg.max_timeout_ratio:g}" + release_text
                         ),
                     ),
                     evidence_refs=[
@@ -702,9 +665,7 @@ class TimeoutGrowthAfterDeploy:
                         f"src:{agg.source_id}",
                         *release_refs,
                     ],
-                    unknowns=[
-                        f"agg_limitations:{lim}" for lim in agg.limitations
-                    ],
+                    unknowns=[f"agg_limitations:{lim}" for lim in agg.limitations],
                     dedup_key=f"op:{agg.operation_id or 'service'}:timeout",
                 )
             )

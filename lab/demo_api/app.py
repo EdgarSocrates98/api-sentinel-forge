@@ -50,11 +50,19 @@ class Metrics:
     def __init__(self) -> None:
         self._lock = threading.Lock()
         # win_start_epoch -> route -> status -> list of (le, count) buckets
-        self._windows: dict[int, dict[str, dict[int, dict[str, float]]]] = (
-            defaultdict(lambda: defaultdict(lambda: defaultdict(
-                lambda: {"count": 0.0, "sum": 0.0,
-                         "b50": 0.0, "b100": 0.0, "b200": 0.0, "b500": 0.0}
-            )))
+        self._windows: dict[int, dict[str, dict[int, dict[str, float]]]] = defaultdict(
+            lambda: defaultdict(
+                lambda: defaultdict(
+                    lambda: {
+                        "count": 0.0,
+                        "sum": 0.0,
+                        "b50": 0.0,
+                        "b100": 0.0,
+                        "b200": 0.0,
+                        "b500": 0.0,
+                    }
+                )
+            )
         )
 
     def record(self, route: str, status: int, latency_ms: float) -> None:
@@ -63,15 +71,11 @@ class Metrics:
             cell = self._windows[win][route][status]
             cell["count"] += 1.0
             cell["sum"] += latency_ms
-            for bound, key in zip(
-                BUCKET_BOUNDS_MS, ("b50", "b100", "b200", "b500"), strict=True
-            ):
+            for bound, key in zip(BUCKET_BOUNDS_MS, ("b50", "b100", "b200", "b500"), strict=True):
                 if latency_ms <= bound:
                     cell[key] += 1.0
 
-    def export_observations(
-        self, service_id: str, source_id: str
-    ) -> list[dict[str, object]]:
+    def export_observations(self, service_id: str, source_id: str) -> list[dict[str, object]]:
         """Emit `api-sentinel/RuntimeObservation/v1` dicts (delta temporality).
 
         Only *closed* windows export — the current minute stays open until
@@ -96,38 +100,40 @@ class Metrics:
                     if n <= 0:
                         continue
                     route_key = route.strip("/").replace("/", "_") or "root"
-                    out.append({
-                        "schema": "api-sentinel/RuntimeObservation/v1",
-                        "observation_id": f"demo_{win}_{route_key}_{status}",
-                        "service_id": service_id,
-                        "operation_id": f"GET {route}",
-                        "release_id": STATE["version"],
-                        "window": {
-                            "start": start.isoformat(),
-                            "end": end.isoformat(),
-                        },
-                        "source_id": source_id,
-                        "quality": "COMPLETE",
-                        "measurement": {
-                            "kind": "histogram",
-                            "unit": "ms",
-                            "count": int(n),
-                            "sum": round(cell["sum"], 3),
-                            "buckets": [
-                                {"le": 50, "count": int(cell["b50"])},
-                                {"le": 100, "count": int(cell["b100"])},
-                                {"le": 200, "count": int(cell["b200"])},
-                                {"le": 500, "count": int(cell["b500"])},
-                                {"le": "+Inf", "count": int(n)},
-                            ],
-                        },
-                        "attributes": {
-                            "http.route": route,
-                            "http.request.method": "GET",
-                            "http.response.status_code": status,
-                            "deployment.version": STATE["version"],
-                        },
-                    })
+                    out.append(
+                        {
+                            "schema": "api-sentinel/RuntimeObservation/v1",
+                            "observation_id": f"demo_{win}_{route_key}_{status}",
+                            "service_id": service_id,
+                            "operation_id": f"GET {route}",
+                            "release_id": STATE["version"],
+                            "window": {
+                                "start": start.isoformat(),
+                                "end": end.isoformat(),
+                            },
+                            "source_id": source_id,
+                            "quality": "COMPLETE",
+                            "measurement": {
+                                "kind": "histogram",
+                                "unit": "ms",
+                                "count": int(n),
+                                "sum": round(cell["sum"], 3),
+                                "buckets": [
+                                    {"le": 50, "count": int(cell["b50"])},
+                                    {"le": 100, "count": int(cell["b100"])},
+                                    {"le": 200, "count": int(cell["b200"])},
+                                    {"le": 500, "count": int(cell["b500"])},
+                                    {"le": "+Inf", "count": int(n)},
+                                ],
+                            },
+                            "attributes": {
+                                "http.route": route,
+                                "http.request.method": "GET",
+                                "http.response.status_code": status,
+                                "deployment.version": STATE["version"],
+                            },
+                        }
+                    )
         return out
 
 
@@ -144,7 +150,8 @@ def _dep_health() -> tuple[bool, float, str]:
     t0 = time.perf_counter()
     try:
         with urllib.request.urlopen(  # noqa: S310 — the dep URL is a
-            f"{base}/health", timeout=DEP_TIMEOUT_S) as r:  # runner arg
+            f"{base}/health", timeout=DEP_TIMEOUT_S
+        ) as r:  # runner arg
             ok = r.status == 200
             return ok, (time.perf_counter() - t0) * 1000.0, f"dep status {r.status}"
     except urllib.error.HTTPError as exc:
@@ -215,8 +222,7 @@ async def deploy(request: Request) -> dict[str, object]:
     if not version:
         return JSONResponse({"detail": "version required"}, status_code=400)
     STATE["version"] = version
-    record = {"at": datetime.now(UTC).isoformat(), "kind": "deploy",
-              "version": version}
+    record = {"at": datetime.now(UTC).isoformat(), "kind": "deploy", "version": version}
     with (Path(STATE["log_dir"]) / "deploy-log.jsonl").open("a") as fh:
         fh.write(json.dumps(record) + "\n")
     return {"version": version, "at": record["at"]}
@@ -229,10 +235,7 @@ def metrics_export(service_id: str, source_id: str) -> PlainTextResponse:
     The caller supplies the *registered* Sentinel ids — the demo never
     invents service/source identities.
     """
-    lines = [
-        json.dumps(o)
-        for o in METRICS.export_observations(service_id, source_id)
-    ]
+    lines = [json.dumps(o) for o in METRICS.export_observations(service_id, source_id)]
     return PlainTextResponse(
         "\n".join(lines) + ("\n" if lines else ""),
         media_type="application/x-ndjson",

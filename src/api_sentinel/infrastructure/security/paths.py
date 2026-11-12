@@ -84,8 +84,7 @@ def read_text_bounded(
         ) from exc
     if size > max_bytes:
         raise ValidationError(
-            f"{name} exceeds the {max_bytes}-byte inbound limit "
-            f"({size} bytes): {path}",
+            f"{name} exceeds the {max_bytes}-byte inbound limit ({size} bytes): {path}",
             details={name: str(path), "size_bytes": size},
         )
     return path.read_text(encoding="utf-8")

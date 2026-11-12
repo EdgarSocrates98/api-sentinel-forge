@@ -58,15 +58,13 @@ def _workspace(root: Path) -> Workspace:
     return ensure_workspace(Workspace(root=root, scope="project"))
 
 
-def _seed_service_source(
-    ws: Workspace, ids: SequentialIdFactory
-) -> tuple[str, str]:
-    svc = RegisterService(
-        SqliteUnitOfWork(ws.db_path), FixedClock(NOW), ids
-    ).execute(service_name="payments-api")
-    src = RegisterSource(
-        SqliteUnitOfWork(ws.db_path), FixedClock(NOW), ids
-    ).execute(kind="jsonl-file", service_id=svc.service_id)
+def _seed_service_source(ws: Workspace, ids: SequentialIdFactory) -> tuple[str, str]:
+    svc = RegisterService(SqliteUnitOfWork(ws.db_path), FixedClock(NOW), ids).execute(
+        service_name="payments-api"
+    )
+    src = RegisterSource(SqliteUnitOfWork(ws.db_path), FixedClock(NOW), ids).execute(
+        kind="jsonl-file", service_id=svc.service_id
+    )
     return svc.service_id, src.source_id
 
 
@@ -106,10 +104,7 @@ class TestMigrationLifecycle:
         wheels = list(tmp_path.glob("*.whl"))
         assert len(wheels) == 1
         with zipfile.ZipFile(wheels[0]) as zf:
-            sql = [
-                n for n in zf.namelist()
-                if "/migrations/" in n and n.endswith(".sql")
-            ]
+            sql = [n for n in zf.namelist() if "/migrations/" in n and n.endswith(".sql")]
         assert len(sql) >= 6, f"wheel carries {len(sql)} migrations: {sql}"
 
     def test_clean_install_applies_schema(self, tmp_path: Path) -> None:
@@ -119,13 +114,9 @@ class TestMigrationLifecycle:
         conn = sqlite3.connect(str(ws.db_path))
         try:
             tables = {
-                r[0]
-                for r in conn.execute(
-                    "SELECT name FROM sqlite_master WHERE type='table'"
-                )
+                r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
             }
-            assert {"api_services", "runtime_observations",
-                    "schema_migrations"} <= tables
+            assert {"api_services", "runtime_observations", "schema_migrations"} <= tables
         finally:
             conn.close()
 
@@ -159,9 +150,7 @@ class TestMigrationLifecycle:
             "CREATE TABLE t_good (id TEXT PRIMARY KEY);",
             encoding="utf-8",
         )
-        (mig_dir / "0002_broken.sql").write_text(
-            "THIS IS NOT SQL;", encoding="utf-8"
-        )
+        (mig_dir / "0002_broken.sql").write_text("THIS IS NOT SQL;", encoding="utf-8")
         conn = sqlite3.connect(str(tmp_path / "db.sqlite"))
         conn.row_factory = sqlite3.Row
         try:
@@ -182,13 +171,9 @@ class TestBackupRecoveryEdges:
         ids = SequentialIdFactory()
         ws = _workspace(tmp_path / "ws")
         _seed_service_source(ws, ids)
-        return ws, ids, create_backup(
-            ws, clock=FixedClock(NOW), ids=ids
-        )
+        return ws, ids, create_backup(ws, clock=FixedClock(NOW), ids=ids)
 
-    def test_interrupted_backup_missing_payload_is_refused(
-        self, tmp_path: Path
-    ) -> None:
+    def test_interrupted_backup_missing_payload_is_refused(self, tmp_path: Path) -> None:
         """A backup killed mid-copy — manifest present, db absent — is a
         named integrity failure, never a partial restore."""
         _ws, ids, backup = self._backup(tmp_path)
@@ -219,16 +204,12 @@ class TestBackupRecoveryEdges:
                 ids=ids,
             )
 
-    def test_restore_refusal_then_authorized_restore(
-        self, tmp_path: Path
-    ) -> None:
+    def test_restore_refusal_then_authorized_restore(self, tmp_path: Path) -> None:
         """Without force a live db is a ConflictError; authorized force
         restores with verified integrity + preserved displaced files."""
         ws, ids, backup = self._backup(tmp_path)
         with pytest.raises(ConflictError):
-            restore_backup(
-                backup.backup_dir, ws, clock=FixedClock(NOW), ids=ids
-            )
+            restore_backup(backup.backup_dir, ws, clock=FixedClock(NOW), ids=ids)
         result = restore_backup(
             backup.backup_dir,
             ws,
@@ -265,7 +246,9 @@ class TestCrashMidIngest:
                 "source_id": source_id,
                 "quality": "COMPLETE",
                 "measurement": {
-                    "kind": "counter", "unit": "requests", "value": 1,
+                    "kind": "counter",
+                    "unit": "requests",
+                    "value": 1,
                 },
                 "attributes": {},
             }
@@ -278,16 +261,12 @@ class TestCrashMidIngest:
 
         monkeypatch.setattr(uow, "commit", _crash)
         with pytest.raises(RuntimeError, match="simulated crash"):
-            pipeline.ingest(
-                source=source, kind="jsonl", content=line.encode()
-            )
+            pipeline.ingest(source=source, kind="jsonl", content=line.encode())
         monkeypatch.undo()
         # nothing persisted — no batch, no observation, no checkpoint
         with SqliteUnitOfWork(ws.db_path) as check:
             assert check.observations.count() == 0
-            assert check.batches.get_by_idempotency_key(
-                "does-not-matter"
-            ) is None
+            assert check.batches.get_by_idempotency_key("does-not-matter") is None
             check.commit()
         # retry of the identical content is a clean re-ingest, not a dup
         retry = IngestionPipeline(
@@ -309,9 +288,7 @@ class TestOrphansAndRetention:
         created = NOW - timedelta(days=365) if old else NOW
         with SqliteUnitOfWork(ws.db_path) as uow:
             env = uow.environments.get_by_name("lab") or uow.environments.put(
-                ServiceEnvironment(
-                    environment_id="env_lab", name="lab", created_at=created
-                )
+                ServiceEnvironment(environment_id="env_lab", name="lab", created_at=created)
             )
             uow.services.put(
                 ApiService(
@@ -353,34 +330,24 @@ class TestOrphansAndRetention:
                     group_key=f"svc_ret|{incident_status.value}|x",
                     first_observed_at=created,
                     detected_at=created,
-                    resolved_at=(
-                        created
-                        if incident_status is IncidentStatus.RESOLVED
-                        else None
-                    ),
+                    resolved_at=(created if incident_status is IncidentStatus.RESOLVED else None),
                     evidence_refs=[evidence_id],
                 )
             )
             uow.commit()
         return evidence_id
 
-    def test_orphan_blob_files_reported_never_deleted(
-        self, tmp_path: Path
-    ) -> None:
+    def test_orphan_blob_files_reported_never_deleted(self, tmp_path: Path) -> None:
         ws = _workspace(tmp_path / "ws")
         _seed_service_source(ws, SequentialIdFactory())
         ws.blobs_dir.mkdir(parents=True, exist_ok=True)
         orphan = ws.blobs_dir / ("deadbeef" * 8)
         orphan.write_bytes(b"unreferenced")
-        report = run_retention(
-            ws, apply=True, clock=FixedClock(NOW), ids=SequentialIdFactory()
-        )
+        report = run_retention(ws, apply=True, clock=FixedClock(NOW), ids=SequentialIdFactory())
         assert report.orphan_blob_files >= 1
         assert orphan.is_file()  # reported, never silently swept
 
-    def test_open_incident_evidence_protected_closed_eligible(
-        self, tmp_path: Path
-    ) -> None:
+    def test_open_incident_evidence_protected_closed_eligible(self, tmp_path: Path) -> None:
         ws = _workspace(tmp_path / "ws")
         ids = SequentialIdFactory()
         open_ev = self._evidence_for_incident(

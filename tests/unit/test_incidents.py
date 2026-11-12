@@ -70,9 +70,7 @@ def _anomaly(
 
 
 def _open():
-    return open_incident(
-        anomaly=_anomaly(), service_name="payments-api", at=NOW
-    )
+    return open_incident(anomaly=_anomaly(), service_name="payments-api", at=NOW)
 
 
 # --- open + dedup -----------------------------------------------------------
@@ -105,9 +103,7 @@ def test_attach_same_anomaly_is_a_replay_noop() -> None:
 
 def test_attach_second_anomaly_journals_the_grouping() -> None:
     incident, _ = _open()
-    second = _anomaly(
-        anomaly_id="anm_2", window_start=T0 + timedelta(minutes=10)
-    )
+    second = _anomaly(anomaly_id="anm_2", window_start=T0 + timedelta(minutes=10))
     updated, events = attach_anomaly(incident, second, at=NOW)
     assert updated.revision == incident.revision + 1
     assert updated.anomaly_ids == ["anm_1", "anm_2"]
@@ -131,12 +127,8 @@ def test_worse_configured_severity_escalates_with_rule_revision() -> None:
 
 def test_attach_to_closed_status_is_a_named_error() -> None:
     incident, _ = _open()
-    resolved, _ = transition(
-        incident, IncidentStatus.RESOLVED, at=NOW, actor="cli"
-    )
-    closed, _ = transition(
-        resolved, IncidentStatus.CLOSED, at=NOW, actor="cli"
-    )
+    resolved, _ = transition(incident, IncidentStatus.RESOLVED, at=NOW, actor="cli")
+    closed, _ = transition(resolved, IncidentStatus.CLOSED, at=NOW, actor="cli")
     with pytest.raises(ValidationError, match="cannot attach"):
         attach_anomaly(closed, _anomaly(anomaly_id="anm_2"), at=NOW)
 
@@ -158,18 +150,14 @@ def test_transition_table_is_consistent() -> None:
 
 def test_ack_then_resolve_sets_timestamps() -> None:
     incident, _ = _open()
-    acked, event = transition(
-        incident, IncidentStatus.TRIAGED, at=NOW, actor="cli", note="looking"
-    )
+    acked, event = transition(incident, IncidentStatus.TRIAGED, at=NOW, actor="cli", note="looking")
     assert acked.status is IncidentStatus.TRIAGED
     assert acked.acknowledged_at == NOW
     assert event.kind is EventKind.STATUS_TRANSITION
     assert event.details == {} or event.details.get("note") is None
 
     resolved_at = NOW + timedelta(minutes=30)
-    resolved, _ = transition(
-        acked, IncidentStatus.RESOLVED, at=resolved_at, actor="cli"
-    )
+    resolved, _ = transition(acked, IncidentStatus.RESOLVED, at=resolved_at, actor="cli")
     assert resolved.resolved_at == resolved_at
     assert resolved.revision == acked.revision + 1
 
@@ -182,9 +170,7 @@ def test_invalid_transition_is_a_named_error() -> None:
 
 def test_resolved_reopens_only_via_journal() -> None:
     incident, _ = _open()
-    resolved, _ = transition(
-        incident, IncidentStatus.RESOLVED, at=NOW, actor="cli"
-    )
+    resolved, _ = transition(incident, IncidentStatus.RESOLVED, at=NOW, actor="cli")
     reopened, event = transition(
         resolved, IncidentStatus.REOPENED, at=NOW + timedelta(minutes=5), actor="cli"
     )
@@ -199,17 +185,11 @@ def test_resolved_reopens_only_via_journal() -> None:
 
 def test_dismissed_can_reopen_but_closed_is_terminal() -> None:
     incident, _ = _open()
-    dismissed, _ = transition(
-        incident, IncidentStatus.DISMISSED, at=NOW, actor="cli"
-    )
+    dismissed, _ = transition(incident, IncidentStatus.DISMISSED, at=NOW, actor="cli")
     assert dismissed.status is IncidentStatus.DISMISSED
     assert can_transition(IncidentStatus.DISMISSED, IncidentStatus.REOPENED)
-    resolved, _ = transition(
-        incident, IncidentStatus.RESOLVED, at=NOW, actor="cli"
-    )
-    closed, _ = transition(
-        resolved, IncidentStatus.CLOSED, at=NOW, actor="cli"
-    )
+    resolved, _ = transition(incident, IncidentStatus.RESOLVED, at=NOW, actor="cli")
+    closed, _ = transition(resolved, IncidentStatus.CLOSED, at=NOW, actor="cli")
     assert TRANSITIONS[IncidentStatus.CLOSED] == frozenset()
     with pytest.raises(ValidationError, match="invalid incident transition"):
         transition(closed, IncidentStatus.REOPENED, at=NOW, actor="cli")
@@ -217,15 +197,9 @@ def test_dismissed_can_reopen_but_closed_is_terminal() -> None:
 
 def test_closed_incident_still_takes_journaled_notes() -> None:
     incident, _ = _open()
-    resolved, _ = transition(
-        incident, IncidentStatus.RESOLVED, at=NOW, actor="cli"
-    )
-    closed, _ = transition(
-        resolved, IncidentStatus.CLOSED, at=NOW, actor="cli"
-    )
-    event = record_note(
-        closed, at=NOW, actor="cli", note="post-mortem link added"
-    )
+    resolved, _ = transition(incident, IncidentStatus.RESOLVED, at=NOW, actor="cli")
+    closed, _ = transition(resolved, IncidentStatus.CLOSED, at=NOW, actor="cli")
+    event = record_note(closed, at=NOW, actor="cli", note="post-mortem link added")
     # Same-status append: the closed row is untouched, the journal grows.
     assert event.from_status is IncidentStatus.CLOSED
     assert event.to_status is IncidentStatus.CLOSED

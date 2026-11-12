@@ -29,6 +29,4 @@ def evidence_metadata(
     artifact = GetEvidenceMetadata(uow, ctx.clock, ctx.ids).execute(
         evidence_id=evidence_id, actor=actor
     )
-    return EvidenceResponse(
-        evidence=artifact, evidence_refs=[artifact.evidence_id]
-    )
+    return EvidenceResponse(evidence=artifact, evidence_refs=[artifact.evidence_id])

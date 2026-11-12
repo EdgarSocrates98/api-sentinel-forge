@@ -55,9 +55,7 @@ HDR_NONCE = "x-sentinel-nonce"
 HDR_SIGNATURE = "x-sentinel-signature"
 
 
-def _refusal(
-    reason: str, *, details: dict[str, Any] | None = None
-) -> UnauthorizedError:
+def _refusal(reason: str, *, details: dict[str, Any] | None = None) -> UnauthorizedError:
     """An authentication failure with a stable reason — the HTTP layer
     maps it to 401; the reason names the failure class, never the
     presented credential material."""
@@ -110,12 +108,8 @@ def sign_principal(
 ) -> str:
     """The integrated-mode signature — exported so trusted backends and
     tests compute the same canonical string."""
-    canonical = "\n".join(
-        (principal, role, workspace, str(timestamp), nonce)
-    )
-    return hmac.new(
-        secret.encode("utf-8"), canonical.encode("utf-8"), hashlib.sha256
-    ).hexdigest()
+    canonical = "\n".join((principal, role, workspace, str(timestamp), nonce))
+    return hmac.new(secret.encode("utf-8"), canonical.encode("utf-8"), hashlib.sha256).hexdigest()
 
 
 @dataclass
@@ -220,9 +214,7 @@ class ApiAuth:
     def _check_nonce(self, nonce: str, ts: float, now_ts: float) -> None:
         """Single-use nonces — prune by signature expiry, then refuse
         replays. The map is bounded by the skew window."""
-        expired = [
-            n for n, exp in self._seen_nonces.items() if exp < now_ts
-        ]
+        expired = [n for n, exp in self._seen_nonces.items() if exp < now_ts]
         for n in expired:
             del self._seen_nonces[n]
         if nonce in self._seen_nonces:
@@ -314,9 +306,7 @@ def resolve_auth(
     if ttl is not None and resolved.path is not None:
         try:
             mtime = resolved.path.stat().st_mtime
-            expires_at = datetime.fromtimestamp(
-                mtime + ttl, UTC
-            ).replace(microsecond=0)
+            expires_at = datetime.fromtimestamp(mtime + ttl, UTC).replace(microsecond=0)
         except OSError:
             expires_at = None
 
@@ -332,8 +322,6 @@ def resolve_auth(
         shared_secret=shared,
         token_role=str(api_cfg.get("token_role") or default_role),
         token_expires_at=expires_at,
-        max_skew_seconds=int(
-            api_cfg.get("max_skew_seconds", DEFAULT_MAX_SKEW_SECONDS)
-        ),
+        max_skew_seconds=int(api_cfg.get("max_skew_seconds", DEFAULT_MAX_SKEW_SECONDS)),
     )
     return auth, resolved

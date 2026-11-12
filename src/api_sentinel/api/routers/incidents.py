@@ -73,16 +73,11 @@ def incident_detail(
     """Investigation view: row + journal + anomalies + resolvable evidence
     metadata — unresolved refs named under `evidence_unresolved`."""
     detail = GetIncidentDetail(uow).execute(incident_id=incident_id)
-    unknowns = [
-        f"evidence_unresolved:{r}" for r in detail.evidence_unresolved
-    ]
+    unknowns = [f"evidence_unresolved:{r}" for r in detail.evidence_unresolved]
     evidence_refs = sorted(
-        {a.evidence_id for a in detail.evidence}
-        | set(detail.evidence_unresolved)
+        {a.evidence_id for a in detail.evidence} | set(detail.evidence_unresolved)
     )
-    return IncidentDetailResponse(
-        detail=detail, unknowns=unknowns, evidence_refs=evidence_refs
-    )
+    return IncidentDetailResponse(detail=detail, unknowns=unknowns, evidence_refs=evidence_refs)
 
 
 @router.get("/v1/incidents/{incident_id}/timeline")
@@ -121,7 +116,9 @@ def start_investigation(
     release = acquire_job_slot(ctx)
     try:
         investigation, replayed = StartInvestigation(
-            uow, ctx.clock, ctx.ids,
+            uow,
+            ctx.clock,
+            ctx.ids,
             structural=ctx.structural,
             structural_reason=ctx.structural_reason,
         ).execute(
@@ -134,9 +131,7 @@ def start_investigation(
         release()
     if replayed:
         response.status_code = 200
-    evidence_refs = sorted(
-        set(investigation.result.get("evidence_refs", []))
-    )
+    evidence_refs = sorted(set(investigation.result.get("evidence_refs", [])))
     return InvestigationResponse(
         investigation=investigation,
         replayed=replayed,

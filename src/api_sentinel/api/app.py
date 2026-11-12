@@ -91,11 +91,7 @@ def _problem(
         status_code=status,
         content=body.model_dump(mode="json"),
         media_type="application/problem+json",
-        headers=(
-            {"WWW-Authenticate": 'Bearer realm="api-sentinel"'}
-            if status == 401
-            else None
-        ),
+        headers=({"WWW-Authenticate": 'Bearer realm="api-sentinel"'} if status == 401 else None),
     )
 
 
@@ -218,21 +214,17 @@ def create_app(
         )
 
     @app.exception_handler(SentinelError)
-    async def _sentinel_error(
-        _request: Request, exc: SentinelError
-    ) -> JSONResponse:
-        status = next(
-            (s for cls, s in _ERROR_STATUS if isinstance(exc, cls)), 500
-        )
+    async def _sentinel_error(_request: Request, exc: SentinelError) -> JSONResponse:
+        status = next((s for cls, s in _ERROR_STATUS if isinstance(exc, cls)), 500)
         return _problem(
-            status=status, code=exc.code,
-            detail=exc.message, details=exc.details,
+            status=status,
+            code=exc.code,
+            detail=exc.message,
+            details=exc.details,
         )
 
     @app.exception_handler(RequestValidationError)
-    async def _request_validation(
-        _request: Request, exc: RequestValidationError
-    ) -> JSONResponse:
+    async def _request_validation(_request: Request, exc: RequestValidationError) -> JSONResponse:
         return _problem(
             status=422,
             code=ValidationError.code,
@@ -241,17 +233,9 @@ def create_app(
         )
 
     @app.exception_handler(StarletteHTTPException)
-    async def _http_error(
-        _request: Request, exc: StarletteHTTPException
-    ) -> JSONResponse:
-        code = (
-            NotFoundError.code
-            if exc.status_code == 404
-            else "sentinel.http_error"
-        )
-        return _problem(
-            status=exc.status_code, code=code, detail=str(exc.detail)
-        )
+    async def _http_error(_request: Request, exc: StarletteHTTPException) -> JSONResponse:
+        code = NotFoundError.code if exc.status_code == 404 else "sentinel.http_error"
+        return _problem(status=exc.status_code, code=code, detail=str(exc.detail))
 
     for module in (
         routers.health,

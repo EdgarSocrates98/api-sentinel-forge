@@ -87,9 +87,7 @@ def _seed(ws: Workspace) -> TelemetrySource:
     now = datetime(2026, 1, 1, tzinfo=UTC)
     with SqliteUnitOfWork(ws.db_path) as uow:
         env = uow.environments.put(
-            ServiceEnvironment(
-                environment_id="env_bench", name="bench", created_at=now
-            )
+            ServiceEnvironment(environment_id="env_bench", name="bench", created_at=now)
         )
         uow.services.put(
             ApiService(
@@ -105,9 +103,7 @@ def _seed(ws: Workspace) -> TelemetrySource:
                 ApiOperation.make(
                     operation_id=op,
                     service_id=SERVICE,
-                    identity=OperationIdentity(
-                        protocol="http", method="GET", route=f"/bench/{op}"
-                    ),
+                    identity=OperationIdentity(protocol="http", method="GET", route=f"/bench/{op}"),
                     created_at=now,
                 )
             )
@@ -151,16 +147,12 @@ def run_bench(
         # per-batch overlap check to a backwards range scan per window).
         lines = [
             json.dumps(
-                _observation(
-                    i, base - timedelta(minutes=offset // 100 + i % max(1, size // 100))
-                )
+                _observation(i, base - timedelta(minutes=offset // 100 + i % max(1, size // 100)))
             )
             for i in range(offset, offset + size)
         ]
         t0 = time.perf_counter()
-        result = pipeline.ingest(
-            source=source, kind="jsonl", content="\n".join(lines).encode()
-        )
+        result = pipeline.ingest(source=source, kind="jsonl", content="\n".join(lines).encode())
         chunk_seconds.append(time.perf_counter() - t0)
         accepted += result.accepted
         offset += size
@@ -203,9 +195,7 @@ def main() -> int:
         report = run_bench(n=args.n, chunk=args.chunk, workspace=args.workspace)
     else:
         with tempfile.TemporaryDirectory(prefix="sentinel-bench-") as tmp:
-            report = run_bench(
-                n=args.n, chunk=args.chunk, workspace=Path(tmp) / "ws"
-            )
+            report = run_bench(n=args.n, chunk=args.chunk, workspace=Path(tmp) / "ws")
     payload = json.dumps(report, indent=2, sort_keys=True)
     print(payload)  # noqa: T201
     if args.out is not None:

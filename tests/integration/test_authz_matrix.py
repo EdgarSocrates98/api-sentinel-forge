@@ -58,9 +58,7 @@ def _seed(ws_root: Path) -> Path:
     )
     with SqliteUnitOfWork(ws.db_path) as uow:
         env = uow.environments.put(
-            ServiceEnvironment(
-                environment_id="env_lab", name="lab", created_at=NOW
-            )
+            ServiceEnvironment(environment_id="env_lab", name="lab", created_at=NOW)
         )
         uow.services.put(
             ApiService(
@@ -113,8 +111,7 @@ def _ctx(ws_root: Path) -> ApiContext:
         ids=UlidIdFactory(),
         redactor=lambda t: t,
         structural=None,
-        structural_reason="no atlas export configured — structural context "
-                          "unavailable",
+        structural_reason="no atlas export configured — structural context unavailable",
         atlas_manifest=None,
         default_role="operator",
     )
@@ -133,8 +130,7 @@ def _denied_audit_rows(ws_root: Path) -> list[dict[str, object]]:
         return [
             {"target_id": r[0], "details": json.loads(r[1])}
             for r in conn.execute(
-                "SELECT target_id, details FROM audit_events"
-                " WHERE action='api.scope.denied'"
+                "SELECT target_id, details FROM audit_events WHERE action='api.scope.denied'"
             )
         ]
     finally:
@@ -191,9 +187,7 @@ class TestAuthorizationMatrix:
                 assert problem["status"] == 403
         denied = _denied_audit_rows(ws_root)
         # every denial this test produced is auditable
-        expected_denials = sum(
-            1 for _m, _p, _b, allowed in _MATRIX if effective not in allowed
-        )
+        expected_denials = sum(1 for _m, _p, _b, allowed in _MATRIX if effective not in allowed)
         assert len(denied) >= expected_denials
         roles_seen = {d["details"].get("role") for d in denied}
         assert effective in roles_seen or expected_denials == 0
@@ -222,19 +216,13 @@ class TestAuthorizationMatrix:
             assert "not_found" not in text
             assert "not found" not in text
 
-    def test_reads_require_query_scope_even_in_process(
-        self, client: TestClient
-    ) -> None:
+    def test_reads_require_query_scope_even_in_process(self, client: TestClient) -> None:
         """Cycle 10: reads are gated on `query` — an unknown role is
         denied 403 even on a read route (the in-process seam exercises
         the same scope model; HTTP auth itself is tested with real
         credentials in tests/security/test_api_auth.py)."""
-        assert client.get(
-            "/v1/services", headers={"X-Sentinel-Role": "viewer"}
-        ).status_code == 200
-        denied = client.get(
-            "/v1/services", headers={"X-Sentinel-Role": "intruder"}
-        )
+        assert client.get("/v1/services", headers={"X-Sentinel-Role": "viewer"}).status_code == 200
+        denied = client.get("/v1/services", headers={"X-Sentinel-Role": "intruder"})
         assert denied.status_code == 403
         assert denied.json()["code"] == "sentinel.forbidden"
         # no header → workspace default role (operator) → reads allowed

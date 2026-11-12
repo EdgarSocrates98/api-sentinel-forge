@@ -77,9 +77,7 @@ class FileLensACL:
         incident_id: str | None = None,
     ) -> LensResult:
         try:
-            data = json.loads(
-                read_text_bounded(self._manifest, name="lens manifest")
-            )
+            data = json.loads(read_text_bounded(self._manifest, name="lens manifest"))
         except (
             OSError,
             UnicodeDecodeError,
@@ -91,9 +89,7 @@ class FileLensACL:
                 detail=f"lens refs manifest unreadable: {type(exc).__name__}",
                 unknowns=[f"lens_manifest_unreadable:{self._manifest.name}"],
             )
-        if not isinstance(data, dict) or not isinstance(
-            data.get("refs"), list
-        ):
+        if not isinstance(data, dict) or not isinstance(data.get("refs"), list):
             return LensResult(
                 status="refused",
                 detail="lens refs manifest must carry a 'refs' list",
@@ -108,12 +104,8 @@ class FileLensACL:
             # allowlist only — payload keys are dropped by construction
             ref = LensTraceRef(
                 trace_id=str(raw["trace_id"]),
-                session_id=(
-                    str(raw["session_id"]) if raw.get("session_id") else None
-                ),
-                service_id=(
-                    str(raw["service_id"]) if raw.get("service_id") else None
-                ),
+                session_id=(str(raw["session_id"]) if raw.get("session_id") else None),
+                service_id=(str(raw["service_id"]) if raw.get("service_id") else None),
                 at=str(raw["at"]) if raw.get("at") else None,
                 provenance=str(raw.get("provenance") or "imported"),
             )
@@ -123,8 +115,9 @@ class FileLensACL:
         refs = sorted(refs, key=lambda r: (r.trace_id, r.session_id or ""))
         unknowns = []
         if skipped:
-            unknowns.append(f"lens_refs_skipped:{skipped} — entries "
-                            "without a trace_id, never name-guessed")
+            unknowns.append(
+                f"lens_refs_skipped:{skipped} — entries without a trace_id, never name-guessed"
+            )
         if len(refs) > _MAX_REFS:
             unknowns.append(f"lens_refs_truncated_at_{_MAX_REFS}")
             refs = refs[:_MAX_REFS]
@@ -155,15 +148,11 @@ class UnavailableLensACL:
         )
 
 
-def lens_from_config(
-    config: dict[str, object], workspace_root: Path | None
-) -> Any:
+def lens_from_config(config: dict[str, object], workspace_root: Path | None) -> Any:
     """Resolve the Lens port: `integrations.lens.refs` manifest or
     unavailable — never a fabricated empty store."""
     integrations = config.get("integrations") if isinstance(config, dict) else None
-    lens = (
-        integrations.get("lens") if isinstance(integrations, dict) else None
-    )
+    lens = integrations.get("lens") if isinstance(integrations, dict) else None
     if not isinstance(lens, dict):
         return UnavailableLensACL(
             "no lens integration configured — set integrations.lens.refs "
@@ -176,7 +165,5 @@ def lens_from_config(
     if not path.is_absolute() and workspace_root is not None:
         path = workspace_root / path
     if not path.is_file():
-        raise IntegrationUnavailable(
-            LENS_FORGE, f"refs manifest not found: {path}"
-        )
+        raise IntegrationUnavailable(LENS_FORGE, f"refs manifest not found: {path}")
     return FileLensACL(path)

@@ -108,9 +108,7 @@ def _obs(
 
 
 def _req(window: TimeWindow = WIN, now: datetime = NOW) -> DetectionRequest:
-    return DetectionRequest(
-        request_id="det_test", service_id="svc_1", window=window, now=now
-    )
+    return DetectionRequest(request_id="det_test", service_id="svc_1", window=window, now=now)
 
 
 def _ctx(
@@ -232,9 +230,7 @@ def test_detected_at_tracks_only_the_injected_now() -> None:
 
 def test_error_ratio_fires_over_limit() -> None:
     obs = [_obs(obs_id="ok", start_min=0, duration_min=10, value=90, status=200)]
-    obs.append(
-        _obs(obs_id="err", start_min=0, duration_min=10, value=10, status=503)
-    )
+    obs.append(_obs(obs_id="err", start_min=0, duration_min=10, value=10, status=503))
     detector = ErrorRatioOverLimit({"max_error_ratio": 0.05})
     result = detector.evaluate(_req(), _ctx(observations=obs))
     (draft,) = result.anomalies
@@ -313,9 +309,7 @@ def test_p95_silent_below_target() -> None:
             count=100,
         )
     ]
-    result = P95OverLatencyTarget({"max_p95_ms": 500.0}).evaluate(
-        _req(), _ctx(observations=obs)
-    )
+    result = P95OverLatencyTarget({"max_p95_ms": 500.0}).evaluate(_req(), _ctx(observations=obs))
     assert result.anomalies == []
 
 
@@ -325,9 +319,7 @@ def test_p95_silent_below_target() -> None:
 def test_source_silence_fires_after_horizon() -> None:
     obs = [_obs(obs_id="o1", start_min=0, duration_min=5, value=10)]
     detector = SourceSilence({"silent_after_seconds": 300})
-    result = detector.evaluate(
-        _req(), _ctx(observations=obs, sources=[_source()])
-    )
+    result = detector.evaluate(_req(), _ctx(observations=obs, sources=[_source()]))
     (draft,) = result.anomalies
     # last window_end = 00:05; NOW=00:12 → 420s silent > 300s
     assert "420s" in draft.explanation.math
@@ -356,9 +348,7 @@ def test_source_silence_no_sources_is_an_unknown() -> None:
 
 
 def test_disabled_source_is_a_note() -> None:
-    result = SourceSilence({}).evaluate(
-        _req(), _ctx(sources=[_source("src_off", enabled=False)])
-    )
+    result = SourceSilence({}).evaluate(_req(), _ctx(sources=[_source("src_off", enabled=False)]))
     assert result.anomalies == []
     assert "source_disabled:src_off" in result.notes
 
@@ -369,9 +359,7 @@ def test_disabled_source_is_a_note() -> None:
 def test_budget_burn_fires_on_acceleration() -> None:
     # bad/eligible = 50/1000 = 0.05; allowed = 1-0.99 = 0.01 → burn 5.0 ≥ 2.0
     detector = BudgetBurnAcceleration({"max_burn_rate": 2.0})
-    result = detector.evaluate(
-        _req(), _ctx(assessments=[_assessment(bad=50.0)])
-    )
+    result = detector.evaluate(_req(), _ctx(assessments=[_assessment(bad=50.0)]))
     (draft,) = result.anomalies
     assert "5.0000" in draft.explanation.math
     assert "asmt:asmt_x" in draft.evidence_refs
@@ -380,9 +368,7 @@ def test_budget_burn_fires_on_acceleration() -> None:
 
 def test_budget_burn_clean_at_sustainable_rate() -> None:
     detector = BudgetBurnAcceleration({"max_burn_rate": 2.0})
-    result = detector.evaluate(
-        _req(), _ctx(assessments=[_assessment(bad=5.0)])
-    )
+    result = detector.evaluate(_req(), _ctx(assessments=[_assessment(bad=5.0)]))
     assert result.anomalies == []
 
 
@@ -396,9 +382,7 @@ def test_budget_burn_no_assessments_is_an_unknown() -> None:
 
 def test_status_unexpected_inert_without_config() -> None:
     obs = [_obs(obs_id="o1", value=50, status=503)]
-    result = StatusUnexpectedOnOperation({}).evaluate(
-        _req(), _ctx(observations=obs)
-    )
+    result = StatusUnexpectedOnOperation({}).evaluate(_req(), _ctx(observations=obs))
     assert result.anomalies == []
     assert "no_unexpected_statuses_configured" in result.unknowns
 
@@ -418,9 +402,7 @@ def test_status_unexpected_fires_on_declared_codes() -> None:
 # --- timeout_growth_after_deploy ---------------------------------------------
 
 
-def _release(
-    release_id: str = "rel_1", deployed_at: datetime | None = None
-) -> ServiceRelease:
+def _release(release_id: str = "rel_1", deployed_at: datetime | None = None) -> ServiceRelease:
     return ServiceRelease(
         release_id=release_id,
         service_id="svc_1",
@@ -448,9 +430,7 @@ def test_timeout_growth_fires_after_deploy() -> None:
     detector = TimeoutGrowthAfterDeploy(
         {"max_timeout_ratio": 0.02, "deploy_lookback_seconds": 3600}
     )
-    result = detector.evaluate(
-        _req(), _ctx(observations=obs, releases=[_release()])
-    )
+    result = detector.evaluate(_req(), _ctx(observations=obs, releases=[_release()]))
     (draft,) = result.anomalies
     assert "0.7000" in draft.explanation.math
     assert any(r.startswith("rel:rel_1@") for r in draft.evidence_refs)
@@ -473,9 +453,7 @@ def test_timeout_growth_release_outside_lookback_is_a_note() -> None:
     detector = TimeoutGrowthAfterDeploy(
         {"max_timeout_ratio": 0.02, "deploy_lookback_seconds": 3600}
     )
-    result = detector.evaluate(
-        _req(), _ctx(observations=obs, releases=[old_release])
-    )
+    result = detector.evaluate(_req(), _ctx(observations=obs, releases=[old_release]))
     assert result.anomalies == []
     assert "no_release_in_lookback:op_1" in result.notes
 
@@ -511,9 +489,7 @@ def test_summarize_baselines_on_known_corpus() -> None:
     ]
     baselines = {
         (b.metric, b.method): b
-        for b in summarize_baselines(
-            corpus, service_id="svc_1", before_window_start=_t(5)
-        )
+        for b in summarize_baselines(corpus, service_id="svc_1", before_window_start=_t(5))
     }
     err = baselines[("error_ratio", "median+mad")]
     # median of [0.1, 0.0] = 0.05; MAD = median(|0.1-0.05|,|0.0-0.05|) = 0.05.
@@ -536,9 +512,7 @@ def test_registry_unknown_kind_is_a_named_error() -> None:
 def test_registry_invalid_config_is_a_named_error() -> None:
     registry = DetectorRegistry()
     with pytest.raises(ValidationError, match="invalid config"):
-        registry.create(
-            _rule("error_ratio_over_limit", {"max_error_ratio": 2.0})
-        )
+        registry.create(_rule("error_ratio_over_limit", {"max_error_ratio": 2.0}))
 
 
 def test_registry_kinds_is_the_closed_set() -> None:
@@ -667,9 +641,7 @@ def test_already_recorded_replay_never_duplicates() -> None:
 
 
 def test_disabled_rule_is_skipped_honestly() -> None:
-    rule = _rule(
-        "error_ratio_over_limit", {"max_error_ratio": 0.05}, enabled=False
-    )
+    rule = _rule("error_ratio_over_limit", {"max_error_ratio": 0.05}, enabled=False)
     detector = DetectorRegistry().create(rule)
     out = evaluate_rule(
         rule=rule,

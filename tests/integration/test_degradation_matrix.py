@@ -81,9 +81,7 @@ class TestIntegrationDegradation:
         assert states["the-forge"]["state"] == IntegrationState.AVAILABLE.value
 
     @pytest.mark.parametrize("flag", _IMPORTABLE_FLAGS)
-    def test_single_forge_down_isolated(
-        self, monkeypatch: pytest.MonkeyPatch, flag: str
-    ) -> None:
+    def test_single_forge_down_isolated(self, monkeypatch: pytest.MonkeyPatch, flag: str) -> None:
         """Forcing one importable off degrades only its entry — siblings
         keep their own states (no cascade)."""
         monkeypatch.setattr(status_mod, flag, lambda: False)
@@ -92,25 +90,19 @@ class TestIntegrationDegradation:
         for entry in states.values():
             assert entry["state"] in _NAMED_STATES
 
-    def test_atlas_manifest_missing_is_named_unavailable(
-        self, tmp_path: Path
-    ) -> None:
+    def test_atlas_manifest_missing_is_named_unavailable(self, tmp_path: Path) -> None:
         states = _states_by_forge(atlas_manifest=tmp_path / "nope.json")
         atlas = states["code-atlas-forge"]
         assert atlas["state"] == IntegrationState.UNAVAILABLE.value
         assert atlas["reason"]
 
-    def test_atlas_manifest_corrupt_is_named_unavailable(
-        self, tmp_path: Path
-    ) -> None:
+    def test_atlas_manifest_corrupt_is_named_unavailable(self, tmp_path: Path) -> None:
         bad = tmp_path / "atlas.json"
         bad.write_text("{not json", encoding="utf-8")
         atlas = _states_by_forge(atlas_manifest=bad)["code-atlas-forge"]
         assert atlas["state"] == IntegrationState.UNAVAILABLE.value
 
-    def test_doctor_handoff_down_is_named_unavailable(
-        self, tmp_path: Path
-    ) -> None:
+    def test_doctor_handoff_down_is_named_unavailable(self, tmp_path: Path) -> None:
         """In-process delegation with the module absent → `unavailable`,
         never a fabricated bundle (LAB-011)."""
         from api_sentinel.contracts.v1.models import InvestigationHandoffV1
@@ -149,8 +141,7 @@ def _ctx(ws_root: Path, *, now: datetime = NOW) -> ApiContext:
         ids=UlidIdFactory(),
         redactor=lambda t: t,
         structural=None,
-        structural_reason="no atlas export configured — structural context "
-                          "unavailable",
+        structural_reason="no atlas export configured — structural context unavailable",
         atlas_manifest=None,
         default_role="operator",
     )
@@ -160,9 +151,7 @@ def _seed(ws_root: Path, *, observations: bool) -> None:
     ws = ensure_workspace(Workspace(root=ws_root, scope="project"))
     with SqliteUnitOfWork(ws.db_path) as uow:
         env = uow.environments.put(
-            ServiceEnvironment(
-                environment_id="env_lab", name="lab", created_at=NOW
-            )
+            ServiceEnvironment(environment_id="env_lab", name="lab", created_at=NOW)
         )
         uow.services.put(
             ApiService(
@@ -250,9 +239,7 @@ class TestCoreKeepsServing:
         services = client.get("/v1/services")
         assert services.status_code == 200
 
-    def test_telemetry_gap_is_unknown_not_fabricated(
-        self, tmp_path: Path
-    ) -> None:
+    def test_telemetry_gap_is_unknown_not_fabricated(self, tmp_path: Path) -> None:
         """Registered source, zero observations → UNKNOWN/no_observations,
         with the silent source named — never an AVAILABLE fiction."""
         ws_root = tmp_path / "ws"
@@ -262,14 +249,10 @@ class TestCoreKeepsServing:
         health = body["detail"]["health"]
         assert health["state"] == "UNKNOWN"
         assert health["condition"] == "no_observations"
-        assert any(
-            "source_silent:src_gap" in u for u in health["unknowns"]
-        )
+        assert any("source_silent:src_gap" in u for u in health["unknowns"])
         assert health["state"] != "AVAILABLE"
 
-    def test_stale_source_is_unverified_not_fabricated(
-        self, tmp_path: Path
-    ) -> None:
+    def test_stale_source_is_unverified_not_fabricated(self, tmp_path: Path) -> None:
         """A source that stopped sending → UNVERIFIED/source_stale, and the
         sentinel self-report names the same stale source."""
         ws_root = tmp_path / "ws"

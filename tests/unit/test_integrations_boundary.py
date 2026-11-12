@@ -77,9 +77,7 @@ class TestCapabilities:
 
         passed, _detail = prove_read_only()
         if not passed:
-            assert any(
-                "api.aws-readonly-observability" in u for u in r["unknowns"]
-            )
+            assert any("api.aws-readonly-observability" in u for u in r["unknowns"])
 
 
 class TestExecute:
@@ -104,10 +102,7 @@ class TestExecute:
         )
         assert resp["status"] == "refused"
         passed, _detail = prove_read_only()
-        expected = (
-            "APISENT-UNKNOWN-ACTION" if passed
-            else "APISENT-CAPABILITY-UNAVAILABLE"
-        )
+        expected = "APISENT-UNKNOWN-ACTION" if passed else "APISENT-CAPABILITY-UNAVAILABLE"
         assert resp["error"]["code"] == expected
 
     def test_unknown_action_refused(self) -> None:

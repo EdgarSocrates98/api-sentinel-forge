@@ -220,16 +220,13 @@ class Detector(Protocol):
     @property
     def detector_version(self) -> str: ...
 
-    def evaluate(
-        self, request: DetectionRequest, context: DetectionContext
-    ) -> DetectionResult: ...
+    def evaluate(self, request: DetectionRequest, context: DetectionContext) -> DetectionResult: ...
 
 
 def detection_request_id(service_id: str, window: TimeWindow, now: datetime) -> str:
     """Deterministic id for one (service, window, now) evaluation slot."""
     canonical = (
-        f"{service_id}|{window.start.isoformat()}|"
-        f"{window.end.isoformat()}|{now.isoformat()}"
+        f"{service_id}|{window.start.isoformat()}|{window.end.isoformat()}|{now.isoformat()}"
     )
     return "det_" + hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:24]
 

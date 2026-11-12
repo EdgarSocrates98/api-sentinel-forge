@@ -22,9 +22,11 @@ def investigation(
     row = GetInvestigation(uow).execute(investigation_id=investigation_id)
     pack = row.context_pack if isinstance(row.context_pack, dict) else {}
     unknowns = [str(u) for u in pack.get("unknowns", [])]
-    evidence_refs = [
-        str(r) for r in row.result.get("evidence_refs", [])
-    ] if isinstance(row.result, dict) else []
+    evidence_refs = (
+        [str(r) for r in row.result.get("evidence_refs", [])]
+        if isinstance(row.result, dict)
+        else []
+    )
     return InvestigationResponse(
         investigation=row,
         unknowns=unknowns,
