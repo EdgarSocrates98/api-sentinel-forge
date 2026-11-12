@@ -6,6 +6,11 @@ this project uses Semantic Versioning.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-12
+
+Cycle 2.7 patch release: federated SDD contracts and adapters, forge-context kind taxonomy, universal Obsidian export verbs, portal and install UX improvements, provider context-registry wiring, CI hardening and generated-artifact refresh.
+
+
 ### Cycle 10 — cross-forge integration, operational UX & production readiness
 
 Wave-closed homologation loop (specs: `factory/specs/archive/cycle-10-*`;
