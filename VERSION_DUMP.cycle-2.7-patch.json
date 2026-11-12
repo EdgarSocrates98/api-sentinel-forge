@@ -1,0 +1,9 @@
+{
+  "cycle": "2.7-patch",
+  "repository": "api-sentinel-forge",
+  "version": "0.1.1",
+  "tag": "v0.1.1",
+  "source_commit": "50588edd5d69c2fa7c457b7b564a54608aaa21d5",
+  "version_source": "src/api_sentinel/__init__.py",
+  "verified_at": "2026-11-12"
+}
