@@ -51,9 +51,9 @@ class TestDescribe:
         assert "api.portal-operations" not in states
         assert states["api.runtime-observation"] == "supported"
         caps = SentinelBoundary().capabilities()
-        cap_states = {f["id"] for f in caps["findings"]}
-        assert "api.aws-readonly-observability" in cap_states
-        assert "api.portal-operations" in cap_states
+        cap_ids = {c["id"] for c in caps["capabilities"]}
+        assert "api.aws-readonly-observability" in cap_ids
+        assert "api.portal-operations" in cap_ids
 
 
 class TestHealth:
@@ -65,19 +65,23 @@ class TestHealth:
 
 class TestCapabilities:
     def test_result_shape(self) -> None:
+        # The capabilities op answers the *advertisement* contract —
+        # theforge/SpecialistCapability/v1 — which is what the Forge
+        # registry validates on refresh. ExecutionResult here is a
+        # protocol violation (the registry marks the provider DEGRADED).
         r = SentinelBoundary().capabilities()
-        assert r["schema"] == "theforge/ExecutionResult/v1"
-        assert r["status"] in ("ok", "partial")
-        ids = {f["id"] for f in r["findings"]}
+        assert r["schema"] == "theforge/SpecialistCapability/v1"
+        assert r["specialist"]["id"] == "api-sentinel-forge"
+        ids = {c["id"] for c in r["capabilities"]}
         assert "api.runtime-observation" in ids
         assert "api.aws-readonly-observability" in ids
-        # Declared caps still surface as unknowns — honest, not executable.
-        # AWS is DECLARED only while the read-only proof fails.
+        # Not-yet-executable caps surface as named limitations, never as
+        # findings. AWS is DECLARED only while the read-only proof fails.
         from api_sentinel.integrations.aws.client import prove_read_only
 
         passed, _detail = prove_read_only()
         if not passed:
-            assert any("api.aws-readonly-observability" in u for u in r["unknowns"])
+            assert any("api.aws-readonly-observability" in u for u in r["limitations"])
 
 
 class TestExecute:
