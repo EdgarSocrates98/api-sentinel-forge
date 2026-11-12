@@ -25,7 +25,11 @@ from api_sentinel.application.use_cases import (
     TransitionIncident,
 )
 from api_sentinel.capabilities import list_capabilities, status_report
-from api_sentinel.cli.install import install_command
+from api_sentinel.cli.install import (
+    install_command,
+    uninstall_command,
+    update_command,
+)
 from api_sentinel.domain import (
     ChangeKind,
     NotFoundError,
@@ -400,6 +404,8 @@ def ingest(
 
 
 app.command("install")(install_command)
+app.command("update")(update_command)
+app.command("uninstall")(uninstall_command)
 
 
 def _parse_error_status(raw: str | None) -> ErrorClassification | None:
@@ -1830,6 +1836,10 @@ mcp_app = typer.Typer(
     no_args_is_help=True,
 )
 app.add_typer(mcp_app, name="mcp")
+
+from api_sentinel._forge_obsidian.cli import obsidian_app as _obsidian_app  # noqa: E402
+
+app.add_typer(_obsidian_app("api-sentinel-forge"), name="obsidian")
 
 
 @mcp_app.command("serve")
