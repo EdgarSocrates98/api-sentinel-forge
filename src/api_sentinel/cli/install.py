@@ -336,6 +336,7 @@ def _context_manifest(ws: Any, profile: str) -> dict[str, Any]:
         mcp={
             "server_name": "api-sentinel",
             "command": ["api-sentinel", "mcp", "serve"],
+            "verify_tool": "sentinel_health",
         },
         resources={
             "sentinel-workspace": {
