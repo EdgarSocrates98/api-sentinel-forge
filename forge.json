@@ -4,7 +4,7 @@
   "distribution": "api-sentinel-forge",
   "cli": "api-sentinel",
   "python": ">=3.11",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "mcp_server_name": "api-sentinel",
   "mcp_command": [
     "api-sentinel",

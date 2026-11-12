@@ -1,7 +1,7 @@
 {
   "schema": "forge/SpecialistAgenticManifest/v1",
   "provider": "api-sentinel-forge",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "cli": "api-sentinel",
   "cli_entry": "api_sentinel.cli:app",
   "workflows": [
