@@ -62,5 +62,13 @@
   },
   "read_only_default": true,
   "requires_aws_credentials": false,
-  "requires_llm": false
+  "requires_llm": false,
+  "resources": [
+    {
+      "id": "contracts/v1",
+      "kind": "contract",
+      "location": "contracts/v1",
+      "resource_class": "validation"
+    }
+  ]
 }
