@@ -144,26 +144,54 @@ class SentinelBoundary:
         }
 
     def capabilities(self, request: dict[str, Any] | None = None) -> dict[str, Any]:
-        """ExecutionResult-shaped capability report (runtime discovery)."""
-        caps = list_capabilities()
-        payload = self._result(
-            status="ok",
-            findings=[
+        """`theforge/SpecialistCapability/v1` discovery advertisement.
+
+        The capabilities op answers with the *advertisement* contract — the
+        same document the registry parses when it refreshes provider
+        manifests. An ExecutionResult shape here is a protocol violation
+        (the registry rejects `theforge/ExecutionResult/v1` for this op),
+        so capabilities map to `DeclaredCapability` entries and DECLARED
+        (not yet executable) ones surface as explicit limitations, never
+        as findings.
+        """
+        declared: list[dict[str, Any]] = []
+        unavailable: list[str] = []
+        for cap in list_capabilities():
+            declared.append(
                 {
-                    "id": c.capability_id,
-                    "title": f"{c.capability_id}: {c.status.value}",
-                    "severity": "info",
-                    "evidence_ids": [],
+                    "id": cap.capability_id,
+                    "description": cap.notes or f"Sentinel capability {cap.capability_id}",
+                    "entrypoint": [],
+                    "execution_mode": "local",
+                    "risk": "read_only",
+                    "network": False,
+                    "discovery_mode": "probe",
+                    "verification_mode": "probe",
+                    "finding_class": _FINDING_CLASS.get(cap.capability_id, ""),
                 }
-                for c in caps
-            ],
-            unknowns=[
-                f"{c.capability_id}: declared, not yet evidence-backed"
-                for c in caps
-                if c.status is CapabilityStatus.DECLARED
-            ],
-        )
-        return payload
+            )
+            if cap.status is not CapabilityStatus.AVAILABLE:
+                unavailable.append(
+                    f"{cap.capability_id}: {cap.status.value} — discovered, not executable"
+                )
+        return {
+            "schema": "theforge/SpecialistCapability/v1",
+            "specialist": {
+                "id": PROVIDER_ID,
+                "version": __version__,
+                "domain": "api-reliability",
+            },
+            "capabilities": declared,
+            "health": {"supported": True},
+            "handoff": {
+                "supported": any(
+                    c.capability_id == "api.doctor-handoff"
+                    and c.status is CapabilityStatus.AVAILABLE
+                    for c in list_capabilities()
+                )
+            },
+            "limitations": unavailable,
+        }
 
     def execute(self, request: dict[str, Any]) -> dict[str, Any]:
         """`forge/v1` execute → `theforge/ExecutionResult/v1` dict.
