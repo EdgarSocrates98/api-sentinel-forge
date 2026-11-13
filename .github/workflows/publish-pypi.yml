@@ -232,4 +232,4 @@ jobs:
               done
 
       - name: Smoke test console script
-        run: /tmp/verify-venv/bin/data-sentinel --version
+        run: /tmp/verify-venv/bin/api-sentinel version
