@@ -1,7 +1,7 @@
 {
   "schema": "forge/SpecialistAgenticManifest/v1",
   "provider": "api-sentinel-forge",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "cli": "api-sentinel",
   "cli_entry": "api_sentinel.cli:app",
   "workflows": [
@@ -59,7 +59,7 @@
     "copilot"
   ],
   "host_partial": {
-    "cursor": "marker + .mcp.json only — no skill/agent catalog adapter"
+    "cursor": "marker + .mcp.json only \u00e2\u20ac\u201d no skill/agent catalog adapter"
   },
   "read_only_default": true,
   "requires_aws_credentials": false,
