@@ -6,6 +6,13 @@ this project uses Semantic Versioning.
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-11-13
+
+### Fixed
+
+- Unified platform release: SpecialistCapability/v1 contract boundary fix, mcp_verify_tool declaration.
+
+
 ## [0.1.1] - 2026-11-12
 
 Cycle 2.7 patch release: federated SDD contracts and adapters, forge-context kind taxonomy, universal Obsidian export verbs, portal and install UX improvements, provider context-registry wiring, CI hardening and generated-artifact refresh.
