@@ -105,7 +105,6 @@ import sys
 import tempfile
 import time
 from collections.abc import Iterable, Mapping
-from datetime import UTC
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -233,9 +232,9 @@ class LockError(ContextError):
 
 
 def _utc_now() -> str:
-    from datetime import datetime
+    from datetime import datetime, timezone
 
-    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _sha(data: bytes) -> str:
@@ -360,10 +359,12 @@ class _Lock:
             created = holder.get("created_at")
             if isinstance(created, str):
                 try:
-                    from datetime import datetime
+                    from datetime import datetime, timezone
 
-                    stamp = datetime.strptime(created, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
-                    return (datetime.now(UTC) - stamp).total_seconds() > self._stale
+                    stamp = datetime.strptime(created, "%Y-%m-%dT%H:%M:%SZ").replace(
+                        tzinfo=timezone.utc
+                    )
+                    return (datetime.now(timezone.utc) - stamp).total_seconds() > self._stale
                 except ValueError:
                     pass
         try:
@@ -2079,7 +2080,7 @@ def _forge_block(manifest: Mapping[str, Any]) -> str:
     version = str(manifest.get("version", ""))
     iface = manifest.get("interfaces") or {}
     cli = ((iface.get("cli") or {}).get("name")) or fid
-    mcp = (iface.get("mcp") or {}).get("server_name")
+    mcp = ((iface.get("mcp") or {}).get("server_name"))
     domains = ", ".join(manifest.get("domains") or ()) or "(none declared)"
     disc = (manifest.get("discovery") or {}).get("commands") or []
     verbs = " · ".join("`" + " ".join(str(a) for a in c.get("argv") or ()) + "`" for c in disc[:3])
@@ -2092,7 +2093,9 @@ def _forge_block(manifest: Mapping[str, Any]) -> str:
         f"- CLI: `{cli}`" + (f" · MCP server: `{mcp}`" if mcp else ""),
     ]
     if verbs:
-        lines.append(f"- Discovery: {verbs} — full list under `discovery.commands` in the manifest")
+        lines.append(
+            f"- Discovery: {verbs} — full list under `discovery.commands` in the manifest"
+        )
     return "\n".join(lines)
 
 
@@ -2233,7 +2236,8 @@ def _read_doc(path: Path) -> str:
     except UnicodeDecodeError:
         raise ContextError(
             E_CONFLICT,
-            f"{path.name}: not valid UTF-8 — convert the file to UTF-8 or remove it, then re-run",
+            f"{path.name}: not valid UTF-8 — convert the file to UTF-8 or "
+            "remove it, then re-run",
         ) from None
 
 
@@ -2386,7 +2390,9 @@ def _docs_install_conflicts(
 def _docs_uninstall_conflicts(root: Path, forge_id: str, legacy_tags: Iterable[str]) -> None:
     """Same preflight for the teardown path — marker ambiguity and a
     foreign protocol refuse before the transaction writes anything."""
-    keep_shared = any(fid != forge_id for fid in _load_manifests(context_dir(root)))
+    keep_shared = any(
+        fid != forge_id for fid in _load_manifests(context_dir(root))
+    )
     for name in (AGENTS_NAME, CLAUDE_NAME):
         path = root / name
         if not path.exists():
@@ -2408,7 +2414,9 @@ def _docs_install_apply(
     kept: list[str] = []
     removed_legacy: list[str] = []
     for name, preamble, blocks in _install_block_plan(manifest):
-        _sync_marked_file(root, name, preamble, blocks, legacy_tags, written, kept, removed_legacy)
+        _sync_marked_file(
+            root, name, preamble, blocks, legacy_tags, written, kept, removed_legacy
+        )
     _sync_protocol(root, written, [])
     return {
         "status": "written" if written else "unchanged",
@@ -2418,7 +2426,9 @@ def _docs_install_apply(
     }
 
 
-def _docs_uninstall_apply(root: Path, forge_id: str, legacy_tags: Iterable[str]) -> dict[str, Any]:
+def _docs_uninstall_apply(
+    root: Path, forge_id: str, legacy_tags: Iterable[str]
+) -> dict[str, Any]:
     """Doc teardown shared by ``uninstall_docs`` and
     ``uninstall_transaction`` — the caller holds the lock and the
     registry op has already run (protocol renders without us)."""
@@ -2429,15 +2439,8 @@ def _docs_uninstall_apply(root: Path, forge_id: str, legacy_tags: Iterable[str])
     keep_shared = bool(_load_manifests(ctx))
     for name, preamble in ((AGENTS_NAME, _AGENTS_PREAMBLE), (CLAUDE_NAME, _CLAUDE_PREAMBLE)):
         _teardown_marked_file(
-            root,
-            name,
-            preamble,
-            forge_id,
-            legacy_tags,
-            keep_shared,
-            written,
-            kept,
-            removed_legacy,
+            root, name, preamble, forge_id, legacy_tags,
+            keep_shared, written, kept, removed_legacy,
         )
     _sync_protocol(root, written, [])
     return {
@@ -2513,26 +2516,17 @@ def repair_docs(
         manifests = _load_manifests(ctx)
         if manifests:
             blocks: list[tuple[str, str]] = [(DOC_TAG_ECOSYSTEM, _ecosystem_block())]
-            blocks += [(f"forge:{fid}", _forge_block(manifests[fid])) for fid in sorted(manifests)]
+            blocks += [
+                (f"forge:{fid}", _forge_block(manifests[fid])) for fid in sorted(manifests)
+            ]
             _sync_marked_file(
-                root,
-                AGENTS_NAME,
-                _AGENTS_PREAMBLE,
-                blocks,
-                legacy_tags,
-                written,
-                kept,
-                removed_legacy,
+                root, AGENTS_NAME, _AGENTS_PREAMBLE, blocks, legacy_tags,
+                written, kept, removed_legacy,
             )
             _sync_marked_file(
-                root,
-                CLAUDE_NAME,
-                _CLAUDE_PREAMBLE,
-                [(DOC_TAG_ECOSYSTEM, _claude_block())],
-                legacy_tags,
-                written,
-                kept,
-                removed_legacy,
+                root, CLAUDE_NAME, _CLAUDE_PREAMBLE,
+                [(DOC_TAG_ECOSYSTEM, _claude_block())], legacy_tags,
+                written, kept, removed_legacy,
             )
         _sync_protocol(root, written, [])
     return {
@@ -2681,13 +2675,17 @@ def _verify_install(root: Path, forge_id: str, *, docs: bool) -> list[str]:
     verified.append("entry")
     problems = validate_manifest(_load_json(capability_path(root, forge_id)))
     if problems:
-        raise ContextError(E_SCHEMA, f"verify: manifest invalid after write: {problems[:3]}")
+        raise ContextError(
+            E_SCHEMA, f"verify: manifest invalid after write: {problems[:3]}"
+        )
     verified.append("manifest")
     if docs:
         agents = root / AGENTS_NAME
         text = _read_doc(agents) if agents.exists() else ""
         if f"forge:{forge_id}:begin" not in text:
-            raise ContextError(E_SCHEMA, f"verify: {AGENTS_NAME} lacks the forge:{forge_id} block")
+            raise ContextError(
+                E_SCHEMA, f"verify: {AGENTS_NAME} lacks the forge:{forge_id} block"
+            )
         verified.append("docs")
     return verified
 
@@ -2698,16 +2696,24 @@ def _verify_uninstall(root: Path, forge_id: str) -> list[str]:
     ever write their own manifest/entry/blocks)."""
     verified: list[str] = []
     reg = load_registry(root)
-    if reg is not None and any(e.get("forge_id") == forge_id for e in reg.get("forges") or []):
-        raise ContextError(E_SCHEMA, f"verify: registry entry for {forge_id!r} still present")
+    if reg is not None and any(
+        e.get("forge_id") == forge_id for e in reg.get("forges") or []
+    ):
+        raise ContextError(
+            E_SCHEMA, f"verify: registry entry for {forge_id!r} still present"
+        )
     verified.append("registry")
     if capability_path(root, forge_id).exists():
         raise ContextError(E_SCHEMA, f"verify: manifest for {forge_id!r} still present")
     verified.append("manifest")
     for name in (AGENTS_NAME, CLAUDE_NAME, PROTOCOL_NAME):
         p = root / name
-        if p.is_file() and f"forge:{forge_id}:" in p.read_text(encoding="utf-8", errors="replace"):
-            raise ContextError(E_SCHEMA, f"verify: {name} still carries a forge:{forge_id} block")
+        if p.is_file() and f"forge:{forge_id}:" in p.read_text(
+            encoding="utf-8", errors="replace"
+        ):
+            raise ContextError(
+                E_SCHEMA, f"verify: {name} still carries a forge:{forge_id} block"
+            )
     verified.append("docs")
     return verified
 
@@ -2843,7 +2849,9 @@ def uninstall_transaction(
         phases.append("backup")
         _atomic_write(
             ctx / JOURNAL_NAME,
-            _json_bytes({"op": "uninstall", "forge_id": forge_id, "legacy_tags": list(tags)}),
+            _json_bytes(
+                {"op": "uninstall", "forge_id": forge_id, "legacy_tags": list(tags)}
+            ),
         )
         try:
             removed = _apply_unregister(ctx, root, forge_id, _utc_now())
@@ -2955,7 +2963,9 @@ def route(
     ctx = context_dir(root)
     reg = load_registry(root)
     manifests = _load_manifests(ctx)
-    entries = sorted((reg or {}).get("forges") or [], key=lambda e: e.get("forge_id", ""))
+    entries = sorted(
+        (reg or {}).get("forges") or [], key=lambda e: e.get("forge_id", "")
+    )
     registered = {e.get("forge_id") for e in entries}
     unregistered = sorted(set(manifests) - registered)
 
@@ -3018,25 +3028,27 @@ def route(
 
 __all__ = [
     "AGENTS_NAME",
-    "CAPABILITIES_DIR",
     "CAPABILITY_DISCOVERY",
+    "CAPABILITIES_DIR",
     "CHECK_STATUSES",
     "CLAUDE_NAME",
     "COMMAND_MODES",
     "CONTEXT_DIR",
+    "ContextError",
     "DISCOVERY_OPS",
     "DOC_TAG_ECOSYSTEM",
-    "EVAL_KINDS",
     "E_CONFLICT",
     "E_LOCKED",
     "E_OWNERSHIP",
     "E_PATH",
     "E_SCHEMA",
+    "EVAL_KINDS",
     "FORGE_KINDS",
     "HEALTH_STATUSES",
     "HOSTS",
     "JOURNAL_NAME",
     "LOCK_NAME",
+    "LockError",
     "MANIFEST_STATES",
     "OWNERSHIP_KINDS",
     "PROFILES",
@@ -3050,8 +3062,6 @@ __all__ = [
     "SCHEMA_REGISTRY",
     "SCOPES",
     "TXN_DIR",
-    "ContextError",
-    "LockError",
     "acquire_lock",
     "apply_managed_block",
     "build_manifest",
