@@ -550,11 +550,12 @@ def _emit_receipt(receipt: dict[str, Any], as_json: bool, *, token: Any = None) 
     if receipt.get("receipt_path"):
         typer.echo(f"  receipt: {receipt['receipt_path']}")
     if token is not None and getattr(token, "created", False):
-        # intentional one-time print — the token never enters receipts/JSON
+        # secrets hygiene: stdout is captured as receipt text by the
+        # orchestrator — the value lives only in the 0600 token file,
+        # never in any emitted surface
         typer.echo(
-            f"  API token generated: {token.path}\n"
-            f"    Authorization: Bearer {token.token}\n"
-            "    shown once — read the token file to retrieve it later"
+            f"  API token written to {token.path} (0600) — value not embedded; "
+            "read the token file to retrieve it"
         )
     if _portal_present():
         typer.echo("  Forge Portal detected")

@@ -8,7 +8,8 @@ Two modes (docs/07, Cycle-10 hardening):
   protection there is the user's NTFS ACLs; the file is never committed
   and never logged. Comparison is `hmac.compare_digest`. Precedence at
   resolve time: `API_SENTINEL_TOKEN` env > `--token-stdin` > the token
-  file (generated + printed once on first serve/install).
+  file (generated on first serve/install — the value lives only in the
+  token file, never printed or logged).
 - **integrated**: a trusted backend (Portal / configured auth service)
   propagates `X-Sentinel-Principal` *only* with a valid
   `X-Sentinel-Signature` — hex HMAC-SHA256 over
@@ -225,7 +226,7 @@ class ApiAuth:
 @dataclass(frozen=True)
 class ResolvedToken:
     """What token resolution produced — the CLI reports `created`/`rotated`
-    once, never the token beyond the one intentional print."""
+    and the file path, never the token value in any emitted surface."""
 
     token: str
     path: Path | None
