@@ -26,7 +26,7 @@ from api_sentinel.application.use_cases import (
 )
 from api_sentinel.capabilities import list_capabilities, status_report
 from api_sentinel.cli.install import (
-    install_command,
+    install_app,
     uninstall_command,
     update_command,
 )
@@ -196,8 +196,21 @@ def _atlas_selectors(config: dict[str, object]) -> tuple[str | None, int | None]
     )
 
 
+def _version_callback(value: bool) -> None:
+    """``api-sentinel --version`` — the smoke check the shared
+    ``forge_bootstrap`` runs right after wiring the launcher."""
+    if value:
+        typer.echo(f"api-sentinel {__version__}")
+        raise typer.Exit()
+
+
 @app.callback()
-def _main() -> None:
+def _main(
+    version: Annotated[
+        bool | None,
+        typer.Option("--version", callback=_version_callback, is_eager=True),
+    ] = None,
+) -> None:
     pass
 
 
@@ -409,7 +422,7 @@ def ingest(
     )
 
 
-app.command("install")(install_command)
+app.add_typer(install_app, name="install")
 app.command("update")(update_command)
 app.command("uninstall")(uninstall_command)
 

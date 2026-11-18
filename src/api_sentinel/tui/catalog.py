@@ -33,6 +33,10 @@ class Command:
     notice: str = ""  # set => explain instead of running
 
 
+# install-2.1: --profile is the installkit disclosure tier; the runtime
+# profile (local|aws|opentelemetry) moved to --runtime-profile.
+INSTALL_TIERS: tuple[str, ...] = ("minimal", "recommended", "full")
+
 CATALOG: tuple[Command, ...] = (
     # --- Workspace --------------------------------------------------------
     Command(
@@ -40,8 +44,14 @@ CATALOG: tuple[Command, ...] = (
         "install — initialize workspace",
         ("install",),
         (
-            Field("--profile", "Profile", "local", choices=("local", "aws", "opentelemetry")),
-            Field("--scope", "Scope", "project", choices=("project", "user")),
+            Field(
+                "--runtime-profile",
+                "Runtime profile",
+                "local",
+                choices=("local", "aws", "opentelemetry"),
+            ),
+            Field("--profile", "Install tier", "recommended", choices=INSTALL_TIERS),
+            Field("--scope", "Scope", "project", choices=("project", "workspace", "user")),
             Field("--yes", "Non-interactive (-y)", kind="bool"),
         ),
     ),

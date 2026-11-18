@@ -44,7 +44,12 @@ def test_install_headless(tmp_path: Path) -> None:
     )
     assert result.exit_code == 0, result.stdout
     payload = json.loads(result.stdout)
-    assert payload["profile"] == "local"
+    # install-2.1 receipt: `profile` is the install tier; the runtime
+    # profile (local|aws|opentelemetry) lives under components.
+    assert payload["schema"] == "forge/InstallReceipt/v1"
+    assert payload["profile"] == "recommended"
+    assert payload["components"]["runtime_profile"] == "local"
+    assert payload["status"] == "completed"
     assert (tmp_path / "ws" / "sentinel.db").exists() or True  # created on first uow open
 
 

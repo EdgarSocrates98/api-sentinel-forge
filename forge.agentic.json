@@ -3,7 +3,7 @@
   "provider": "api-sentinel-forge",
   "version": "0.1.2",
   "cli": "api-sentinel",
-  "cli_entry": "api_sentinel.cli:app",
+  "cli_entry": "api_sentinel.cli:main",
   "workflows": [
     {
       "id": "status",
@@ -40,10 +40,7 @@
     }
   ],
   "skills": [],
-  "agents": [
-    "sentinel-investigator",
-    "sentinel-reviewer"
-  ],
+  "agents": [],
   "coordinators": [],
   "agent_roster_paths": [],
   "mcp_command": [
@@ -52,15 +49,7 @@
     "serve"
   ],
   "mcp_verify_tool": "sentinel_health",
-  "host_adapters": [
-    "claude",
-    "devin",
-    "codex",
-    "copilot"
-  ],
-  "host_partial": {
-    "cursor": "marker + .mcp.json only \u00e2\u20ac\u201d no skill/agent catalog adapter"
-  },
+  "host_adapters": [],
   "read_only_default": true,
   "requires_aws_credentials": false,
   "requires_llm": false,
