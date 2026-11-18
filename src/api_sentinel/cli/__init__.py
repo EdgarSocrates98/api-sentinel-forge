@@ -1702,7 +1702,8 @@ def serve(
     Authentication (Cycle 10): every `/v1/*` route except `/v1/health`
     requires `Authorization: Bearer <token>`. The token resolves from
     `API_SENTINEL_TOKEN`, then `--token-stdin`, then `<workspace>/token`
-    (generated and printed once on first serve/install — never logged).
+    (generated on first serve/install — the value lives only in the
+    0600 token file, never printed or logged).
     """
     if not _is_loopback(host):
         if not allow_remote:
@@ -1733,15 +1734,14 @@ def serve(
     auth, resolved = resolve_auth(ws, _load_cfg(ws), stdin_token=stdin_token)
     if resolved.created:
         typer.echo(
-            f"generated workspace API token at {resolved.path} —\n"
-            f"  Authorization: Bearer {resolved.token}\n"
-            "shown once; read the token file to retrieve it later",
+            f"generated workspace API token — written to {resolved.path} (0600); "
+            "value not embedded (read the token file to retrieve it)",
             err=True,
         )
     elif resolved.rotated:
         typer.echo(
-            f"workspace API token rotated (ttl expired) at {resolved.path} —\n"
-            f"  Authorization: Bearer {resolved.token}",
+            f"workspace API token rotated (ttl expired) — written to "
+            f"{resolved.path} (0600); value not embedded",
             err=True,
         )
     uvicorn.run(

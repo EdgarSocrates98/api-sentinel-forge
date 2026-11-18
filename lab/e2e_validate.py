@@ -537,7 +537,7 @@ def main() -> int:
     print("\n== S11 serve ==")
     port = free_port()
     # Cycle-10 auth: a fixed env token keeps it out of the transcript —
-    # the generated-token path prints the secret once on stderr.
+    # generated tokens are never printed (0600 token file only).
     lab_token = "lab-e2e-token-" + "0" * 32
     serve_env = _env()
     serve_env["API_SENTINEL_TOKEN"] = lab_token

@@ -510,3 +510,81 @@ def test_manifest_install_surface_matches_cli() -> None:
     ):
         assert flag in install["flags"]
     assert install["host_assets"] is False
+
+
+# ---------------------------------------------------------------------------
+# secrets hygiene — the generated bearer token never leaves the 0600 file
+# ---------------------------------------------------------------------------
+
+
+def test_install_never_emits_token_value(tmp_path: Path) -> None:
+    """Regression (federated E2E): the orchestrator persists the child's
+    stdout as receipt/check detail — the generated bearer token must
+    appear in NO emitted surface (human stdout, JSON receipt, persisted
+    receipt); only the 0600 token file may hold it."""
+    # human mode — the path that leaked `Authorization: Bearer <token>`
+    root = tmp_path / "proj"
+    r = _invoke("install", "--yes", "--root", str(root))
+    assert r.exit_code == 0, f"exit={r.exit_code}\n{r.stdout}\n{r.stderr}"
+    token_file = root / ".api-sentinel" / "token"
+    secret = token_file.read_text().strip()
+    assert secret
+    emitted = r.stdout + (r.stderr or "")
+    assert secret not in emitted
+    assert "Bearer" not in emitted
+    # the file path is the only reference any emitted surface may carry
+    assert str(token_file.resolve()) in emitted
+    receipts = sorted((root / ".api-sentinel" / "install" / "receipts").glob("*.json"))
+    assert len(receipts) == 1
+    assert secret not in receipts[0].read_text()
+
+    # json mode — the serialized receipt stays secret-free too
+    root2 = tmp_path / "proj2"
+    r2 = _invoke("install", "--yes", "--json", "--root", str(root2))
+    payload = _receipt(r2)
+    secret2 = (root2 / ".api-sentinel" / "token").read_text().strip()
+    assert secret2 and secret2 not in json.dumps(payload)
+    receipts2 = sorted((root2 / ".api-sentinel" / "install" / "receipts").glob("*.json"))
+    assert len(receipts2) == 1
+    assert secret2 not in receipts2[0].read_text()
+
+
+def test_serve_never_emits_token_value(tmp_path: Path, monkeypatch) -> None:
+    """The serve-path sibling of the install leak: generated and rotated
+    tokens are announced by file path — the value never reaches stderr
+    or logs (stderr is captured by launchers/log collectors)."""
+    import os
+    import time
+
+    import yaml
+
+    uvicorn = pytest.importorskip("uvicorn")
+    monkeypatch.setattr(uvicorn, "run", lambda *a, **k: None)
+    monkeypatch.delenv("API_SENTINEL_TOKEN", raising=False)
+    ws = tmp_path / ".api-sentinel"
+    token_file = ws / "token"
+
+    r = _invoke("serve", "--workspace", str(ws))
+    assert r.exit_code == 0, f"exit={r.exit_code}\n{r.stdout}\n{r.stderr}"
+    secret = token_file.read_text().strip()
+    assert secret
+    emitted = r.stdout + (r.stderr or "")
+    assert secret not in emitted
+    assert "Bearer" not in emitted
+    assert str(token_file.resolve()) in emitted
+
+    # rotation path — a TTL-expired file rotates; neither value leaks
+    cfg_path = ws / "config.yaml"
+    cfg = yaml.safe_load(cfg_path.read_text(encoding="utf-8")) or {}
+    cfg["api"] = {"token_ttl_seconds": 60}
+    cfg_path.write_text(yaml.safe_dump(cfg), encoding="utf-8")
+    stale = time.time() - 3600
+    os.utime(token_file, (stale, stale))
+    r2 = _invoke("serve", "--workspace", str(ws))
+    assert r2.exit_code == 0, f"exit={r2.exit_code}\n{r2.stdout}\n{r2.stderr}"
+    rotated = token_file.read_text().strip()
+    assert rotated and rotated != secret
+    emitted2 = r2.stdout + (r2.stderr or "")
+    assert rotated not in emitted2
+    assert secret not in emitted2
+    assert "Bearer" not in emitted2
