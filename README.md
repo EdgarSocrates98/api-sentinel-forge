@@ -11,12 +11,13 @@ a specialist in the FORGE ecosystem. It watches how running APIs evolve over
 time, turns telemetry into evidence-backed investigations, and delegates
 specialized diagnosis to the other Forges instead of re-implementing them.
 
-> Status: **0.1.0 release candidate — Cycles 0–10 consolidated**
-> (see `CHANGELOG.md` and `docs/cycles/`). Cycle 10 closed the
-> cross-forge homologation loop: real Doctor/Atlas/the-forge
-> integrations, Portal `/api-operations` on live Sentinel data,
-> hardened `/v1` auth, federated E2E 16/18 (+2 honestly blocked).
-> Portuguese README: [`README.pt-BR.md`](README.pt-BR.md).
+> Status: **0.1.2 — Cycles 0–10 consolidated; install-2.1 service
+> surface landed (Cycle 16 wave 11)** (see `CHANGELOG.md` and
+> `docs/cycles/`). Cycle 10 closed the cross-forge homologation loop:
+> real Doctor/Atlas/the-forge integrations, Portal `/api-operations` on
+> live Sentinel data, hardened `/v1` auth, federated E2E 16/18 (+2
+> honestly blocked). Portuguese README:
+> [`README.pt-BR.md`](README.pt-BR.md).
 
 ## What it is (and is not)
 
@@ -32,17 +33,31 @@ specialized diagnosis to the other Forges instead of re-implementing them.
 ## Install
 
 ```bash
-# from a checkout
+# from a checkout — canonical bootstrap (isolated venv + launcher)
 ./install.sh            # bash
 install.ps1             # powershell
-# or directly
+# or directly (CLI-only path)
 pip install api-sentinel-forge
-api-sentinel install
+api-sentinel install --yes            # headless; TTY runs guided
 ```
 
-`api-sentinel install` is a guided setup (profile, workspace scope, Portal
-integration when detected). Nothing external is required: the core runs
-offline against local files.
+API Sentinel installs as a **service forge**: a governed state
+workspace (`<root>/.api-sentinel/` — SQLite + config + token), a
+workspace context registration (`<root>/.forge/context/`) and an
+account manifest (`~/.forge/installations/`). No host assets are
+written.
+
+```bash
+api-sentinel install --root ./proj --scope project --runtime-profile local
+api-sentinel install status|doctor|repair|uninstall|mcp-verify
+api-sentinel uninstall [--purge]      # keep-data default; purge removes state
+```
+
+Two "profiles" stay distinct: `--profile` is the install tier
+(`minimal|recommended|full`); `--runtime-profile` is the functional
+profile persisted in `config.yaml` (`local|aws|opentelemetry`). The
+full flag surface, scope semantics, receipts and safety guards live in
+[`docs/12-installation-and-distribution.md`](docs/12-installation-and-distribution.md).
 
 ## First investigation in three commands
 

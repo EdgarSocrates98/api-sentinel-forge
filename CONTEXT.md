@@ -101,9 +101,19 @@ context. If a term means two things, it is two terms — find the boundary.
 
 ## platform
 
-- `workspace` — local state root: `.api-sentinel/` (project scope) or
-  `~/.api-sentinel/` (user scope); holds `sentinel.db`, config, receipts.
-- `forge.json` — specialist manifest (ids, cli, extras, install hooks).
+- `workspace` — local state root: `.api-sentinel/` under the target
+  root (project/workspace scopes) or `~/.api-sentinel/` (user scope);
+  holds `sentinel.db`, config, receipts.
+- `target root` — the project/workspace directory an install serves
+  (`--root`); the state dir is `<target>/.api-sentinel/` and the forge
+  context registry lands at the target root. Distinct from
+  `--workspace`, which names the state dir verbatim.
+- `install tier` — `minimal|recommended|full` on `--profile` (installkit
+  disclosure tier, recorded not expanded); the runtime profile
+  `local|aws|opentelemetry` is `--runtime-profile`, persisted as
+  `profile:` in config.yaml.
+- `forge.json` — specialist manifest (ids, cli, extras, install-2.1
+  surface, `installation_kind: service`, `mcp_verify_tool`, `depends_on`).
 - `forge.agentic.json` — `forge/SpecialistAgenticManifest/v1`, the
   workflows/skills/agents catalog for hosts.
 - `capability` — a declared ability surfaced to The Forge via runtime

@@ -92,7 +92,7 @@ def test_install_dry_run_plans_without_writes(tmp_path: Path) -> None:
 
 def test_repeated_install_is_idempotent(tmp_path: Path) -> None:
     root = tmp_path / "proj"
-    r1 = _receipt(_invoke("install", "--yes", "--json", "--root", str(root)))
+    _receipt(_invoke("install", "--yes", "--json", "--root", str(root)))
     token1 = (root / ".api-sentinel" / "token").read_text()
     r2 = _receipt(_invoke("install", "--yes", "--json", "--root", str(root)))
     assert r2["status"] == "completed"
@@ -390,7 +390,7 @@ def test_update_refuses_uninitialized_dir(tmp_path: Path) -> None:
 
 def test_install_status_and_doctor(tmp_path: Path) -> None:
     root = tmp_path / "proj"
-    payload = _receipt(_invoke("install", "--yes", "--json", "--root", str(root)))
+    _receipt(_invoke("install", "--yes", "--json", "--root", str(root)))
     status = json.loads(_invoke("install", "status", "--json", "--root", str(root)).stdout)
     assert status["schema"] == "forge/InstallationHealth/v1"
     assert status["status"] == "healthy"

@@ -6,6 +6,70 @@ this project uses Semantic Versioning.
 
 ## [Unreleased]
 
+### Added — install-2.1 service surface (Cycle 16 wave 11)
+
+- `api-sentinel install` is now a lifecycle group:
+  `status` · `doctor` · `repair` · `uninstall` · `mcp-verify`, with the
+  bare command still running the guided (TTY) or headless (`--yes`)
+  install. `forge.json` declares `installation_kind: service`,
+  `mcp_verify_tool: sentinel_health`, the full `install{}` surface and
+  `depends_on: []`; packaged manifest copies ship under
+  `src/api_sentinel/installation/assets/manifest/` for wheels.
+- Canonical `scripts/forge_bootstrap.py` vendored byte-identically from
+  The Forge installkit (wrappers `install.sh`/`install.ps1`/
+  `install.windows.sh` likewise); `scripts/install_portable.py` stays
+  as the documented legacy pip-plus-delegate route.
+- `forge/InstallReceipt/v1` on `--json` and persisted under
+  `<state>/install/receipts/` — `managed_files`, `checks`
+  (PASS/FAIL/BLOCKED/UNVERIFIED/NOT_APPLICABLE) and honest
+  `verification.status`; dry-run reports `planned` + `UNVERIFIED`.
+- Account manifest merge-write at `~/.forge/installations/` so a
+  CLI-only install stays discoverable (`FORGE_HOME_OVERRIDE` honored).
+- Real MCP verification: `initialize → initialized → tools/list →
+  tools/call sentinel_health` over stdio, with BLOCKED/UNVERIFIED for
+  missing exe/extra — never fabricated PASS.
+- `workspace` scope: state under the discovered workspace root
+  (`forge.workspace.*`/`.forge-workspace`/workspace pyproject/VCS
+  markers) + read-only depth-1 member discovery, explicitly deferred
+  (members are observation targets, not install targets).
+- Global `api-sentinel --version` (the bootstrap smoke check).
+
+### Changed — install-2.1 contract
+
+- `--profile` now means the install tier
+  (`minimal|recommended|full`); the runtime profile moved to
+  `--runtime-profile` (`local|aws|opentelemetry`). Runtime values on
+  `--profile` are still honored as a deprecated alias with a named
+  warning; `full` is never a runtime value. A reinstall with a new
+  runtime profile updates `config.yaml` deliberately and the receipt
+  reports `previous_profile` → `effective_profile`.
+- `--root` names the install target root (state at
+  `<root>/.api-sentinel`, context registry at the root); `--workspace`
+  keeps naming the verbatim state dir. Together they are refused as
+  conflicting targets; a non-`.api-sentinel` state dir skips context
+  registration with a named note instead of writing foreign roots
+  (fixes the `ws.root.parent` bug that could write `/tmp/AGENTS.md`).
+- `--host` is validated + recorded `NOT_APPLICABLE` (a service forge
+  writes no host assets); `--components` is honestly recorded with
+  unhonored names; `--gateway-profile`/`--gateway` is persisted as
+  advisory (no gateway mode). `forge.agentic.json` no longer lists
+  fabricated agents/host adapters.
+
+### Fixed — install-2.1 safety
+
+- Non-interactive install/uninstall/repair without `--yes`/`--dry-run`
+  is a named refusal (exit 2) instead of a silent install.
+- `uninstall` is ownership-gated: sentinel markers required, fs-root
+  and `$HOME` targets refused; default keeps data, `--purge` removes.
+- `update` refuses an existing-but-uninitialized dir (`config.yaml` is
+  the installed marker; the old guard let it silently create a db).
+- `install repair` re-registers a missing capability manifest
+  (`repair_context` alone rebuilds the registry from present files and
+  would silently drop this forge).
+- `install status/doctor` aggregate honestly: UNVERIFIED/BLOCKED
+  checks degrade the verdict instead of reading as `healthy`.
+- The token secret is never serialized into receipts — only its path.
+
 ## [0.1.2] - 2026-11-13
 
 ### Fixed

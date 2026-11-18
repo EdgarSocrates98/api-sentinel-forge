@@ -689,9 +689,10 @@ def _do_uninstall(
         return
     _assert_sentinel_owned(ws)
     if dry_run:
+        ctx_dir = tgt.context_root / ".forge" / "context" if tgt.context_root else None
         receipt["status"] = "planned"
         receipt["would_remove"] = [
-            str(tgt.context_root / ".forge" / "context") if residue else None,
+            str(ctx_dir) if residue and ctx_dir is not None else None,
             str(installation.installations_dir() / f"{FORGE_ID}.json")
             if account_present
             else None,
