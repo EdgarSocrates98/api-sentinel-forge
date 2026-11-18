@@ -799,13 +799,14 @@ def _health_doc(
     installed = state.config_present
     # "healthy" only when every check is PASS or NOT_APPLICABLE — a
     # FAIL/BLOCKED/UNVERIFIED check degrades the verdict, never
-    # disappears into success.
-    if not all(c["status"] in ("PASS", "NOT_APPLICABLE") for c in checks):
-        status = "degraded" if installed else "broken"
-    elif not installed:
+    # disappears into success. Nothing installed at all is "unverified",
+    # not "broken": there is no install to break.
+    if not installed:
         status = "unverified"
-    else:
+    elif all(c["status"] in ("PASS", "NOT_APPLICABLE") for c in checks):
         status = "healthy"
+    else:
+        status = "degraded"
     return {
         "schema": installation.SCHEMA_HEALTH,
         "forge_id": FORGE_ID,

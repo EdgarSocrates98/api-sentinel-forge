@@ -192,7 +192,13 @@ def resolve_install_target(
         )
     if state_dir is not None:
         sd = state_dir.expanduser().resolve()
-        ctx = _context_root_for_state_dir(sd, notes)
+        if scope == "user":
+            # account scope never writes workspace context, whatever the
+            # state dir looks like.
+            ctx = None
+            notes.append("user scope — context registration skipped")
+        else:
+            ctx = _context_root_for_state_dir(sd, notes)
         return InstallTarget(
             ws=Workspace(root=sd, scope=scope),
             target_root=ctx,
