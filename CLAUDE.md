@@ -36,7 +36,7 @@ Same invariants as `AGENTS.md`; keep them byte-aligned when editing.
 - Honest states over confident guesses: `UNKNOWN`/`UNVERIFIED` are valid
   answers, fabricated health is a defect.
 - Every claimed completion requires fresh verification evidence.
-- Version `0.1.0` — do not bump without an owner-documented rationale in
+- Version `0.1.2` — do not bump without an owner-documented rationale in
   `docs/12-installation-and-distribution.md`; do not publish.
 
 ## More context

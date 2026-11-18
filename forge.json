@@ -11,6 +11,63 @@
     "mcp",
     "serve"
   ],
+  "mcp_verify_tool": "sentinel_health",
+  "installation_kind": "service",
+  "install": {
+    "operations": [
+      "plan",
+      "apply",
+      "status",
+      "doctor",
+      "repair",
+      "uninstall",
+      "mcp-verify"
+    ],
+    "flags": [
+      "--scope",
+      "--root",
+      "--workspace",
+      "--host",
+      "--profile",
+      "--runtime-profile",
+      "--components",
+      "--gateway-profile",
+      "--gateway",
+      "--yes",
+      "--dry-run",
+      "--purge",
+      "--json"
+    ],
+    "hosts": [
+      "claude",
+      "devin",
+      "codex",
+      "copilot"
+    ],
+    "scopes": [
+      "project",
+      "workspace",
+      "user"
+    ],
+    "profiles": [
+      "minimal",
+      "recommended",
+      "full"
+    ],
+    "runtime_profiles": [
+      "local",
+      "aws",
+      "opentelemetry"
+    ],
+    "gateway_profiles": [
+      "economy",
+      "balanced",
+      "deep"
+    ],
+    "host_assets": false,
+    "approval": "--yes"
+  },
+  "depends_on": [],
   "extras": [
     "mcp",
     "api",
