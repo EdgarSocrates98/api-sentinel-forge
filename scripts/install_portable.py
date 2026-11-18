@@ -1,4 +1,19 @@
-"""Portable bootstrap installer for API Sentinel Forge.
+"""Portable bootstrap installer for API Sentinel Forge — LEGACY ROUTE.
+
+Status (install-2.1 / Cycle 16 wave 11): the canonical installer route is
+``install.sh`` / ``install.ps1`` / ``install.windows.sh`` →
+``scripts/forge_bootstrap.py`` (the byte-identical vendored copy of the
+shared Forge bootstrap). That pipeline builds an isolated venv under
+``~/.forge/installs/api-sentinel-forge``, writes the ``api-sentinel``
+launcher shim, smoke-verifies ``--version``, registers
+``~/.forge/installations/api-sentinel-forge.json`` (The Forge discovery)
+and persists a ``forge/InstallReceipt/v1`` bootstrap receipt.
+
+This file is the previous pip+delegate shim, kept for checkouts that
+explicitly want ``pip install -e <checkout>`` followed by
+``api-sentinel install``. It is no longer the documented default and is
+not wired into the wrappers; it stays because it is still a valid
+development-flow entry point — remove only with an ADR.
 
 Thin shim kept dependency-free (stdlib only): it creates or locates a
 Python 3.11+ interpreter, installs the package editable when running from
