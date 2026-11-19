@@ -111,7 +111,7 @@ from typing import Any
 _FORGECONTEXT_VERSION = "1.3.4"
 # Filled by the vendor step (scripts/installkit/vendor.py) — the sha256 of
 # the canonical source body, so drift checks can compare vendored copies.
-_SOURCE_SHA256 = "5674012d1a5760df"
+_SOURCE_SHA256 = "ec2a7a80d2467000"
 
 SCHEMA_MANIFEST = "forge/context/v1"
 SCHEMA_REGISTRY = "forge/context-registry/v1"
@@ -2072,6 +2072,26 @@ def _claude_block() -> str:
     )
 
 
+def _forge_block_compact(manifest: Mapping[str, Any]) -> str:
+    """Per-forge block for AGENTS.md — the routing-critical minimum:
+    identity, domains and the manifest pointer. CLI/MCP/discovery detail
+    stays in ``AGENT_PROTOCOL.md`` and in the manifest it points to
+    (cycle 16.1 §8.1: verifiable pointers, not duplicated instruction)."""
+    fid = str(manifest.get("forge_id", "?"))
+    name = str(manifest.get("name", fid))
+    version = str(manifest.get("version", ""))
+    domains = ", ".join(manifest.get("domains") or ()) or "(none declared)"
+    return (
+        f"### {name} — `{fid}` {version}".rstrip()
+        + "\n\n"
+        + f"Domains: {domains}"
+        + "\n"
+        + f"- Capability manifest: `.forge/context/capabilities/{fid}.json`\n"
+        + "- Interfaces + operating rules: `AGENT_PROTOCOL.md` "
+        + "(`forge:" + fid + "` block)"
+    )
+
+
 def _forge_block(manifest: Mapping[str, Any]) -> str:
     """Per-forge managed block rendered from its ``forge/context/v1``
     manifest — deterministic, no timestamps."""
@@ -2351,7 +2371,7 @@ def _install_block_plan(
             _AGENTS_PREAMBLE,
             [
                 (DOC_TAG_ECOSYSTEM, _ecosystem_block()),
-                (f"forge:{fid}", _forge_block(manifest)),
+                (f"forge:{fid}", _forge_block_compact(manifest)),
             ],
         ),
         (CLAUDE_NAME, _CLAUDE_PREAMBLE, [(DOC_TAG_ECOSYSTEM, _claude_block())]),
