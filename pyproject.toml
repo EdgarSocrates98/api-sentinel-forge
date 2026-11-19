@@ -139,6 +139,12 @@ ignore_missing_imports = true
 module = ["api_sentinel._forge_obsidian", "api_sentinel._forge_obsidian.*"]
 ignore_errors = true
 
+[[tool.mypy.overrides]]
+# Vendored installkit — byte-parity with the canonical the-forge copy;
+# strict typing is enforced upstream, not on vendored replicas.
+module = ["api_sentinel._installkit"]
+ignore_errors = true
+
 [tool.pytest.ini_options]
 markers = ["slow: heavyweight integration tests (clean venv etc.)"]
 testpaths = ["tests"]
