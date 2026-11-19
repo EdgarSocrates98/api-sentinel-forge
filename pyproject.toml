@@ -100,6 +100,10 @@ select = [
 # Vendored shared install-2.1 bootstrap — byte-identical to the canonical
 # the-forge scripts/installkit copy; linted there.
 "scripts/forge_bootstrap.py" = ["ALL"]
+# Vendored shared installkit — byte-identical modulo _SOURCE_SHA256 stamp
+# to the canonical the-forge copy; linted there.
+"src/api_sentinel/_installkit.py" = ["ALL"]
+"scripts/forge_installkit.py" = ["ALL"]
 "scripts/**" = ["T20"]
 # lab fixtures are deliberately plain sample service code that Code Atlas
 # indexes — they are not shipped product code, so security rules do not
