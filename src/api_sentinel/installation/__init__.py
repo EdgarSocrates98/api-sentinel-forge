@@ -171,6 +171,16 @@ def install_receipts_dir(ws: Workspace) -> Path:
 
 
 def write_receipt(ws: Workspace, receipt: dict[str, Any]) -> Path:
+    """Persist a ``forge/InstallReceipt/v1``.
+
+    The ``lifecycle`` block (``forge/InstallLifecycle/v1``) is derived at
+    the write boundary from the final ``status``/``verification`` — the
+    mutation lands on the caller's dict too, so the persisted receipt
+    and the emitted one carry the same derived state.
+    """
+    from api_sentinel.installation import lifecycle
+
+    receipt["lifecycle"] = lifecycle.receipt_block(receipt)
     ts = _utc_now().replace(":", "").replace("-", "")
     path = install_receipts_dir(ws) / f"{receipt['operation']}-{ts}.json"
     _atomic_write(path, _json_bytes(receipt))
@@ -238,7 +248,7 @@ def installation_manifest() -> dict[str, Any]:
     return doc if isinstance(doc, dict) else {}
 
 
-def register_installation(target_root: Path | None, ws: Workspace) -> Path:
+def register_installation(target_root: Path | None, ws: Workspace) -> tuple[Path, bool]:
     """Merge-write the account manifest (``forge/InstallationManifest/v1``).
 
     A CLI install runs without the bootstrap pipeline (no venv, no
@@ -246,6 +256,12 @@ def register_installation(target_root: Path | None, ws: Workspace) -> Path:
     the resolved python, the install source and the declared install
     surface. Existing bootstrap fields (``installed_at``, ``venv``,
     ``install_root``) are preserved — a later bootstrap rewrites them.
+
+    Incremental (install-2.1 §7.4): when the merged document differs
+    from the manifest on disk only in ``updated_at``, the file is left
+    untouched — repeated installs never rewrite unchanged assets, and
+    ``updated_at`` keeps naming the last *real* modification. Returns
+    ``(manifest_path, changed)``.
     """
     existing = installation_manifest()
     now = _utc_now()
@@ -290,8 +306,12 @@ def register_installation(target_root: Path | None, ws: Workspace) -> Path:
     doc["mcp"] = mcp_doc
     doc.update(declared_install_fields())
     path = installations_dir() / f"{FORGE_ID}.json"
+    desired = {k: v for k, v in doc.items() if k != "updated_at"}
+    previous = {k: v for k, v in existing.items() if k != "updated_at"}
+    if path.exists() and previous == desired:
+        return path, False
     _atomic_write(path, _json_bytes(doc))
-    return path
+    return path, True
 
 
 def deregister_installation() -> bool:
