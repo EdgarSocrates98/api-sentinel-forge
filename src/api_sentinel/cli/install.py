@@ -1,4 +1,11 @@
-"""Install lifecycle — service-forge bootstrap (install-2.1, Cycle 16 wave 11).
+"""Install lifecycle — service-forge bootstrap (install-2.1, Cycle 16 waves 11-12).
+
+Wave 12 adds the ``forge/InstallLifecycle/v1`` block — a *derived* view
+(never asserted) attached to every emitted receipt and health doc — and
+honest incremental classification: ``managed_files`` carries the
+post-operation sha256 and a ``created|updated|unchanged|removed``
+action computed from real bytes, with ``managed_summary`` counting how
+many resources actually changed on a reinstall.
 
 Two profile families stay deliberately distinct:
 
@@ -28,6 +35,7 @@ and ``--purge`` on uninstall.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 import sys
@@ -338,6 +346,10 @@ def install_cmd(
         return
 
     # -- apply -------------------------------------------------------------
+    # Pre-write snapshot of the managed set — incremental reinstalls are
+    # reported honestly (§7.4): unchanged assets stay ``unchanged`` in the
+    # receipt instead of being claimed as "updated".
+    before = _managed_digests(planned)
     try:
         config_note, resolved_token = _apply_state(
             ws, scope=scope, runtime_profile=rp, tier=tier, gateway=gp
@@ -349,7 +361,6 @@ def install_cmd(
         _persist_and_emit(receipt, ws, as_json)
         raise typer.Exit(EXIT_ERROR) from exc
     receipt["runtime_profile"] = config_note
-    receipt["managed_files"] = _managed_files(tgt, planned)
 
     checks: list[dict[str, Any]] = [
         _check("workspace-state", "PASS", f"state dir + config at {ws.root}"),
@@ -385,6 +396,11 @@ def install_cmd(
                 f"no optional install components — unhonored: {','.join(comp)}",
             )
         )
+    # Classify AFTER every managed write landed (context + account
+    # registration included) so the digest evidence is post-operation.
+    managed = _managed_files(planned, before)
+    receipt["managed_files"] = managed
+    receipt["managed_summary"] = _managed_summary(managed)
     receipt["checks"] = checks
     receipt["verification"] = {"status": installation.verification_status(checks)}
     receipt["status"] = (
@@ -503,21 +519,86 @@ def _managed_plan(tgt: InstallTarget) -> list[dict[str, str]]:
     return out
 
 
-def _managed_files(tgt: InstallTarget, planned: list[dict[str, str]]) -> list[dict[str, str]]:
-    out: list[dict[str, str]] = []
+def _digest_path(path: Path) -> str | None:
+    """Content digest of a managed path — file sha256, or a deterministic
+    digest of a directory's recursive contents. ``None`` when absent or
+    unreadable (absence is evidence, never a fabricated hash)."""
+    try:
+        if path.is_file():
+            return hashlib.sha256(path.read_bytes()).hexdigest()
+        if path.is_dir():
+            h = hashlib.sha256()
+            for child in sorted(path.rglob("*")):
+                rel = child.relative_to(path).as_posix()
+                if child.is_symlink():
+                    h.update(f"{rel}\0symlink\0".encode())
+                elif child.is_dir():
+                    h.update(f"{rel}/\0dir\0".encode())
+                elif child.is_file():
+                    h.update(rel.encode() + b"\0")
+                    h.update(hashlib.sha256(child.read_bytes()).digest())
+            return h.hexdigest()
+    except OSError:
+        return None
+    return None
+
+
+def _managed_digests(planned: list[dict[str, str]]) -> dict[str, str | None]:
+    """Snapshot the managed set — ``path → digest|None``."""
+    return {e["path"]: _digest_path(Path(e["path"])) for e in planned}
+
+
+def _classify_managed(before: str | None, after: str | None) -> str:
+    """``forge/InstallReceipt/v1`` managed-file action vocabulary —
+    evidence of what the operation actually did to the bytes."""
+    if before is None and after is not None:
+        return "created"
+    if before is not None and after is None:
+        return "removed"
+    if before is not None and before == after:
+        return "unchanged"
+    if before is not None and after is not None:
+        return "updated"
+    return "unchanged"  # absent before and after — nothing was written
+
+
+def _managed_files(
+    planned: list[dict[str, str]], before: dict[str, str | None]
+) -> list[dict[str, Any]]:
+    """Classify each planned path against its pre-operation digest —
+    ``created``/``updated``/``unchanged``/``removed`` from real bytes,
+    plus the post-operation ``sha256`` the contract expects."""
+    out: list[dict[str, Any]] = []
     for entry in planned:
-        p = Path(entry["path"])
-        action = "update" if p.exists() and entry["action"] != "marker-block" else entry["action"]
-        out.append({**entry, "action": action})
+        after = _digest_path(Path(entry["path"]))
+        out.append(
+            {
+                "path": entry["path"],
+                "kind": entry["kind"],
+                "action": _classify_managed(before.get(entry["path"]), after),
+                "sha256": after,
+            }
+        )
     return out
+
+
+def _managed_summary(managed: list[dict[str, Any]]) -> dict[str, int]:
+    """Action counts — §7.4 "inform clearly how many resources changed"."""
+    summary = {"created": 0, "updated": 0, "unchanged": 0, "removed": 0}
+    for entry in managed:
+        action = entry.get("action")
+        if action in summary:
+            summary[action] += 1
+    return summary
 
 
 def _register_account(tgt: InstallTarget) -> dict[str, Any]:
     try:
-        path = installation.register_installation(tgt.target_root, tgt.ws)
+        path, changed = installation.register_installation(tgt.target_root, tgt.ws)
     except OSError as exc:
         return _check("account-registry", "BLOCKED", f"cannot write manifest: {exc}"[:200])
-    return _check("account-registry", "PASS", f"manifest at {path}")
+    mode = "updated" if changed else "unchanged"
+    return _check("account-registry", "PASS", f"manifest {mode} at {path}")
 
 
 def _persist_and_emit(
@@ -529,6 +610,11 @@ def _persist_and_emit(
 
 
 def _emit_receipt(receipt: dict[str, Any], as_json: bool, *, token: Any = None) -> None:
+    from api_sentinel.installation import lifecycle
+
+    # forge/InstallLifecycle/v1 — derived at the emit boundary from the
+    # final status/verification (idempotent with write_receipt's derive).
+    receipt["lifecycle"] = lifecycle.receipt_block(receipt)
     if as_json:
         typer.echo(json.dumps(receipt, default=str))
         return
@@ -808,7 +894,7 @@ def _health_doc(
         status = "healthy"
     else:
         status = "degraded"
-    return {
+    doc = {
         "schema": installation.SCHEMA_HEALTH,
         "forge_id": FORGE_ID,
         "status": status,
@@ -822,6 +908,10 @@ def _health_doc(
         "repair_hint": "api-sentinel install repair" if status != "healthy" else None,
         **extra,
     }
+    from api_sentinel.installation import lifecycle
+
+    doc["lifecycle"] = lifecycle.health_block(doc)
+    return doc
 
 
 def _probe_checks(tgt: InstallTarget) -> list[dict[str, Any]]:
@@ -979,6 +1069,11 @@ def install_repair(
         doc = _health_doc(tgt, _probe_checks(tgt), extra={})
         doc["operation"] = "repair"
         doc["status"] = "planned"
+        from api_sentinel.installation import lifecycle
+
+        # a plan doc derives on the receipt side — ``planned``, never
+        # the health status the probe reported.
+        doc["lifecycle"] = lifecycle.receipt_block(doc)
         _emit_health(doc, as_json)
         return
     _require_tty_or_yes("repair", yes=yes, dry_run=False)
@@ -1063,7 +1158,7 @@ def install_mcp_verify(
     """Verify the MCP handshake (initialize + tools/list + sentinel_health)."""
     tgt = _resolve_target(scope, root, workspace)
     check = installation.mcp_verify(tgt.ws)
-    doc = {
+    doc: dict[str, Any] = {
         "schema": installation.SCHEMA_HEALTH,
         "forge_id": FORGE_ID,
         "status": (
@@ -1077,6 +1172,9 @@ def install_mcp_verify(
         "checked_at": installation._utc_now(),
         "repair_hint": None,
     }
+    from api_sentinel.installation import lifecycle
+
+    doc["lifecycle"] = lifecycle.health_block(doc)
     if as_json:
         typer.echo(json.dumps(doc, default=str))
     else:

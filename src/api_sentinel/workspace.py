@@ -281,6 +281,10 @@ def ensure_workspace(ws: Workspace, *, profile: str = "local") -> Workspace:
     ws.receipts_dir.mkdir(exist_ok=True)
     ws.handoffs_dir.mkdir(exist_ok=True)
     ws.agent_sessions_dir.mkdir(exist_ok=True)
+    # install-2.1 receipts dir — part of the declared managed plan; it is
+    # created eagerly so an install receipt classifies the directory as
+    # actually written (created/unchanged), not a post-hoc side effect.
+    (ws.root / "install" / "receipts").mkdir(parents=True, exist_ok=True)
     if not ws.config_path.exists():
         ws.config_path.write_text(
             yaml.safe_dump({"scope": ws.scope, "profile": profile}, sort_keys=False),

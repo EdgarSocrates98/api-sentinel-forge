@@ -114,6 +114,41 @@ and `verification.status` — PASS only when every check is PASS or
 NOT_APPLICABLE. Domain handoff/retention receipts under
 `<state>/receipts/` are a different layer.
 
+#### Lifecycle view — `forge/InstallLifecycle/v1` (Cycle 16.1 wave 12)
+
+Receipt `status` is the coarse verdict — `completed` means the writer
+finished, never "production-ready". Every emitted receipt and health
+doc (`install status`/`doctor`/`mcp-verify`, `repair --dry-run`)
+carries a derived `lifecycle` block:
+
+```jsonc
+"lifecycle": { "schema": "forge/InstallLifecycle/v1",
+               "state": "verified",   // closed vocabulary
+               "detail": "writes executed and receipt checks pass" }
+```
+
+The state is *derived* from `status` + `verification` (receipts) or the
+health `status` (health docs) — never asserted by the writer:
+`planned` → dry-run; `completed`+`PASS` → `verified`;
+`completed` without `PASS` → `applied`/`failed`; all-gated `failed` →
+`blocked`; `healthy` → `ready`; `degraded` → `partially_applied`;
+`broken` → `failed`; anything else → `unverified`. The block is
+additive — older parsers keep working.
+
+#### Incremental reinstall (§7.4)
+
+`managed_files` entries carry `{path, kind, action, sha256}` where
+`action` is `created|updated|unchanged|removed` — computed from real
+content digests taken before and after the operation, not assumed.
+`managed_summary` counts each action so a reinstall reports exactly
+what changed. A repeated identical install is a no-op on bytes:
+`config.yaml`, `sentinel.db`, `token`, context manifest, registry,
+ROUTING.md and consumer-doc blocks classify `unchanged`; the account
+manifest is only rewritten when its content (ignoring `updated_at`)
+actually differs. Reinstall with a different `--runtime-profile`
+updates `config.yaml` deliberately — that entry reports `updated` and
+`runtime_profile.previous_profile` → `effective_profile`.
+
 Three registry layers stay distinct:
 
 - `<state>/install/receipts/` — this forge's install receipts;

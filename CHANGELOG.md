@@ -6,6 +6,27 @@ this project uses Semantic Versioning.
 
 ## [Unreleased]
 
+### Added — install lifecycle evidence (Cycle 16.1 wave 12)
+
+- `forge/InstallLifecycle/v1` block on every emitted receipt and health
+  doc (`install`, `install status|doctor|mcp-verify`, `repair`,
+  `uninstall`): a *derived* closed-vocabulary state
+  (`planned|blocked|failed|applied|partially_applied|verified|
+  unverified|ready|certified`) computed from final
+  `status`/`verification` — additive, never asserted.
+- Incremental reinstall evidence: `managed_files` entries now carry the
+  post-operation `sha256` and an action classified from real content
+  digests (`created|updated|unchanged|removed`), plus `managed_summary`
+  action counts. A repeated identical install reports the whole managed
+  set `unchanged`; the account manifest is only rewritten when its
+  content (minus `updated_at`) differs.
+- `<state>/install/receipts/` is materialized by `ensure_workspace` so
+  the directory is classified honestly in the receipt that declares it.
+- Regression coverage: lifecycle derivation tables, incremental
+  reinstall (no rewrites), context-manifest honesty, minimal L0 boot
+  surface, host-mirror (`AGENTS.md`/`CLAUDE.md`) invariants sync and a
+  token-value sweep over every emitted surface.
+
 ### Added — install-2.1 service surface (Cycle 16 wave 11)
 
 - `api-sentinel install` is now a lifecycle group:
