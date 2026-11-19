@@ -312,17 +312,32 @@ class AwsClientSet:
 
 def real_clientset(config: AwsSessionConfig) -> AwsClientSet:
     """Build the ReadOnlyClient-wrapped service set over a real session."""
+    import botocore.exceptions
+
     session, region = resolve_session(config)
-    return AwsClientSet(
-        sts=ReadOnlyClient(session.client("sts", region_name=region), service="sts"),
-        cloudwatch=ReadOnlyClient(
-            session.client("cloudwatch", region_name=region), service="cloudwatch"
-        ),
-        apigateway=ReadOnlyClient(
-            session.client("apigateway", region_name=region), service="apigateway"
-        ),
-        apigatewayv2=ReadOnlyClient(
-            session.client("apigatewayv2", region_name=region), service="apigatewayv2"
-        ),
-        region=region,
-    )
+    try:
+        return AwsClientSet(
+            sts=ReadOnlyClient(session.client("sts", region_name=region), service="sts"),
+            cloudwatch=ReadOnlyClient(
+                session.client("cloudwatch", region_name=region), service="cloudwatch"
+            ),
+            apigateway=ReadOnlyClient(
+                session.client("apigateway", region_name=region), service="apigateway"
+            ),
+            apigatewayv2=ReadOnlyClient(
+                session.client("apigatewayv2", region_name=region), service="apigatewayv2"
+            ),
+            region=region,
+        )
+    except botocore.exceptions.MissingDependencyException as exc:
+        # credential resolution is lazy — providers requiring optional
+        # transports (e.g. `botocore[crt]` for the `aws login` provider)
+        # only raise here, at client construction, not in resolve_session.
+        raise aws_unavailable(
+            f"AWS credential provider requires an optional dependency: {exc}",
+            details={"install": "botocore[crt]"},
+        ) from exc
+    except botocore.exceptions.BotoCoreError as exc:
+        raise aws_unavailable(
+            f"could not build AWS clients: {type(exc).__name__}: {exc}",
+        ) from exc

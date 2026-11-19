@@ -6,6 +6,38 @@ this project uses Semantic Versioning.
 
 ## [Unreleased]
 
+### Fixed — packaging & bootstrap honesty (Cycle 16.1.1 wave 02)
+
+- `setup.sh`: a missing Python no longer kills the script silently —
+  `PY=$(command -v …)` under `set -e` exited `1` with no output before
+  reaching the `FORGE-PYTHON-NOT-FOUND` branch; the probe now tolerates
+  the all-miss case so the named error prints and exits `2`, matching
+  `setup.ps1`. Pinned by `tests/unit/test_setup_scripts.py` running the
+  real script on a python-free PATH.
+- `aws collect` (and `aws discover` via `real_clientset`): an AWS
+  credential provider requiring an optional transport (e.g. the `aws
+  login` provider's `botocore[crt]`) raised `MissingDependencyException`
+  at client construction — outside `resolve_session`'s error mapping —
+  surfacing as an ungoverned crash. Client construction now maps to the
+  governed `aws_unavailable` error with the missing-extra remedy.
+- `pyproject.toml`: removed a stale ruff per-file-ignore for
+  `scripts/forge_installkit.py` — the file does not exist; the vendored
+  installkit lives at `src/api_sentinel/_installkit.py` (byte-parity
+  `63bc9936eec43957`, shipped in the wheel).
+
+### Verified — distribution proof (Cycle 16.1.1 wave 02)
+
+- `uv build` sdist+wheel inspected: `api_sentinel/_installkit.py`,
+  `_forgecontext.py`, `__main__.py`, `cli/` and `contracts/` all ship.
+- Wheel installed into a disposable venv (cwd outside the checkout,
+  `PYTHONPATH` clean): `api-sentinel --help`, `api-sentinel install
+  --help` and `python -m api_sentinel --help` all green; `mcp serve`
+  without the extra refuses honestly (`error[sentinel.validation]`,
+  rc=1); with `api-sentinel-forge[mcp]` a real JSON-RPC
+  `initialize`/`tools/list` handshake returns 4 tools.
+- Windows/Git-Bash `setup.sh` path: logic-reviewed, not executed here —
+  `UNVERIFIED` on this platform.
+
 ### Added — install lifecycle evidence (Cycle 16.1 wave 12)
 
 - `forge/InstallLifecycle/v1` block on every emitted receipt and health

@@ -164,6 +164,7 @@ Three registry layers stay distinct:
 | Route | Status |
 | --- | --- |
 | `./install.sh` · `install.ps1` · `install.windows.sh` | canonical wrappers → `scripts/forge_bootstrap.py` (isolated venv + launcher + smoke `--version` + account registry + bootstrap receipt) |
+| `./setup.sh` · `setup.ps1` | lightweight bootstrap wrappers → `scripts/forge_bootstrap.py`; with no Python on PATH they print `FORGE-PYTHON-NOT-FOUND` and exit `2` — never a silent `set -e` death |
 | `scripts/install_portable.py` | **legacy** pip-plus-delegate route — kept for environments that vendor their own interpreter; documented, not the primary path |
 | `pip install api-sentinel-forge` + `api-sentinel install` | CLI-only path — state + registrations via the in-package engine |
 

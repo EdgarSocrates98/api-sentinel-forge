@@ -132,6 +132,7 @@ Every integration reports a named state — `AVAILABLE`, `UNAVAILABLE`,
 | `forge-doctor-api: unverified` | handoff mode: envelope emitted under `handoffs/` — is the peer running? |
 | `forge-agent-bridge: unverified` | `forge_agent_bridge` importable? `agent_sessions/` envelopes pending? |
 | `aws` errors | `api-sentinel aws` receipts under `receipts/` record the named failure |
+| `aws_unavailable` on `collect`/`discover` | AWS credential provider needs an optional transport (e.g. `aws login` profiles → `pip install "botocore[crt]"`) or the profile is unresolvable — governed refusal, not a crash |
 
 Core query/detect/incident surfaces stay available through every
 integration failure — proven by the degradation matrix
